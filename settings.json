@@ -1,0 +1,16 @@
+{
+  "projectType": "wordpress-plugin",
+  "defaultWorkingDirectory": "/mnt/c/Users/tdeme/Local Sites/faux-stained-glass-panes/app/public/wp-content/plugins/sip-plugins-core",
+  "screenshotDirectory": "/mnt/c/users/tdeme/Documents/VSCode_images_Repo/",
+  "preferences": {
+    "codeStyle": "standard",
+    "indentation": "spaces",
+    "tabSize": 4,
+    "lineLength": 120
+  },
+  "context": {
+    "pluginName": "SiP Plugins Core",
+    "pluginVersion": "2.7.4",
+    "projectDescription": "Core framework for Stuff is Parts WordPress plugins"
+  }
+}
