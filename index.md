@@ -73,11 +73,24 @@ Always use the `SiP.Core.ajax.createStandardFormData()` utility to ensure consis
    - Use `SiP_AJAX_Response` class for standardized responses
    - Include success flag, data, and message in all responses
 
+## New SiP Plugin Implementation
+
+Before deploying or updating SiP plugins, use the comprehensive [integration     
+checklist](./sip_plugin_file_structure.md#plugin-integration-checklist) to      
+verify that all standards are properly implemented. This checklist ensures:      
+
+1. Proper integration with the core framework
+2. Consistent AJAX implementation
+3. Standardized UI components
+4. Error handling consistency
+5. Code quality and maintainability
+
+Regular validation against this checklist helps maintain a cohesive
+ecosystem across all SiP plugins and prevents integration issues before they     
+occur in production.
+
 XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX BELOW NEEDS TO BE REWRITTEN AFTER DOCUMENTATION RE-ORG XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
-## Plugin Checklist
-
-Before deploying or updating SiP plugins, use the comprehensive [integration checklist](./sip_plugin_standards.md#plugin-integration-checklist) to verify that all standards are properly implemented.
 
 ## Customizing and Extending
 

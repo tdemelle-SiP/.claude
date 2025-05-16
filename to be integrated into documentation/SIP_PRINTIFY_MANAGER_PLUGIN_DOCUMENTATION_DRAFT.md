@@ -1,43 +1,5 @@
 # SiP Printify Manager - Code Documentation
 
-
-How to Use the Release Script
-Make sure you're on the develop branch with all changes committed
-Run the script with the new version number:
-.\release-plugin.ps1 -NewVersion "2.3.0"
-The script will:
-Update the version in sip-printify-manager.php
-Create a clean ZIP file in the build directory
-Push changes to your repository
-For Future Database Changes
-When you need to modify the database schema in the future:
-
-Update the sip_update_db_check() function in includes/product-functions.php
-Add a version check for the new schema version
-Include the SQL to modify the table structure
-Update the database version number
-Example:
-
-if (version_compare($current_db_version, '1.1.0', '<')) {
-    global $wpdb;
-    $table_name = $wpdb->prefix . "sip_printify_products";
-    
-    // Add a new column to the table
-    $wpdb->query("ALTER TABLE $table_name ADD new_column VARCHAR(100)");
-    
-    // Update the database version
-    update_option('sip_printify_db_version', '1.1.0');
-}
-This system ensures your plugin deployments are versioned properly and database changes are applied smoothly when users update.
-
-
-
-
-
-
-
-
-
 > **Viewing This Documentation**: 
 > 
 > To properly view this documentation with rendered Mermaid diagrams in VS Code:

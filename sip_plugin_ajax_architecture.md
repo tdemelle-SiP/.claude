@@ -2,6 +2,16 @@
 
 The SiP Plugin Suite uses a centralized AJAX handling system that provides consistent behavior across all plugins.
 
+## Core Principles
+
+1. **Simplicity Over Complexity**: Always favor direct, simple solutions over complex ones. Avoid defensive programming when clear patterns and structures eliminate the need for it.
+
+2. **Standardized Responses**: All AJAX responses should follow the standardized format provided by the `SiP_AJAX_Response` class. This ensures consistent handling on the client-side.
+
+3. **Proper Routing**: Responses should always include identifying information so they can be routed to the correct handlers.
+
+4. **Meaningful Errors**: Errors should be clear and helpful in identifying the issue, as they serve as diagnostic tools during development.
+
 ## PHP Side
 
 - **Central Router**: `ajax-handler.php` routes requests to the appropriate plugin based on the plugin parameter
