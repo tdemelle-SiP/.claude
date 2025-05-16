@@ -542,9 +542,15 @@ Use this checklist to ensure your SiP plugin is properly integrated:
 - [ ] Main plugin file includes sip-plugin-framework.php
 - [ ] AJAX shell is included and properly configured
 - [ ] All functionality-specific files are included
-- [ ] AJAX response methods use SiP_AJAX_Response class
+- [ ] AJAX response methods use SiP_AJAX_Response class:
+  - [ ] SiP_AJAX_Response::success() for successful responses
+  - [ ] SiP_AJAX_Response::error() for error responses
+  - [ ] SiP_AJAX_Response::datatable() for server-side DataTables (when using server-side pagination/filtering/sorting)
 - [ ] Never use WordPress's wp_send_json functions
 - [ ] All handlers follow the switch-case pattern for routing
+- [ ] Plugin is registered with core via SiP_Plugin_Framework::init_plugin()
+- [ ] The plugin implements a static render_dashboard() method
+- [ ] Standard headers use sip_render_standard_header() function
 - [ ] Error handling is consistent with appropriate error messages
 
 ### JavaScript Integration

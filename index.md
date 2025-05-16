@@ -70,8 +70,13 @@ Always use the `SiP.Core.ajax.createStandardFormData()` utility to ensure consis
 - The 'action_type' parameter
 - The nonce for security validation
 
-   - Use `SiP_AJAX_Response` class for standardized responses
-   - Include success flag, data, and message in all responses
+### AJAX Responses
+
+- Use `SiP_AJAX_Response` class for standardized responses
+- Use `success()` method for successful operations
+- Use `error()` method for failures
+- Use `datatable()` method for server-side DataTables operations
+- Include success flag, data, and message in all responses
 
 ## New SiP Plugin Implementation
 
