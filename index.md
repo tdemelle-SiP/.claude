@@ -43,31 +43,28 @@ Documentation organized by common developer tasks. Each guide presents standards
 ### Plugin Development
 | Guide | Description | Status |
 |-------|-------------|--------|
-| [Creating a New Plugin](./guidelines/creating-new-plugin.md) | Step-by-step guide to creating a SiP plugin from scratch | ✅ Created |
-| [Implementing AJAX Functionality](./guidelines/ajax-implementation.md) | Complete guide to AJAX, including error handling | 🔲 TODO |
-| [Implementing Dashboards](./guidelines/implementing-dashboards.md) | Creating admin dashboards and interfaces | 🔲 TODO |
+| [Creating a New Plugin](./guidelines/sip-plugin-creation.md) | Step-by-step guide to creating a SiP plugin from scratch | ✅ Complete |
+| [AJAX Implementation](./guidelines/sip-plugin-ajax.md) | Complete AJAX guide including error handling | ✅ Complete |
+| [Implementing Dashboards](./guidelines/sip-plugin-dashboards.md) | Creating admin dashboards and interfaces | ✅ Complete |
+| [Data Storage & File Handling](./guidelines/sip-plugin-data-storage.md) | All data storage patterns and file handling | ✅ Complete |
+| [Adding Features](./guidelines/sip-plugin-features.md) | How to extend plugin functionality | 🔲 TODO |
 
-### Feature Implementation
+### Feature Implementation  
 | Guide | Description | Status |
 |-------|-------------|--------|
-| [Adding Features to Existing Plugins](./guidelines/adding-features.md) | How to extend plugin functionality following standards | 🔲 TODO |
-| [Progress Dialog (Batch Operations)](./guidelines/batch-processing.md) | Using progress dialog for batch processing | 🔲 TODO |
-| [DataTables Integration](./guidelines/datatables-integration.md) | Implementing server-side data tables | 🔲 TODO |
-| [File Uploads](./guidelines/file-uploads.md) | Handling file uploads via AJAX | 🔲 TODO |
-| [UI Components](./guidelines/ui-components.md) | Using core UI utilities (spinners, etc.) | 🔲 TODO |
-| [Modals and Toasts](./guidelines/modals-toasts.md) | User notifications and dialogs | 🔲 TODO |
-| [CodeMirror Integration](./guidelines/codemirror-integration.md) | Implementing code editor functionality | 🔲 TODO |
-| [PhotoSwipe Integration](./guidelines/photoswipe-integration.md) | Implementing image lightbox functionality | 🔲 TODO |
+| [Progress Dialog](./guidelines/sip-feature-progress-dialog.md) | Batch operations and progress feedback | ✅ Complete |
+| [DataTables](./guidelines/sip-feature-datatables.md) | Server-side data tables | ✅ Complete |
+| [UI Components](./guidelines/sip-feature-ui-components.md) | Core UI utilities and localStorage for UI state | ✅ Complete |
+| [Modals](./guidelines/sip-feature-modals.md) | Modal dialogs and toast notifications | 🔲 TODO |
+| [CodeMirror](./guidelines/sip-feature-codemirror.md) | Code editor integration | 🔲 TODO |
+| [PhotoSwipe](./guidelines/sip-feature-photoswipe.md) | Image lightbox functionality | 🔲 TODO |
 
-### Development Tools (SiP Development Tools Plugin)
+### Development Tools
 | Guide | Description | Status |
 |-------|-------------|--------|
-| [Release Process and Git Workflow](./guidelines/release-git-workflow.md) | Complete release process including versioning and Git operations | 🔲 TODO |
+| [Auto-Update & Release](./guidelines/sip-development-tools-auto-update.md) | Versioning, Git workflow, and deployment | 🔲 TODO |
+| [Testing & Debugging](./guidelines/sip-development-testing.md) | Testing strategies and debugging | 🔲 TODO |
 
-### Best Practices
-| Guide | Description | Status |
-|-------|-------------|--------|
-| [Testing and Debugging](./guidelines/testing-debugging.md) | Recommendations for testing and troubleshooting | 🔲 TODO |
 
 ## Core Components and Utilities
 
@@ -115,16 +112,17 @@ Legacy documentation that needs to be reorganized into the task-oriented structu
 
 | Document | Integration Target | Status |
 |----------|-------------------|--------|
-| [Progress Dialog Step by Step](./to be integrated into documentation/!Progress-Dialog Step by Step.md) | Batch Processing guide | 🔲 TODO |
+| [Progress Dialog Step by Step](./to be integrated into documentation/!Progress-Dialog Step by Step.md) | Progress Dialog guide | ✅ Integrated |
 | [Plugin Setup Guide](./to be integrated into documentation/sip-plugin-setup-guide.md) | Creating New Plugin guide | ✅ Integrated |
 
 ## Quick Reference
 
 ### Common Tasks
-1. **Need to create a new plugin?** → [Creating a New Plugin](./guidelines/creating-new-plugin.md)
-2. **Adding AJAX to your plugin?** → [Implementing AJAX Functionality](./guidelines/ajax-implementation.md) *[TODO]*
-3. **Building a dashboard?** → [Implementing Dashboards](./guidelines/implementing-dashboards.md) *[TODO]*
-4. **Adding a new feature?** → [Adding Features to Existing Plugins](./guidelines/adding-features.md) *[TODO]*
+1. **Need to create a new plugin?** → [Creating a New Plugin](./guidelines/sip-plugin-creation.md)
+2. **Adding AJAX to your plugin?** → [AJAX Implementation](./guidelines/sip-plugin-ajax.md)
+3. **Building a dashboard?** → [Implementing Dashboards](./guidelines/sip-plugin-dashboards.md)
+4. **Need progress feedback?** → [Progress Dialog](./guidelines/sip-feature-progress-dialog.md)
+5. **Working with data storage?** → [Data Storage & File Handling](./guidelines/sip-plugin-data-storage.md)
 
 ### Essential Patterns
 1. **AJAX Requests**: Always use `SiP.Core.utilities.createFormData()` and `SiP.Core.ajax.handleAjaxAction()`
@@ -158,10 +156,10 @@ Legacy documentation that needs to be reorganized into the task-oriented structu
 
 Priority tasks for completing the documentation:
 
-1. Complete [Implementing AJAX Functionality](./guidelines/ajax-implementation.md) guide
-2. Complete [Adding Features to Existing Plugins](./guidelines/adding-features.md) guide
-3. Complete [Implementing Dashboards](./guidelines/implementing-dashboards.md) guide
-4. Create library integration guides (CodeMirror, PhotoSwipe)
-5. Consolidate release/version/git workflow documentation
+1. Complete [Adding Features](./guidelines/sip-plugin-features.md) guide
+2. Complete [Modals](./guidelines/sip-feature-modals.md) guide
+3. Complete [CodeMirror](./guidelines/sip-feature-codemirror.md) guide
+4. Complete [PhotoSwipe](./guidelines/sip-feature-photoswipe.md) guide
+5. Complete [Development Tools](./guidelines/sip-development-tools-auto-update.md) guide
 
 By following this documentation structure, developers can quickly find the information they need in the context where they'll use it, making the SiP Plugin Suite more accessible and maintainable.

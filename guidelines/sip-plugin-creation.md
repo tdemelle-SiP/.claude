@@ -14,25 +14,81 @@ Create a new directory in your WordPress plugins folder following this structure
 
 ```
 wp-content/plugins/
-└── sip-your-plugin-name/            # Plugin directory (must start with 'sip-')
-    ├── sip-your-plugin-name.php     # Main plugin file (matches directory name)
-    ├── includes/                    # PHP includes
-    │   ├── plugin-ajax-shell.php    # AJAX handler shell (required)
-    │   └── *-functions.php          # Functionality-specific files
-    ├── assets/                      # Frontend assets
-    │   ├── css/                     # Stylesheets
-    │   ├── js/                      # JavaScript files
-    │   │   ├── core/                # Core JS utilities
-    │   │   └── modules/             # Feature-specific JS modules
-    │   └── images/                  # Images and icons
-    └── views/                       # HTML templates (if needed)
+└── sip-your-plugin-name/               # Plugin directory (must start with 'sip-')
+    ├── sip-your-plugin-name.php        # Main plugin file (matches directory name)
+    ├── includes/                       # PHP includes
+    │   ├── {prefix}-ajax-shell.php     # AJAX handler shell (e.g., printify-ajax-shell.php)
+    │   └── *-functions.php             # Functionality-specific files
+    ├── assets/                         # Frontend assets
+    │   ├── css/                        # Stylesheets  
+    │   │   └── modules/                # Module-specific CSS (when needed)
+    │   ├── js/                         # JavaScript files
+    │   │   ├── core/                   # Core JS utilities (plugin-specific)
+    │   │   │   └── utilities.js        # Plugin-specific utilities
+    │   │   ├── main.js                 # Main initialization file
+    │   │   └── modules/                # Feature-specific JS modules
+    │   │       └── *-actions.js        # Action handler modules
+    │   └── images/                     # Images and icons
+    ├── views/                          # HTML templates (if needed)
+    │   └── dashboard-html.php          # Dashboard view
+    ├── work/                           # Development files and documentation
+    └── vendor/                         # Third-party dependencies (if any)
+```
+
+### Directory Patterns from Existing Plugins
+
+**SiP Printify Manager Example:**
+```
+sip-printify-manager/
+├── includes/
+│   ├── printify-ajax-shell.php         # Plugin-specific prefix
+│   ├── image-functions.php
+│   ├── product-functions.php
+│   └── template-functions.php
+├── assets/
+│   ├── css/
+│   │   └── modules/                    # Modular CSS organization
+│   │       ├── base.css
+│   │       ├── modals.css
+│   │       └── tables.css
+│   └── js/
+│       ├── main.js
+│       └── modules/
+│           ├── image-actions.js
+│           ├── product-actions.js
+│           └── template-actions.js
+└── views/
+    └── dashboard-html.php
 ```
 
 ### Naming Convention Standards
-- Plugin directory and main file MUST start with `sip-`
-- Use lowercase with hyphens for file names: `sip-plugin-name.php`
-- Functionality files: `{feature}-functions.php` (e.g., `shop-functions.php`)
-- JavaScript modules: `{feature}-actions.js` (e.g., `product-actions.js`)
+
+#### PHP Files
+- Main plugin file: `sip-plugin-name.php`
+- AJAX handler shell: `{plugin-prefix}-ajax-shell.php` (e.g., `printify-ajax-shell.php`)
+- Function files: `{functionality}-functions.php` (e.g., `shop-functions.php`, `image-functions.php`)
+- Classes: `SiP_ClassName` (e.g., `SiP_Product_Manager`)
+- Functions: `sip_function_name()` (e.g., `sip_handle_product_action()`)
+- Constants: `SIP_CONSTANT_NAME` (e.g., `SIP_PLUGIN_VERSION`)
+
+#### AJAX Shell Naming Pattern
+Each plugin uses its own prefix for the AJAX shell:
+- `printify-ajax-shell.php` for SiP Printify Manager
+- `woocommerce-monitor-ajax-shell.php` for SiP WooCommerce Monitor
+- `development-tools-ajax-shell.php` for SiP Development Tools
+
+#### JavaScript Files
+- Module files: `{functionality}-actions.js` (e.g., `image-actions.js`, `shop-actions.js`)
+- Utility files: `utilities.js`
+- Namespaces: `SiP.ModuleName` (e.g., `SiP.PrintifyManager`)
+- Functions: `camelCase()` (e.g., `handleProductSubmit()`)
+- Constants: `UPPER_CASE` (e.g., `MAX_FILE_SIZE`)
+
+#### CSS Files
+- Main stylesheet: `sip-plugin-name.css`
+- Component styles: `{component}.css` (e.g., `modals.css`, `tables.css`)
+- Classes: `sip-component-name` (e.g., `sip-modal-dialog`)
+- IDs: `sip-specific-element` (e.g., `sip-product-table`)
 
 ## Step 2: Create Main Plugin File
 
@@ -167,7 +223,7 @@ SiP_Your_Plugin_Name::get_instance();
 
 ## Step 3: Create AJAX Handler Shell
 
-Create `includes/plugin-ajax-shell.php`:
+Create `includes/{plugin-prefix}-ajax-shell.php`:
 
 ```php
 <?php
@@ -175,7 +231,7 @@ if (!defined('ABSPATH')) exit;
 
 // Register with central SiP AJAX handler
 function sip_your_plugin_register_ajax_handler() {
-    add_action('sip_your_plugin_handle_action', 'sip_your_plugin_route_action');
+    add_action('sip_plugin_handle_action', 'sip_your_plugin_route_action');
 }
 add_action('init', 'sip_your_plugin_register_ajax_handler');
 
@@ -193,14 +249,20 @@ function sip_your_plugin_route_action($action_type) {
         default:
             SiP_AJAX_Response::error(
                 'sip-your-plugin-name',
-                'unknown',
-                'unknown',
-                'Invalid action type: ' . $action_type
+                'Invalid action type: ' . $action_type,
+                'invalid_action'
             );
             break;
     }
 }
 ```
+
+### AJAX Routing Standards
+- Register handler with `sip_plugin_handle_action` hook (note: no plugin name in hook)
+- Use switch statement for action routing
+- Always include default case with error response
+- Use `SiP_AJAX_Response` class for all responses
+- Follow the error response signature: `error($plugin, $message, $action)`
 
 ### AJAX Routing Standards
 - Register handler with `sip_{plugin}_handle_action` hook
@@ -295,6 +357,55 @@ function sip_delete_item() {
 ## Step 5: Create JavaScript Module
 
 Create `assets/js/modules/feature1-actions.js`:
+
+### Module Organization Principle
+
+**Code should be associated with the interface where it's called.**
+
+This principle guides how functionality is distributed across modules:
+
+- **Product Table Actions**: If a "Create Template" button exists in the product table, the `createTemplate()` function belongs in `product-actions.js`, not `template-actions.js`
+- **Template Table Actions**: Actions executed from the template table interface go in `template-actions.js`
+- **Cross-Table Actions**: The Product Creation Table initialization is in `template-actions.js` because it's triggered from the template table's "Create New Products" action
+
+Example:
+```javascript
+// In product-actions.js - because the action originates from product table
+function createTemplateFromProduct(productId) {
+    // Creates a template from selected product
+}
+
+// In template-actions.js - because the action originates from template table  
+function createProductsFromTemplate(templateId) {
+    // Initializes Product Creation Table with template
+}
+
+// In creation-table-actions.js - because these actions happen within that interface
+function saveCreationTable() {
+    // Saves creation table changes
+}
+```
+
+### Component Architecture
+
+SiP plugins are built on these core components provided by SiP Plugins Core:
+
+- **Core Libraries**:
+  - `ajax.js`: Standardized AJAX request/response handling
+  - `utilities.js`: Common utility functions used across plugins
+  - `state.js`: Client-side state management
+  
+- **UI Components**:
+  - Standardized headers via `sip_render_standard_header()`
+  - Common CSS/styling system
+  - Progress dialog system for batch operations
+
+- **Update System**:
+  - Custom plugin updater connecting to Stuff is Parts server
+  - Centralized version checking via `init_plugin_updater()`
+  - Plugin self-registration pattern for update checks
+
+### Standard Module Structure:
 
 ```javascript
 var SiP = SiP || {};
@@ -556,28 +667,50 @@ Use this checklist before considering your plugin complete:
 
 ### PHP Integration
 - [ ] Main plugin file includes sip-plugin-framework.php
-- [ ] AJAX shell is properly configured
-- [ ] All responses use SiP_AJAX_Response class
-- [ ] Plugin registers with SiP_Plugin_Framework::init_plugin()
-- [ ] Implements static render_dashboard() method
-- [ ] Uses sip_render_standard_header() for headers
+- [ ] AJAX shell is included and properly configured
+- [ ] All functionality-specific files are included
+- [ ] AJAX response methods use SiP_AJAX_Response class:
+  - [ ] SiP_AJAX_Response::success() for successful responses
+  - [ ] SiP_AJAX_Response::error() for error responses
+  - [ ] SiP_AJAX_Response::datatable() for server-side DataTables (when using server-side pagination/filtering/sorting)
+- [ ] Never use WordPress's wp_send_json functions
+- [ ] All handlers follow the switch-case pattern for routing
+- [ ] Plugin is registered with core via SiP_Plugin_Framework::init_plugin()
+- [ ] The plugin implements a static render_dashboard() method
+- [ ] Standard headers use sip_render_standard_header() function
+- [ ] Error handling is consistent with appropriate error messages
 
 ### JavaScript Integration
-- [ ] All AJAX requests use SiP.Core.utilities.createFormData()
-- [ ] All AJAX requests use SiP.Core.ajax.handleAjaxAction()
-- [ ] Success handlers registered for all action types
-- [ ] Follows module pattern structure
-- [ ] Uses SiP.Core.utilities for UI feedback
+- [ ] All modules follow the recommended module pattern
+- [ ] All AJAX requests use SiP.Core.utilities.createFormData
+- [ ] All AJAX requests use SiP.Core.ajax.handleAjaxAction
+- [ ] Success handlers are registered for all action types
+- [ ] Event handlers are properly attached and managed
+- [ ] UI interactions use the standard SiP Core utilities
+- [ ] Progress dialog is used for batch operations
+- [ ] No direct use of jQuery.ajax or XMLHttpRequest
+- [ ] Console.log statements use DEBUG_MODE flags or are removed in production
 
 ### File Structure
-- [ ] Directory structure matches standard
-- [ ] File naming conventions followed
+- [ ] Directory structure matches the standard
+- [ ] File and directory structure matches the standard
+- [ ] Naming conventions are consistent
+- [ ] Code style is consistent (indentation, brackets, etc.)
 - [ ] Plugin name starts with 'sip-'
+- [ ] AJAX shell follows plugin-specific naming pattern
 
 ### UI Standards
-- [ ] Uses standard CSS classes (sip-panel, sip-btn, etc.)
-- [ ] DataTables follow standard implementation
-- [ ] Spinners managed through SiP.Core.utilities.spinner
+- [ ] Standard CSS classes are used (sip-panel, sip-btn, sip-dialog)
+- [ ] DataTables initialization follows the standard pattern
+- [ ] Dialog boxes use the sip-dialog class
+- [ ] Toast notifications use SiP.Core.utilities.toast.show
+- [ ] Spinners are managed through SiP.Core.utilities.spinner
+
+### General Standards
+- [ ] Comments are present for complex operations
+- [ ] No unnecessary dependencies
+- [ ] Proper error handling throughout
+- [ ] Follows the module organization principle (code with interface)
 
 ## Common Pitfalls to Avoid
 
