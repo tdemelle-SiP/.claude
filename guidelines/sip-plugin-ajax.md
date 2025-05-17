@@ -2,6 +2,129 @@
 
 This guide explains how to implement AJAX functionality in SiP plugins using the centralized architecture. All AJAX requests flow through the core handler for consistency and security.
 
+## Complete AJAX Flow - Start Here
+
+Here's exactly how AJAX works in the SiP Plugin Suite:
+
+### 1. JavaScript Makes Request
+```javascript
+// Create the AJAX request
+const formData = SiP.Core.utilities.createFormData(
+    'sip-printify-manager',    // Which plugin
+    'product_action',          // Type of action
+    'create_product'           // Specific action
+);
+formData.append('product_name', 'My Product');
+
+// Send it
+SiP.Core.ajax.handleAjaxAction('sip-printify-manager', 'product_action', formData);
+```
+
+This creates a POST request containing:
+```
+action: 'sip_handle_ajax_request'
+plugin: 'sip-printify-manager'
+action_type: 'product_action'
+product_action: 'create_product'  // Key is action_type, value is specific action
+product_name: 'My Product'
+nonce: 'abc123...'
+```
+
+### 2. Core Plugin Routes Request
+The core plugin's ajax-handler.php receives ALL requests and routes them:
+```php
+// Extracts plugin and action_type from POST
+$plugin = $_POST['plugin'];           // 'sip-printify-manager'
+$action_type = $_POST['action_type']; // 'product_action'
+
+// Fires standardized hook with ONLY these 2 parameters
+do_action('sip_plugin_handle_action', $plugin, $action_type);
+```
+
+### 3. Plugin Shell Catches Request
+Each plugin's ajax shell listens for the standardized hook:
+```php
+// Registration (in printify-ajax-shell.php)
+add_action('sip_plugin_handle_action', 'sip_printify_route_action', 10, 2);
+
+// Handler function receives 2 parameters
+function sip_printify_route_action($plugin_id, $action_type) {
+    // Check if this is for us
+    if ($plugin_id !== 'sip-printify-manager') return;
+    
+    // Get the specific action from POST
+    $specific_action = $_POST[$action_type]; // 'create_product'
+    
+    // Route based on action type
+    switch ($action_type) {
+        case 'product_action':
+            sip_handle_product_action(); // This function will check $specific_action
+            break;
+    }
+}
+```
+
+### 4. Action Handler Processes Request
+The specific handler function does the work:
+```php
+function sip_handle_product_action() {
+    $specific_action = $_POST['product_action']; // 'create_product'
+    
+    switch ($specific_action) {
+        case 'create_product':
+            // Do the work
+            $product_name = sanitize_text_field($_POST['product_name']);
+            // ... create product ...
+            
+            // Send response
+            SiP_AJAX_Response::success(
+                'sip-printify-manager',
+                'product_action',
+                'create_product',
+                ['product_id' => 123],
+                'Product created successfully'
+            );
+            break;
+    }
+}
+```
+
+### 5. JavaScript Receives Response
+The response is automatically routed back to the correct handler:
+```javascript
+// Response format
+{
+    "success": true,
+    "plugin": "sip-printify-manager",
+    "action_type": "product_action",
+    "action": "create_product",
+    "data": {"product_id": 123},
+    "message": "Product created successfully"
+}
+```
+
+## Key Points to Remember
+
+1. **Three Levels of Actions**:
+   - Plugin level (which plugin)
+   - Action type (category of action)
+   - Specific action (exact operation)
+
+2. **Hook Only Passes Two Parameters**:
+   - The `sip_plugin_handle_action` hook only passes plugin and action_type
+   - The specific action is accessed directly from $_POST
+
+3. **Every Plugin Uses Same Pattern**:
+   - Register with `add_action('sip_plugin_handle_action', 'function', 10, 2)`
+   - Check plugin ID first
+   - Route based on action_type
+   - Get specific action from $_POST
+
+4. **This is the ONLY Approved Pattern**:
+   - No plugin-specific hooks
+   - No direct AJAX handlers
+   - Everything goes through the central router
+
 ## AJAX Architecture Overview
 
 The SiP Plugin Suite uses a three-tier AJAX architecture:
@@ -14,12 +137,18 @@ The SiP Plugin Suite uses a three-tier AJAX architecture:
 
 1. **Centralized Architecture**: All AJAX requests go through a single, centralized router in SiP Plugins Core.
 
-2. **Plugin Shells**: Each SiP plugin implements its own AJAX "shell" that:
-   - Registers with the central router  
+2. **Standardized Hook Pattern**: ALL plugins MUST use the standardized `sip_plugin_handle_action` hook. This is the ONLY approved pattern for AJAX handling in the SiP Plugin Suite.
+   - The central router fires: `do_action('sip_plugin_handle_action', $plugin_id, $action_type)`
+   - Each plugin registers with: `add_action('sip_plugin_handle_action', 'plugin_route_function', 10, 2)`
+   - The plugin checks if it should handle the request based on the plugin ID
+
+3. **Plugin Shells**: Each SiP plugin implements its own AJAX "shell" that:
+   - Registers with the central router using the standardized hook
+   - Filters requests by plugin ID  
    - Routes action types to specific handlers
    - Maintains consistent request/response patterns
 
-3. **Action Handlers**: Each plugin shell routes to specific action handlers that:
+4. **Action Handlers**: Each plugin shell routes to specific action handlers that:
    - Handle one type of action (e.g., product actions, template actions)
    - Further route to specific operations based on sub-actions
    - Always use the `SiP_AJAX_Response` class for responses
@@ -101,14 +230,20 @@ Create `includes/{plugin-prefix}-ajax-shell.php`:
 <?php
 if (!defined('ABSPATH')) exit;
 
-// Register with central SiP AJAX handler
+// Register with central SiP AJAX handler using STANDARDIZED HOOK
 function sip_your_plugin_register_ajax_handler() {
-    add_action('sip_plugin_handle_action', 'sip_your_plugin_route_action');
+    add_action('sip_plugin_handle_action', 'sip_your_plugin_route_action', 10, 2);
 }
 add_action('init', 'sip_your_plugin_register_ajax_handler');
 
 // Route actions to specific handlers
-function sip_your_plugin_route_action($action_type) {
+// IMPORTANT: First parameter is plugin ID, second is action type
+function sip_your_plugin_route_action($plugin_id, $action_type) {
+    // CRITICAL: Only handle our plugin's actions
+    if ($plugin_id !== 'sip-your-plugin-name') {
+        return;
+    }
+    
     switch ($action_type) {
         case 'product_action':
             sip_handle_product_action();
@@ -121,13 +256,23 @@ function sip_your_plugin_route_action($action_type) {
         default:
             SiP_AJAX_Response::error(
                 'sip-your-plugin-name',
-                'Invalid action type: ' . $action_type,
-                'invalid_action'
+                'ajax_shell',
+                'invalid_action',
+                'Invalid action type: ' . $action_type
             );
             break;
     }
 }
 ```
+
+### Why This Pattern?
+
+The standardized hook pattern provides several benefits:
+1. **Loose Coupling**: The core doesn't need to know specific function names in each plugin
+2. **Extensibility**: New plugins can be added without modifying the core ajax handler
+3. **Consistency**: All plugins follow the exact same pattern
+4. **WordPress Standards**: Follows WordPress action/filter patterns
+5. **Plugin Independence**: Plugins can be disabled without breaking the core
 
 ### AJAX Shell Naming Pattern
 Each plugin uses its own prefix for the AJAX shell:
@@ -586,6 +731,42 @@ The POST array should also include the specific action identifier:
 - The key should be the action_type value
 - The value should be the specific operation name
 - Example: `$_POST['functionality_action'] = 'specific_operation'` (handled by `createFormData`)
+
+### Understanding the Three-Level Action Structure
+
+The AJAX system uses three levels of action identification:
+
+1. **Plugin Level**: Which plugin should handle this request?
+   - Specified by the `plugin` parameter
+   - Example: `'sip-printify-manager'`
+
+2. **Action Type Level**: What category of action is this?
+   - Specified by the `action_type` parameter
+   - Example: `'product_action'`
+
+3. **Specific Action Level**: What specific operation should be performed?
+   - The key is the `action_type` value, the value is the specific operation
+   - Example: `$_POST['product_action'] = 'create_product'`
+
+The standardized hook only passes the first two levels. The specific action is accessed directly from $_POST data:
+
+```php
+// Hook passes only plugin and action_type
+do_action('sip_plugin_handle_action', $plugin, $action_type);
+
+// In your handler, get the specific action from $_POST
+function sip_your_plugin_route_action($plugin_id, $action_type) {
+    if ($plugin_id !== 'sip-your-plugin-name') return;
+    
+    $specific_action = isset($_POST[$action_type]) ? $_POST[$action_type] : '';
+    
+    switch ($action_type) {
+        case 'product_action':
+            // Now check $specific_action to route to the right function
+            break;
+    }
+}
+```
 
 ### Loading Initial Data
 

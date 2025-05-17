@@ -1,11 +1,20 @@
- Keep code simple, clean and straightforward. Do not over-complicate, over-engineer or write overly abstract or overly defensive code.  
  
- Always use the methods and standards outlined in the sip plugin suite documentation outlined in the index.md file in the .claude folder.  
+ -- PLANNING --
+
+ Do not code without explicit direction to do so.  Do not make changes beyond those clearly stated in a request to change code made by the user.
+ 
+ If in the course of review or implementation you have ideas for additions or alternate approaches, stop what you're doing and mention them in a chat message so that we can discuss them, decide upon the best path forward and you can proceed with coding with explicit direction.
+ 
+ -- WORKING --
+ Keep code simple, clean and straightforward. Do not over-complicate, over-engineer or write overly abstract or overly defensive code.
+ 
+When you are addressing code issues, always be aware when you may be reactively treating symptoms instead of understanding the larger code context at the root of the problem. Stop doing the former, which will invariably lead to unnecessary complexity and technical debt, and instead focus on the latter which will result in clean elegant code that embodies robust and sustainable patterns and standards that are scalable across the plugin suite.
+ 
+ Always use the methods and standards in the sip plugin suite documentation outlined in the index.md file in the .claude folder  making sure to observe the established coding standards and to use shared functions and utilities in all cases where they have been established as the plugin suite standard. 
  
  Do not preserve legacy code.  Clean up all remnants of unused or deprecated code thoroughly.  
  
- Make sure to observe the established coding standards and to use shared functions and utilities in all cases where they have been established as the plugin suite standard.
-
+ -- REVIEWING --
  If you have implemented changes to the code, carefully review your changes and any code that may be affected by those changes to ensure all code adheres to the prevailing suite coding standard, and there is no legacy code or remnants of deprecated code.
 
  Upon completion, review the sip plugin suite documentation in the .claude folder and ensure that it is up to date, clear and complete and that it reflects both any changes or additions to code standards and addresses any issues that may have arisen in implementation from documentation clarity or organization.

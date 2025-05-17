@@ -1,33 +1,33 @@
 # Low-Risk AJAX Fixes
 
-## 1. Standardize Action Hook Names (Very Low Risk)
+## 1. Standardize Action Hook Names (COMPLETED)
 
 ### Current Issue
+Legacy hook names from pre-centralization refactor were still in use:
 ```php
 // ajax-handler.php - Inconsistent naming
 do_action('sip_dev_tools_handle_action', $action_type);
 do_action('sip_printify_handle_action', $action_type);
 ```
 
-### Fix
-Create a standardized format:
+### Fix Applied
+Implemented standardized hook pattern across all plugins:
 ```php
 // ajax-handler.php
-do_action('sip_plugin_handle_action', 'development-tools', $action_type);
-do_action('sip_plugin_handle_action', 'printify-manager', $action_type);
+do_action('sip_plugin_handle_action', $plugin_id, $action_type);
 ```
 
-Then update the shells to use:
+All plugin shells updated to:
 ```php
-// development-tools-ajax-shell.php
+// development-tools-ajax-shell.php (and all others)
 add_action('sip_plugin_handle_action', 'sip_dev_tools_route_action', 10, 2);
 function sip_dev_tools_route_action($plugin_id, $action_type) {
-    if ($plugin_id !== 'development-tools') return;
+    if ($plugin_id !== 'sip-development-tools') return;
     // ... existing routing logic
 }
 ```
 
-**Risk Level**: Minimal - Just adds consistency without breaking existing functionality
+**Status**: ✅ COMPLETED - All plugins now use the standardized hook pattern. Documentation updated to clearly state this is the ONLY approved pattern.
 
 ## 2. Move Success Handler Registration (Low Risk)
 
@@ -56,31 +56,24 @@ function init() {
 
 **Risk Level**: Low - Just moves the registration timing, doesn't change functionality
 
-## 3. Add Error Code Parameters (Low Risk)
+## 3. Standardize Error Handling Parameters (COMPLETED)
 
 ### Current Issue
+Error handling was using inconsistent parameter formats across the codebase.
+
+### Fix Applied
+Standardized all error calls to use the 5-parameter format:
 ```php
-// Missing error code parameter
 SiP_AJAX_Response::error(
-    'sip-printify-manager',
-    'template_action',
-    $template_action,
-    'Unknown action requested: ' . $template_action
+    'sip-printify-manager',    // plugin
+    'template_action',         // action_type
+    $template_action,          // action
+    'Unknown action requested: ' . $template_action  // message
+    // 5th parameter $additional_data is optional
 );
 ```
 
-### Fix
-Add the missing parameter:
-```php
-SiP_AJAX_Response::error(
-    'sip-printify-manager',
-    'Unknown action requested: ' . $template_action,
-    'invalid_action',  // Add error code
-    ['requested_action' => $template_action]  // Optional data
-);
-```
-
-**Risk Level**: Low - The class already handles missing parameters gracefully
+**Status**: ✅ COMPLETED - All 133 error calls now follow the standard format
 
 ## 4. Create Debug Flag for Console Logging (Very Low Risk)
 
@@ -182,9 +175,10 @@ function sip_verify_ajax_nonce() {
     $nonce_action = 'sip-plugins-core_nonce';
     if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], $nonce_action)) {
         SiP_AJAX_Response::error(
-            'sip-plugins-core', 
-            'Security check failed', 
-            'nonce_verification'
+            'sip-plugins-core',
+            'ajax_request',
+            'nonce_verification',
+            'Security check failed'
         );
         return false;
     }
