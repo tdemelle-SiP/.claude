@@ -142,6 +142,43 @@ SiP.Core.debug = {
 
 ## Common Patterns
 
+### Early Page Logging
+
+**Best Practice**: Don't use inline JavaScript in PHP view files. Instead, use `wp_localize_script()` to pass PHP data to your JavaScript files.
+
+**Example**:
+
+In your PHP file (e.g., `sip-printify-manager.php`):
+```php
+wp_localize_script('sip-main', 'sipPluginData', array(
+    'hasToken' => !empty($token),
+    'shopName' => $shop_name,
+    'data' => $processed_data
+));
+```
+
+In your JavaScript file (e.g., `main.js`):
+```javascript
+// Early initialization before module definition
+(function() {
+    if (window.sipPluginData) {
+        const debug = SiP.Core.debug;
+        debug.log('▶ Initializing with:', sipPluginData);
+        
+        // Set up window variables or other initialization
+        window.myData = sipPluginData.data;
+    }
+})();
+```
+
+This approach:
+- Keeps JavaScript in `.js` files where it belongs
+- Avoids timing issues with script loading
+- Follows WordPress best practices
+- Makes code more maintainable
+
+For dashboard-specific implementation, see the [Dashboard Guide](./sip-plugin-dashboards.md#debug-logging-in-dashboards).
+
 ### Module Loading
 ```javascript
 debug.log('▶ module-name.js Loading...');

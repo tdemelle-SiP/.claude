@@ -325,12 +325,55 @@ Use consistent CSS classes for styling:
 
 ## Common Dashboard Patterns
 
+### Debug Logging in Dashboards
+
+**Best Practice**: Don't use inline JavaScript. Instead, use `wp_localize_script()` to pass data from PHP to JavaScript. See the [Debug Logging Guide](./sip-development-debug-logging.md#early-page-logging) for details.
+
+**Example Implementation**:
+
+In your plugin's PHP file:
+```php
+// In enqueue_admin_scripts method
+wp_localize_script('sip-main', 'sipDashboardData', array(
+    'hasApiKey' => !empty($settings['api_key']),
+    'apiKeyPreview' => !empty($settings['api_key']) ? substr($settings['api_key'], 0, 4) . '...' : '',
+    'shopData' => $shop_data
+));
+```
+
+In your JavaScript file:
+```javascript
+// Early initialization in main.js
+(function() {
+    if (window.sipDashboardData) {
+        const debug = SiP.Core.debug;
+        const data = sipDashboardData;
+        
+        debug.log('▶ Dashboard initializing...');
+        
+        if (data.hasApiKey) {
+            debug.log('🔑 API Key found: ' + data.apiKeyPreview);
+        } else {
+            debug.log('⚠️ No API key configured - showing setup form');
+        }
+        
+        // Set up window variables if needed
+        window.shopData = data.shopData;
+    }
+})();
+```
+
+This approach keeps all JavaScript in `.js` files and maintains clean separation between PHP and JavaScript.
+
 ### Initial Data Loading
 
 Load data when the dashboard initializes:
 
 ```javascript
 jQuery(document).ready(function($) {
+    const debug = SiP.Core.debug;
+    debug.log('🚀 Dashboard ready, loading initial data...');
+    
     // Load initial data
     loadDashboardData();
     
@@ -341,16 +384,20 @@ jQuery(document).ready(function($) {
             'get_all'
         );
         
+        debug.log('📤 Loading dashboard data...');
+        
         SiP.Core.ajax.handleAjaxAction(
             'sip-your-plugin',
             'load_dashboard',
             formData
         )
         .then(function(response) {
+            debug.log('✅ Dashboard data loaded:', response.data);
             // Update UI with data
             updateDashboard(response.data);
         })
         .catch(function(error) {
+            debug.error('❌ Failed to load dashboard data:', error);
             SiP.Core.utilities.toast.show('Failed to load dashboard data', 5000);
         });
     }
