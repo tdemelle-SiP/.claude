@@ -1,0 +1,11 @@
+ Keep code simple, clean and straightforward. Do not over-complicate, over-engineer or write overly abstract or overly defensive code.  
+ 
+ Always use the methods and standards outlined in the sip plugin suite documentation outlined in the index.md file in the .claude folder.  
+ 
+ Do not preserve legacy code.  Clean up all remnants of unused or deprecated code thoroughly.  
+ 
+ Make sure to observe the established coding standards and to use shared functions and utilities in all cases where they have been established as the plugin suite standard.
+
+ If you have implemented changes to the code, carefully review your changes and any code that may be affected by those changes to ensure all code adheres to the prevailing suite coding standard, and there is no legacy code or remnants of deprecated code.
+
+ Upon completion, review the sip plugin suite documentation in the .claude folder and ensure that it is up to date, clear and complete and that it reflects both any changes or additions to code standards and addresses any issues that may have arisen in implementation from documentation clarity or organization.

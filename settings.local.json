@@ -10,7 +10,8 @@
       "Bash(chmod:*)",
       "Bash(bash:*)",
       "Bash(npm install:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(python3:*)"
     ],
     "deny": []
   }
