@@ -5,7 +5,10 @@
       "Bash(grep:*)",
       "Bash(find:*)",
       "Bash(rm:*)",
-      "Bash(mv:*)"
+      "Bash(mv:*)",
+      "Bash(sed:*)",
+      "Bash(chmod:*)",
+      "Bash(bash:*)"
     ],
     "deny": []
   }
