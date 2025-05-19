@@ -56,7 +56,7 @@ Guides for creating new plugins using the SiP Core plugin framework and patterns
 | [AJAX Implementation](./guidelines/sip-plugin-ajax.md) | Complete AJAX guide including error handling | ✅ Complete |
 | [Implementing Dashboards](./guidelines/sip-plugin-dashboards.md) | Creating admin dashboards and interfaces | ✅ Complete |
 | [Data Storage & File Handling](./guidelines/sip-plugin-data-storage.md) | All data storage patterns and file handling | ✅ Complete |
-| [Adding Features](./guidelines/sip-plugin-features.md) | How to extend plugin functionality | 🔲 TODO |
+| Plugin Development Workflow | See workflow section below | ✅ In Index |
 
 ### Feature Implementation (sip-feature-*)
 Guides for implementing specific SiP Core features in your plugins.
@@ -128,6 +128,68 @@ Legacy documentation that needs to be reorganized into the task-oriented structu
 | [Progress Dialog Step by Step](./to be integrated into documentation/!Progress-Dialog Step by Step.md) | Progress Dialog guide | ✅ Integrated |
 | [Plugin Setup Guide](./to be integrated into documentation/sip-plugin-setup-guide.md) | Creating New Plugin guide | ✅ Integrated |
 
+## Plugin Development Workflow
+
+The SiP Plugin Suite documentation is organized to guide you through the complete plugin development process. Here's how the documentation categories work together:
+
+### Step-by-Step Development Process
+
+1. **Create the Plugin Foundation** (sip-plugin-* guides)
+   - Start with [Creating a New Plugin](./guidelines/sip-plugin-creation.md)
+   - Set up proper file structure and initialization
+   - Register with SiP Core framework
+
+2. **Build Core Functionality** (sip-plugin-* guides)
+   - Implement [AJAX handlers](./guidelines/sip-plugin-ajax.md) for server communication
+   - Create [admin dashboards](./guidelines/sip-plugin-dashboards.md) for user interfaces
+   - Set up [data storage](./guidelines/sip-plugin-data-storage.md) patterns
+
+3. **Add SiP Core Features** (sip-feature-* guides)
+   Choose from available features as needed:
+   - [Progress Dialog](./guidelines/sip-feature-progress-dialog.md) for batch operations
+   - [DataTables](./guidelines/sip-feature-datatables.md) for data display
+   - [UI Components](./guidelines/sip-feature-ui-components.md) for consistent interfaces
+   - [Modals](./guidelines/sip-feature-modals.md) for dialogs and notifications
+   - [CodeMirror](./guidelines/sip-feature-codemirror.md) for code editing
+   - [PhotoSwipe](./guidelines/sip-feature-photoswipe.md) for image galleries
+
+4. **Test and Deploy** (sip-development-* guides)
+   - Use [Debug Logging](./guidelines/sip-development-debug-logging.md) during development
+   - Follow [Testing & Debugging](./guidelines/sip-development-testing.md) practices
+   - Deploy using [Release Management](./guidelines/sip-development-release-mgmt.md)
+
+### Workflow Decision Tree
+
+```
+Start New Plugin?
+    ├─> YES: Use sip-plugin-creation.md
+    │    └─> Need AJAX? -> sip-plugin-ajax.md
+    │    └─> Need Dashboard? -> sip-plugin-dashboards.md
+    │    └─> Need Storage? -> sip-plugin-data-storage.md
+    │
+    └─> NO: Adding to Existing Plugin?
+         └─> Review current structure
+         └─> Choose needed features:
+              ├─> Batch Operations? -> sip-feature-progress-dialog.md
+              ├─> Data Tables? -> sip-feature-datatables.md
+              ├─> Modal Dialogs? -> sip-feature-modals.md
+              └─> Other UI? -> sip-feature-ui-components.md
+```
+
+### Example: Building a Complete Plugin
+
+Here's how you might use the documentation to build a plugin that manages product data:
+
+1. **Foundation**: Use [Creating a New Plugin](./guidelines/sip-plugin-creation.md) to set up `sip-product-manager`
+2. **AJAX**: Implement product CRUD operations with [AJAX Implementation](./guidelines/sip-plugin-ajax.md)
+3. **Dashboard**: Create product management interface with [Implementing Dashboards](./guidelines/sip-plugin-dashboards.md)
+4. **Storage**: Set up database tables with [Data Storage & File Handling](./guidelines/sip-plugin-data-storage.md)
+5. **Features**: Add:
+   - [DataTables](./guidelines/sip-feature-datatables.md) for product listings
+   - [Progress Dialog](./guidelines/sip-feature-progress-dialog.md) for bulk imports
+   - [Modals](./guidelines/sip-feature-modals.md) for product editing
+6. **Deployment**: Use [Release Management](./guidelines/sip-development-release-mgmt.md) to deploy
+
 ## Quick Reference
 
 ### Common Tasks
@@ -169,8 +231,9 @@ Legacy documentation that needs to be reorganized into the task-oriented structu
 
 Priority tasks for completing the documentation:
 
-1. Complete [Adding Features](./guidelines/sip-plugin-features.md) guide
-2. Complete [Testing & Debugging](./guidelines/sip-development-testing.md) guide
-3. Create additional development tool guides as needed
+1. Complete [Testing & Debugging](./guidelines/sip-development-testing.md) guide - integrate with existing debug logging guide
+2. Verify all plugin code follows documented standards
+3. Create code generation templates in SiP Development Tools
+4. Create additional development tool guides as needed
 
 By following this documentation structure, developers can quickly find the information they need in the context where they'll use it, making the SiP Plugin Suite more accessible and maintainable.

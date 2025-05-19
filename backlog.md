@@ -6,17 +6,34 @@ This file tracks technical improvements and refactoring ideas for the SiP Plugin
 
 *Items that should be addressed soon due to bugs or significant issues*
 
-### Complete Documentation for Core Features
+### Complete Testing and Debugging Documentation
 
 **Current State:**
-- Several important guides marked as TODO need completion
-- These are fundamental to plugin development
+- `sip-development-testing.md` needs completion
+- Existing debug logging guide needs to be integrated
+- Critical for quality assurance and troubleshooting
 
-**Required Documentation:**
-1. `sip-plugin-features.md` - How to extend plugin functionality
-2. `sip-development-testing.md` - Testing strategies and debugging
+**Required Tasks:**
+1. Complete `sip-development-testing.md` with testing strategies
+2. Integrate content from `sip-development-debug-logging.md`
+3. Add common issues and debugging workflows
+4. Include examples from real debugging sessions
 
-**Priority:** High - Documentation is essential for maintainability
+**Priority:** High - Essential for development and maintenance
+
+### Verify Code Compliance with Documentation
+
+**Current State:**
+- Documentation is mostly complete
+- Need to ensure all plugin code follows documented standards
+
+**Required Tasks:**
+1. Create compliance checklist from documentation
+2. Review all plugin code systematically
+3. Update any non-conforming code
+4. Document any discovered patterns not yet covered
+
+**Priority:** High - Ensures documentation accurately reflects code
 
 ## Medium Priority
 
