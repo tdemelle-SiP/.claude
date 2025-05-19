@@ -38,9 +38,18 @@ Development and deployment utilities for the plugin suite:
 
 ## Task-Oriented Guides
 
-Documentation organized by common developer tasks. Each guide presents standards and conventions in the context where they're used.
+The documentation is organized into four main categories:
 
-### Plugin Development
+1. **Core Documentation** - Development standards and best practices
+2. **Plugin Development (sip-plugin-*)** - Guides for creating new plugins using SiP Core patterns
+3. **Feature Implementation (sip-feature-*)** - Guides for implementing specific SiP Core features
+4. **Development Tools (sip-development-*)** - Using the SiP Development Tools plugin for workflow automation
+
+Each guide presents standards and conventions in the context where they're used.
+
+### Plugin Development (sip-plugin-*)
+Guides for creating new plugins using the SiP Core plugin framework and patterns.
+
 | Guide | Description | Status |
 |-------|-------------|--------|
 | [Creating a New Plugin](./guidelines/sip-plugin-creation.md) | Step-by-step guide to creating a SiP plugin from scratch | ✅ Complete |
@@ -49,20 +58,24 @@ Documentation organized by common developer tasks. Each guide presents standards
 | [Data Storage & File Handling](./guidelines/sip-plugin-data-storage.md) | All data storage patterns and file handling | ✅ Complete |
 | [Adding Features](./guidelines/sip-plugin-features.md) | How to extend plugin functionality | 🔲 TODO |
 
-### Feature Implementation  
+### Feature Implementation (sip-feature-*)
+Guides for implementing specific SiP Core features in your plugins.
+
 | Guide | Description | Status |
 |-------|-------------|--------|
 | [Progress Dialog](./guidelines/sip-feature-progress-dialog.md) | Batch operations and progress feedback | ✅ Complete |
 | [DataTables](./guidelines/sip-feature-datatables.md) | Server-side data tables | ✅ Complete |
 | [UI Components](./guidelines/sip-feature-ui-components.md) | Core UI utilities and localStorage for UI state | ✅ Complete |
-| [Modals](./guidelines/sip-feature-modals.md) | Modal dialogs and toast notifications | 🔲 TODO |
-| [CodeMirror](./guidelines/sip-feature-codemirror.md) | Code editor integration | 🔲 TODO |
-| [PhotoSwipe](./guidelines/sip-feature-photoswipe.md) | Image lightbox functionality | 🔲 TODO |
+| [Modals](./guidelines/sip-feature-modals.md) | Modal dialogs and toast notifications | ✅ Complete |
+| [CodeMirror](./guidelines/sip-feature-codemirror.md) | Code editor integration | ✅ Complete |
+| [PhotoSwipe](./guidelines/sip-feature-photoswipe.md) | Image lightbox functionality | ✅ Complete |
 
-### Development Tools
+### Development Tools (sip-development-*)
+Guides for using the SiP Development Tools plugin for automated workflows.
+
 | Guide | Description | Status |
 |-------|-------------|--------|
-| [Auto-Update & Release](./guidelines/sip-development-tools-auto-update.md) | Versioning, Git workflow, and deployment | 🔲 TODO |
+| [Release Management](./guidelines/sip-development-release-mgmt.md) | Versioning, Git workflow, and automated deployment | ✅ Complete |
 | [Testing & Debugging](./guidelines/sip-development-testing.md) | Testing strategies and debugging | 🔲 TODO |
 
 
@@ -157,9 +170,7 @@ Legacy documentation that needs to be reorganized into the task-oriented structu
 Priority tasks for completing the documentation:
 
 1. Complete [Adding Features](./guidelines/sip-plugin-features.md) guide
-2. Complete [Modals](./guidelines/sip-feature-modals.md) guide
-3. Complete [CodeMirror](./guidelines/sip-feature-codemirror.md) guide
-4. Complete [PhotoSwipe](./guidelines/sip-feature-photoswipe.md) guide
-5. Complete [Development Tools](./guidelines/sip-development-tools-auto-update.md) guide
+2. Complete [Testing & Debugging](./guidelines/sip-development-testing.md) guide
+3. Create additional development tool guides as needed
 
 By following this documentation structure, developers can quickly find the information they need in the context where they'll use it, making the SiP Plugin Suite more accessible and maintainable.

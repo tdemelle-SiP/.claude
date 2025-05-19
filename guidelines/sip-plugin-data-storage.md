@@ -381,7 +381,10 @@ async function loadJsonTemplate(filepath) {
 
 ## 6. File System Operations (Server-Side)
 
-### Upload Handling
+### File Upload Operations
+
+#### Server-Side Implementation
+
 ```php
 function handle_image_upload() {
     if (!isset($_FILES['file']) || !is_uploaded_file($_FILES['file']['tmp_name'])) {
@@ -418,6 +421,258 @@ function handle_image_upload() {
         'url' => $sip_upload_url . $file_name,
         'thumbnail' => $sip_upload_url . 'thumbnails/' . $file_name
     ];
+}
+```
+
+#### Client-Side Patterns
+
+##### Single File Upload
+```javascript
+$('#upload-form').on('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = SiP.Core.utilities.createFormData('sip-printify-manager', 'image_action', 'add_local_image');
+    formData.append('file', $('#file-input')[0].files[0]);
+    
+    SiP.Core.ajax.handleAjaxAction('sip-printify-manager', 'image_action', formData)
+        .then(response => {
+            SiP.Core.utilities.toast.show('File uploaded successfully', 3000);
+        })
+        .catch(error => {
+            SiP.Core.utilities.toast.show('Upload failed: ' + error.message, 5000);
+        });
+});
+```
+
+##### Batch File Uploads with Progress Dialog
+
+For multiple file uploads with visual progress:
+
+```javascript
+function startMultiLocalImageAdd(fileList) {
+    const files = Array.from(fileList);
+    
+    if (files.length === 0) {
+        SiP.Core.utilities.toast.show('No files selected', 3000);
+        return;
+    }
+    
+    return SiP.Core.progressDialog.processBatch({
+        items: files,
+        batchSize: 1, // Process one file at a time
+        dialogOptions: {
+            title: 'Uploading Images',
+            initialMessage: `Uploading ${files.length} images to your library...`,
+            waitForUserOnStart: false,
+            waitForUserOnComplete: true
+        },
+        steps: {
+            weights: {
+                upload: 70,
+                process: 30
+            }
+        },
+        processItemFn: async (file, dialog) => {
+            dialog.startStep('upload');
+            dialog.updateStatus(`Uploading ${file.name}...`);
+            
+            const formData = SiP.Core.utilities.createFormData('sip-printify-manager', 'image_action', 'add_local_image');
+            formData.append('file', file);
+            
+            try {
+                const response = await SiP.Core.ajax.handleAjaxAction('sip-printify-manager', 'image_action', formData);
+                
+                dialog.completeStep('upload');
+                dialog.startStep('process');
+                dialog.updateStatus(`Processing ${file.name}...`);
+                dialog.updateStepProgress('process', 1.0);
+                dialog.completeStep('process');
+                
+                return response;
+            } catch (error) {
+                throw error;
+            }
+        },
+        onAllComplete: function(successCount, failureCount, errors) {
+            if (failureCount > 0) {
+                SiP.Core.utilities.toast.show(`Uploaded ${successCount} images with ${failureCount} errors`, 5000);
+            }
+        },
+        onCancel: function() {
+            SiP.Core.utilities.toast.show('Image upload cancelled', 3000);
+        }
+    });
+}
+```
+
+##### Drag and Drop Support
+
+```javascript
+function attachImageEventListeners() {
+    const $uploadArea = $('#image-upload-area');
+    $uploadArea.off('dragover').on('dragover', handleDragOver);
+    $uploadArea.off('dragleave').on('dragleave', handleDragLeave);
+    $uploadArea.off('drop').on('drop', handleImageDrop);
+    
+    $('#image-file-input').off('change').on('change', handleImageAdd);
+    
+    $('#select-images-button').off('click').on('click', function() {
+        $('#image-file-input').click();
+    });
+}
+
+function handleDragOver(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    $(this).addClass('dragging');
+}
+
+function handleDragLeave(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    $(this).removeClass('dragging');
+}
+
+function handleImageDrop(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    $(this).removeClass('dragging');
+    startMultiLocalImageAdd(e.originalEvent.dataTransfer.files);
+}
+
+function handleImageAdd(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    const files = e.target.files;
+    if (files.length > 0) {
+        startMultiLocalImageAdd(files);
+        $(this).val(''); // Reset the file input
+    }
+}
+```
+
+##### External Service Uploads
+
+Pattern for uploading to external services (e.g., AWS S3, Printify):
+
+```javascript
+// Upload to Printify via base64 encoding
+async function uploadToPrintify(localImageData) {
+    const formData = SiP.Core.utilities.createFormData('sip-printify-manager', 'image_action', 'upload_to_printify');
+    formData.append('image', JSON.stringify(localImageData));
+    
+    try {
+        const response = await SiP.Core.ajax.handleAjaxAction('sip-printify-manager', 'image_action', formData);
+        return response.printify_data;
+    } catch (error) {
+        console.error('Upload to Printify failed:', error);
+        throw error;
+    }
+}
+
+// PHP handler for Printify upload
+function sip_upload_image_to_printify() {
+    $local_image_data = json_decode(stripslashes($_POST['image']), true);
+
+    if (empty($local_image_data) || !isset($local_image_data['src'])) {
+        return ['error' => 'Invalid image data'];
+    }
+
+    $file_path = str_replace(site_url('/'), ABSPATH, $local_image_data['src']);
+    if (!file_exists($file_path)) {
+        return ['error' => 'File not found'];
+    }
+
+    $encrypted_token = get_option('printify_bearer_token');
+    $token = sip_decrypt_token($encrypted_token);
+    if (!$token) {
+        return ['error' => 'Authentication error'];
+    }
+
+    $file_contents = file_get_contents($file_path);
+    if (!$file_contents) {
+        return ['error' => 'File read error'];
+    }
+
+    $response = wp_remote_post('https://api.printify.com/v1/uploads/images.json', [
+        'headers' => [
+            'Authorization' => 'Bearer ' . $token,
+            'Content-Type'  => 'application/json'
+        ],
+        'body' => json_encode(array_merge(
+            map_internal_to_printify($local_image_data),
+            ['contents' => base64_encode($file_contents)]
+        )),
+        'timeout' => 60
+    ]);
+
+    if (is_wp_error($response)) {
+        return ['error' => 'API error occurred'];
+    }
+
+    $body = wp_remote_retrieve_body($response);
+    $result = json_decode($body, true);
+
+    if (!$result || !isset($result['id'])) {
+        return ['error' => 'Invalid API response'];
+    }
+
+    return ['printify_data' => $result];
+}
+```
+
+#### HTML Structure
+
+Basic file upload interface:
+
+```html
+<div id="image-upload-area" class="upload-area">
+    <p>Drag and drop images here or</p>
+    <button type="button" id="select-images-button" class="button">Select Images</button>
+    <input type="file" id="image-file-input" multiple accept="image/*" style="display: none;">
+</div>
+```
+
+#### Upload Security Considerations
+
+**PHP Validation:**
+```php
+// Validate file types
+$dimensions = @getimagesize($destination);
+if (!$dimensions) {
+    @unlink($destination);
+    return ['error' => 'Invalid image file'];
+}
+
+// Check file size
+$max_size = 10 * 1024 * 1024; // 10MB
+if (filesize($destination) > $max_size) {
+    @unlink($destination);
+    return ['error' => 'File too large'];
+}
+
+// Sanitize filename
+$file_name = sanitize_file_name($_FILES['file']['name']);
+```
+
+**Client-Side Validation:**
+```javascript
+// Check file types before upload
+function validateFiles(files) {
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    
+    for (const file of files) {
+        if (!allowedTypes.includes(file.type)) {
+            throw new Error(`Invalid file type: ${file.name}`);
+        }
+        
+        if (file.size > maxSize) {
+            throw new Error(`File too large: ${file.name}`);
+        }
+    }
+    
+    return true;
 }
 ```
 
