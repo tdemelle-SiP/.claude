@@ -16,6 +16,37 @@ This document serves as a central reference point and navigation guide for the S
 
 Do NOT update for routine code changes, bug fixes, or implementation details that don't affect overall structure.
 
+## Getting Started with SiP Plugins
+
+New to SiP Plugin development? Follow this path to get up to speed quickly:
+
+1. **Understand the Platform** → Start with [SiP Plugins Platform](./guidelines/sip-plugins-platform.md)
+   - Learn the key principles and architecture
+   - Understand how plugins interact with the core platform
+
+2. **Create Your First Plugin** → Follow [Creating a New Plugin](./guidelines/sip-plugin-creation.md)
+   - Set up proper file structure
+   - Register with SiP Core framework
+   - Implement basic functionality
+
+3. **Add AJAX Capabilities** → Read [AJAX Implementation](./guidelines/sip-plugin-ajax.md)
+   - Set up standardized AJAX handling
+   - Implement proper error handling
+   - Follow request-response patterns
+
+4. **Implement User Interface** → Check [Implementing Dashboards](./guidelines/sip-plugin-dashboards.md)
+   - Create standardized admin UI
+   - Add data management interfaces
+
+5. **Test and Debug** → Review [Testing & Debugging](./guidelines/sip-development-testing.md) and [Debug Logging](./guidelines/sip-development-debug-logging.md)
+   - Set up debug logging
+   - Implement testing workflows
+   - Troubleshoot common issues
+
+6. **Release Your Plugin** → Use [Release Management](./guidelines/sip-development-release-mgmt.md)
+   - Follow versioning standards
+   - Deploy using the automated system
+
 ## Architecture Overview
 
 The SiP Plugin Suite consists of two main components:
@@ -46,6 +77,52 @@ The documentation is organized into four main categories:
 4. **Development Tools (sip-development-*)** - Using the SiP Development Tools plugin for workflow automation
 
 Each guide presents standards and conventions in the context where they're used.
+
+## Visual Documentation Map
+
+```
+┌─────────────────────────────────────┐
+│       SiP Plugin Suite Platform      │
+│       [sip-plugins-platform.md]      │
+└───────────────────┬─────────────────┘
+                    │
+        ┌───────────┴───────────┐
+        │                       │
+┌───────▼──────────┐    ┌───────▼──────────┐
+│  Plugin Creation  │    │  Feature Modules │
+│  & Development    │    │  Implementation  │
+└───────┬──────────┘    └───────┬──────────┘
+        │                       │
+┌───────▼──────────┐    ┌───────▼──────────┐
+│ Creating Plugin   │    │  UI Components   │
+│ [sip-plugin-      │    │  [sip-feature-   │
+│  creation.md]     │    │   ui-components] │
+└───────┬──────────┘    └───────┬──────────┘
+        │                       │
+┌───────▼──────────┐    ┌───────▼──────────┐    ┌─────────────────┐
+│ AJAX Implementation│    │  DataTables      │    │ Development Tools│
+│ [sip-plugin-ajax.md]│    │  [sip-feature-   │    │ & Workflow      │
+└───────┬──────────┘    │   datatables.md] │    └───────┬─────────┘
+        │                └───────┬──────────┘            │
+┌───────▼──────────┐    ┌───────▼──────────┐    ┌───────▼─────────┐
+│ Admin Dashboards  │    │  Progress Dialog │    │ Debug Logging   │
+│ [sip-plugin-      │    │  [sip-feature-   │    │ [sip-development-│
+│  dashboards.md]   │    │   progress-      │    │  debug-logging] │
+└───────┬──────────┘    │   dialog.md]     │    └───────┬─────────┘
+        │                └───────┬──────────┘            │
+┌───────▼──────────┐    ┌───────▼──────────┐    ┌───────▼─────────┐
+│ Data Storage      │    │  Other Features  │    │ Testing &       │
+│ [sip-plugin-      │    │  • CodeMirror    │    │ Troubleshooting │
+│  data-storage.md] │    │  • PhotoSwipe    │    │ [sip-development-│
+└──────────────────┘    │  • Modals        │    │  testing.md]    │
+                        └──────────────────┘    └───────┬─────────┘
+                                                        │
+                                                ┌───────▼─────────┐
+                                                │ Release Mgmt    │
+                                                │ [sip-development-│
+                                                │  release-mgmt]  │
+                                                └─────────────────┘
+```
 
 ### Plugin Development (sip-plugin-*)
 Guides for creating new plugins using the SiP Core plugin framework and patterns.

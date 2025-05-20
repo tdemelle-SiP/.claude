@@ -14,7 +14,9 @@
       "Bash(python3:*)",
       "WebFetch(domain:docs.anthropic.com)",
       "Bash(awk:*)",
-      "Bash(php:*)"
+      "Bash(php:*)",
+      "Bash(mkdir:*)",
+      "Bash(cat:*)"
     ],
     "deny": []
   }

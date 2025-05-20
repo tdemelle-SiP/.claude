@@ -1,5 +1,7 @@
 # DataTables Integration
 
+The standard pattern for initializing DataTables in SiP plugins. For AJAX integration with DataTables, see the [AJAX Guide](./sip-plugin-ajax.md#datatables-integration).
+
 DataTables implementation in SiP plugins follows specific patterns for different table types. All tables use client-side processing with local data management.
 
 ## DataTable Initialization Patterns
@@ -807,7 +809,7 @@ stateSaveCallback: function(settings, data) {
 
 ### Thumbnail Integration
 
-Tables use the standardized thumbnail utility:
+Tables use the standardized thumbnail utility. For complete PhotoSwipe implementation, refer to the [PhotoSwipe Guide](./sip-feature-photoswipe.md):
 
 ```javascript
 const thumbnail = SiP.PrintifyManager.utilities.createThumbnail({
@@ -944,3 +946,6 @@ table.ajax.reload();
 6. PhotoSwipe integration is updated on each draw
 7. Column filters are added dynamically in initComplete
 8. Custom rendering handles sorting vs display differently
+
+## Related Guides
+- For dashboard integration examples, see the [Dashboards Guide](./sip-plugin-dashboards.md#step-5-initialize-datatables)

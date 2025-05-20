@@ -100,6 +100,81 @@ $('#products-table').DataTable({
 });
 ```
 
+### Client-Server Synchronized State
+
+This pattern combines the previous two approaches and is used for settings that need to be accessible both in PHP and JavaScript. This pattern is used extensively in the [Debug Logging System](./sip-development-debug-logging.md).
+
+Some configuration options need to exist in both client and server storage. For these cases, a dual-storage approach is used. An excellent example is the debug toggle functionality which exists in both localStorage for UI state and WordPress options for server-side behavior.
+
+The synchronization pattern involves:
+
+1. **Client-Side Storage**: Using local storage for quick access and UI state
+2. **Server-Side Storage**: Using WordPress options for persistent configuration
+3. **Synchronization Logic**: Code that ensures both remain in sync
+
+#### Debug Toggle Example
+
+```javascript
+// In header-debug-toggle.js
+function handleToggleChange(event) {
+    const isEnabled = event.target.checked;
+    
+    // Create form data using SiP pattern
+    const formData = SiP.Core.utilities.createFormData(
+        'sip-plugins-core',     // plugin ID
+        'core_debug',           // action type
+        'toggle_debug'          // specific action
+    );
+    formData.append('enabled', isEnabled ? 'true' : 'false');
+    
+    // Send request using SiP AJAX to update WordPress option
+    SiP.Core.ajax.handleAjaxAction('sip-plugins-core', 'core_debug', formData)
+        .then(response => {
+            // Update localStorage state to match the WordPress option
+            SiP.Core.debug.syncWithWordPressOption(isEnabled);
+            
+            // Update UI based on the new state
+            if (isEnabled) {
+                showDebugEnabledNotice();
+            } else {
+                SiP.Core.utilities.toast.show('Debug logging disabled', 2000);
+            }
+        });
+}
+```
+
+```php
+// In core-ajax-shell.php (server-side handler)
+function sip_core_handle_debug_actions($specific_action) {
+    switch ($specific_action) {
+        case 'toggle_debug':
+            // Get enabled state from request
+            $enabled = isset($_POST['enabled']) && $_POST['enabled'] === 'true';
+            
+            // Update WordPress option
+            update_option('sip_debug_enabled', $enabled ? 'true' : 'false');
+            
+            // Send success response
+            SiP_AJAX_Response::success(
+                'sip-plugins-core',
+                'core_debug',
+                'toggle_debug',
+                ['enabled' => $enabled],
+                'Debug state updated'
+            );
+            break;
+    }
+}
+```
+
+When implementing features that require dual storage:
+- Use WordPress options for the "source of truth"
+- Pass option values to JavaScript via `wp_localize_script()`
+- Synchronize localStorage when server-side changes occur
+- Include helper methods for direct synchronization
+
+For more details on implementing debug functionality, see the [Debug Logging Guide](./sip-development-debug-logging.md).
+
 ## 2. Session Storage (Client-Side)
 
 Used for temporary data that expires when the browser tab closes.
@@ -119,7 +194,7 @@ const progressState = JSON.parse(sessionStorage.getItem('sip-progress-dialog-sta
 
 ## 3. SQL Database (Server-Side)
 
-WordPress database storage for persistent business data.
+For more complex data structures or when you need to perform queries. When implementing tables, follow the [Database Operations Checklist](./sip-development-testing.md#php-error-logging) for proper error handling.
 
 ### Custom Tables
 
@@ -213,7 +288,7 @@ $recent_events = $wpdb->get_results($wpdb->prepare(
 
 ## 4. Window Object (Client-Side)
 
-Runtime data storage for current session.
+Used for global state that needs to be accessible across modules. For consistent namespace structure, see the [Plugin Creation Guidelines](./sip-plugin-creation.md#standard-module-structure).
 
 ### Global Namespace Structure
 ```javascript
@@ -762,6 +837,28 @@ delete_option('sip_printify_settings');
 add_option('sip_core_version', '1.0.0', '', 'yes');
 ```
 
+### WordPress Options with JavaScript Sync
+
+For options that need to be accessed in JavaScript:
+
+```php
+// In your enqueue_scripts function
+wp_localize_script('sip-core-debug', 'sipCoreSettings', array(
+    'debugEnabled' => get_option('sip_debug_enabled', 'false')
+));
+```
+
+```javascript
+// In your JavaScript file
+if (window.sipCoreSettings && typeof window.sipCoreSettings.debugEnabled !== 'undefined') {
+    // Use the WordPress option value
+    const debugEnabled = window.sipCoreSettings.debugEnabled === 'true';
+    
+    // Sync with localStorage if needed
+    SiP.Core.debug.syncWithWordPressOption(debugEnabled);
+}
+```
+
 ## 8. WordPress Transients API (Server-Side)
 
 For cached data with automatic expiration.
@@ -1107,3 +1204,7 @@ function get_product_with_cache($product_id) {
 | Media Files | File System | Permanent | Slow | Images, documents |
 | Settings | WP Options | Permanent | Fast | Plugin configuration |
 | Cache | Transients | Temporary | Fast | API responses, calculations |
+| Dual-Purpose | WP Options + localStorage | Permanent | Fast + Fastest | Debug toggle, system-wide settings |
+
+## Related Guides
+- For handling batch operations with progress feedback, see the [Progress Dialog Guide](./sip-feature-progress-dialog.md)

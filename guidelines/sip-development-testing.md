@@ -280,6 +280,8 @@ add_action('shutdown', function() {
 
 ### AJAX Debugging
 
+For standard AJAX patterns, refer to the [AJAX Implementation Guide](./sip-plugin-ajax.md).
+
 #### Issue: AJAX Request Returns 0
 
 **Common Causes**:

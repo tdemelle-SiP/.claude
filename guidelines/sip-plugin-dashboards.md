@@ -1,6 +1,6 @@
 # Implementing Dashboards
 
-This guide explains how to create admin dashboards for SiP plugins. Dashboards are the main interface where users interact with your plugin's functionality.
+This guide explains how to create admin dashboards for SiP plugins. Dashboards are the main interface where users interact with your plugin's functionality. This guide builds on concepts from the [Plugin Creation](./sip-plugin-creation.md) and [AJAX Implementation](./sip-plugin-ajax.md) guides.
 
 ## Dashboard Structure Overview
 
@@ -119,6 +119,47 @@ $right_content = '<div id="button-container">
 sip_render_standard_header('Your Plugin Name', $right_content);
 ```
 
+### Header Debug Toggle
+
+For SiP Development Tools and other plugins that need debug functionality, the standard header includes a debug toggle. The `sip_render_standard_header()` function automatically includes this toggle which utilizes a dual-storage approach:
+
+1. **WordPress Option**: Server-side state stored as `sip_debug_enabled`
+2. **localStorage**: Client-side state under `sip-core['sip-development-tools']['console-logging']`
+
+The toggle is handled by `header-debug-toggle.js` which ensures both storage mechanisms stay in sync. When implementing a plugin that uses debug logging:
+
+1. Make sure to include core scripts with debug toggle support:
+
+```php
+// In your enqueue_admin_scripts method
+public function enqueue_admin_scripts() {
+    // Core debug module must be loaded first
+    wp_enqueue_script('sip-core-debug');
+    wp_enqueue_script('sip-core-state');
+    // Only add debug toggle on SiP plugin pages
+    if ($is_sip_page) {
+        wp_enqueue_script('sip-core-header-debug-toggle');
+    }
+    
+    // Localize debug settings
+    wp_localize_script('sip-core-debug', 'sipCoreSettings', array(
+        'debugEnabled' => get_option('sip_debug_enabled', 'false')
+    ));
+}
+```
+
+2. Use the standard debug utility in your JavaScript modules:
+
+```javascript
+// In your module
+const debug = SiP.Core.debug;
+debug.log('Module initialized');
+```
+
+For more details on using the debug system, see the [Debug Logging Guide](./sip-development-debug-logging.md).
+
+The debug toggle provides a UI to turn on/off debug logs, prompts the user to reload the page when changed, and ensures settings persist across all browsers. The toggle correctly syncs state between client and server storage systems as outlined in the [Data Storage Guide](./sip-plugin-data-storage.md#client-server-synchronized-state).
+
 ## Step 4: Implement Action Forms
 
 Action forms follow a consistent pattern with dropdowns and execute buttons:
@@ -164,7 +205,7 @@ $('#section-action-form').on('submit', function(e) {
 
 ## Step 5: Initialize DataTables
 
-For data tables, use DataTables with server-side processing:
+For data tables, use DataTables with server-side processing. For more DataTables patterns and options, refer to the [DataTables Integration Guide](./sip-feature-datatables.md):
 
 ```javascript
 $(document).ready(function() {
@@ -213,7 +254,7 @@ $(document).ready(function() {
 
 ## Step 6: Add Modal Dialogs
 
-For complex interactions, use jQuery UI dialogs:
+For user interactions, implement modal dialogs. For standardized modal patterns, see the [Modals Guide](./sip-feature-modals.md):
 
 ```javascript
 // Create a dialog
@@ -421,7 +462,7 @@ if (pluginSettings.isConfigured) {
 
 ### Bulk Actions
 
-Handle bulk operations on selected items:
+For operations on multiple items. Use [Progress Dialog](./sip-feature-progress-dialog.md) for complex batch operations:
 
 ```javascript
 $('#bulk-action-form').on('submit', function(e) {
@@ -460,6 +501,8 @@ Use this checklist when implementing dashboards:
 - [ ] Created dashboard view file in `views/` directory
 - [ ] Implemented AJAX handlers for dashboard actions
 - [ ] Added proper escaping for all output
+- [ ] Added WordPress options for configuration settings
+- [ ] Localized debug settings with `wp_localize_script()`
 
 ### JavaScript Side
 - [ ] Initialized DataTables for data display
@@ -467,6 +510,8 @@ Use this checklist when implementing dashboards:
 - [ ] Added error handling for all AJAX calls
 - [ ] Used standard spinner and toast utilities
 - [ ] Registered success handlers for AJAX responses
+- [ ] Utilized SiP.Core.debug utilities for consistent logging
+- [ ] Ensured debug toggle works with WordPress options
 
 ### UI/UX
 - [ ] Consistent section structure with headers
@@ -483,6 +528,7 @@ Use this checklist when implementing dashboards:
 4. **Error Handling** - Always handle errors gracefully
 5. **User Feedback** - Provide clear feedback for all actions
 6. **Accessibility** - Include proper labels and ARIA attributes
+7. **Data Synchronization** - For settings that affect both client and server, ensure proper sync between localStorage and WordPress options
 
 ## Common Pitfalls
 
@@ -491,10 +537,10 @@ Use this checklist when implementing dashboards:
 3. **Don't use custom spinners** - Use Core utilities
 4. **Don't forget nonce verification** - Security is crucial
 5. **Don't hardcode strings** - Use proper text domains
+6. **Don't rely on one storage type only** - For system-wide settings like debug mode, use both client and server storage
 
 ## Next Steps
 
-- [Implementing AJAX Functionality](./ajax-implementation.md) - For dashboard interactions
-- [DataTables Integration](./datatables-integration.md) - For advanced tables
-- [UI Components](./ui-components.md) - For using standard components
-- [Modals and Toasts](./modals-toasts.md) - For user interactions
+- [Data Storage and Handling](./sip-plugin-data-storage.md) - For understanding storage patterns
+- [Debug Logging System](./sip-development-debug-logging.md) - For implementing debug logging
+- [AJAX Implementation](./sip-plugin-ajax.md) - For dashboard interactions

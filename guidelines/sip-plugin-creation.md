@@ -1,5 +1,7 @@
 # Creating a New SiP Plugin
 
+Understand the [SiP Plugins Platform](./sip-plugins-platform.md) architecture before proceeding.
+
 This guide walks you through creating a new SiP plugin from scratch, presenting standards and conventions in the context where you'll use them.
 
 ## Prerequisites
@@ -223,7 +225,7 @@ SiP_Your_Plugin_Name::get_instance();
 
 ## Step 3: Create AJAX Handler Shell
 
-Create `includes/{plugin-prefix}-ajax-shell.php`:
+Create `includes/{plugin-prefix}-ajax-shell.php` to handle AJAX requests. For comprehensive AJAX implementation details, see the [AJAX Guide](./sip-plugin-ajax.md):
 
 ```php
 <?php
@@ -597,7 +599,7 @@ Create `assets/css/admin.css`:
 
 ## Step 9: Implement DataTables (if needed)
 
-For server-side data tables, add to your JavaScript:
+For server-side data tables. Follow the [DataTables Integration Guide](./sip-feature-datatables.md) for detailed configuration options:
 
 ```javascript
 $('#items-table').DataTable({
@@ -662,6 +664,9 @@ function sip_get_items() {
 5. Verify responses follow standard format
 
 ## Step 11: Final Checklist
+
+Before releasing your plugin, review these additional resources:
+- For dashboard implementation, review the [Dashboards Guide](./sip-plugin-dashboards.md)
 
 Use this checklist before considering your plugin complete:
 

@@ -1,5 +1,7 @@
 # Modals and Toast Notifications
 
+For dashboard integration examples, see the [Dashboards Guide](./sip-plugin-dashboards.md#step-6-add-modal-dialogs).
+
 Quick reference for dialog and notification patterns in SiP plugins.
 
 ## jQuery UI Dialog
@@ -25,6 +27,8 @@ const $dialog = $('<div>Content</div>').dialog({
 - `log-dialog` - For log viewers
 
 ## Progress Dialog Pattern
+
+For complete progress dialog implementation, see the [Progress Dialog Guide](./sip-feature-progress-dialog.md).
 
 ### Structure
 ```javascript

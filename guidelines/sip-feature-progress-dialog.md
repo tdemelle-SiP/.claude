@@ -4,7 +4,7 @@ This guide explains how to implement batch processing operations using the SiP C
 
 ## When to Use Progress Dialog
 
-Use the progress dialog for:
+Use the progress dialog for operations such as those often used with [batch data operations](./sip-plugin-data-storage.md#batch-operations):
 - Operations processing multiple items (bulk updates, imports, exports)
 - Long-running operations that might timeout 
 - Any operation where users need visual progress feedback
@@ -103,7 +103,7 @@ dialog.close();
 
 ## Multi-Step Operations
 
-For operations with distinct phases:
+For complex workflows with multiple phases. For related AJAX implementation, see the [AJAX Guide](./sip-plugin-ajax.md):
 
 ### Define Steps with Weights
 
@@ -276,8 +276,5 @@ SiP.PrintifyManager.productActions = (function($, ajax, utilities) {
 3. **Don't block the UI** - Use async/await or promises
 4. **Don't skip progress updates** - Users need feedback
 
-## Next Steps
-
-- [Implementing AJAX Functionality](./ajax-implementation.md) - For the AJAX calls within batch operations
-- [Error Handling](./error-handling.md) - For comprehensive error handling
-- [Testing and Debugging](./testing-debugging.md) - For testing batch operations
+## Related Guides
+- For testing batch operations, refer to the [Testing Guide](./sip-development-testing.md)

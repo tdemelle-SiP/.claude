@@ -1,6 +1,6 @@
 # SiP Development Debug Logging
 
-This guide explains how to use the centralized debug logging system in SiP plugins.
+This guide explains how to use the centralized debug logging system in SiP plugins. This system is integrated into the [SiP Plugins Platform](./sip-plugins-platform.md) architecture.
 
 ## Overview
 
@@ -42,13 +42,13 @@ The SiP Plugin Suite includes a centralized debug logging system that allows dev
 ### For End Users
 
 1. **Enable Debug Logging**:
-   - Go to SiP Development Tools → System Diagnostics
-   - Toggle "Console Logging" ON
-   - Reload the page to see debug messages
+   - Go to any SiP plugin dashboard with the standard header
+   - Toggle "Console Logging" ON in the header
+   - Reload the page to see debug messages when prompted
 
 2. **Disable Debug Logging**:
-   - Toggle "Console Logging" OFF
-   - Reload the page - console will be clean
+   - Toggle "Console Logging" OFF in the header
+   - Reload the page when prompted - console will be clean
 
 ## Implementation Details
 
@@ -67,18 +67,55 @@ SiP.Core.debug = {
     groupCollapsed: function() { /* ... */ },
     table: function() { /* ... */ },
     time: function() { /* ... */ },
-    timeEnd: function() { /* ... */ }
+    timeEnd: function() { /* ... */ },
+    isEnabled: function() { /* ... */ },
+    enable: function() { /* ... */ },
+    disable: function() { /* ... */ },
+    syncWithWordPressOption: function() { /* ... */ }
 };
 ```
 
 ### How It Works
 
-1. **State Management**: Debug state is stored in localStorage
-2. **Toggle Control**: UI toggle in Development Tools updates the state
-3. **Conditional Output**: Debug methods only output when enabled
-4. **Consistent Interface**: Same API as console object
+The debug system uses a dual-storage approach. For details on the dual-storage pattern, see the [Data Storage Guide](./sip-plugin-data-storage.md#client-server-synchronized-state).
+
+Debug logging combines server-side and client-side state management to ensure consistent behavior:
+
+1. **WordPress Option**: Server-side state stored in the `sip_debug_enabled` WordPress option
+2. **localStorage**: Client-side state stored in `sip-core['sip-development-tools']['console-logging']`
+3. **WordPress + JS Sync**: Settings passed from PHP to JavaScript using `wp_localize_script()`
+4. **Debug Toggle UI**: Controls in standard headers to update both states simultaneously
+5. **Console Output**: Debug methods that respect the current state
+
+The debug toggle system implemented in `header-debug-toggle.js` ensures that:
+
+- The UI toggle reflects the current state from both sources
+- Toggling updates both the WordPress option and localStorage state
+- Users are prompted to reload after changing the setting
+- The debug state is consistent across all browsers and users
+
+### Setting Up in PHP
+
+In your plugin's main file or enqueue scripts function:
+
+```php
+// Localize debug settings in your enqueue_admin_scripts function
+wp_localize_script('sip-core-debug', 'sipCoreSettings', array(
+    'debugEnabled' => get_option('sip_debug_enabled', 'false')
+));
+```
+
+### Core Files
+
+1. **debug.js**: Core module that provides debug methods and state checking
+2. **header-debug-toggle.js**: UI toggle that syncs between client and server state
+3. **core-ajax-shell.php**: Server-side handler for toggle AJAX requests
+
+For more details on the dual storage pattern, see the [Data Storage Guide](./sip-plugin-data-storage.md#client-server-synchronized-state).
 
 ## Best Practices
+
+For comprehensive testing approaches, see the [Testing Guide](./sip-development-testing.md).
 
 ### DO ✅
 
@@ -225,9 +262,10 @@ try {
 ## Troubleshooting
 
 1. **Debug Messages Not Showing**:
-   - Check if debug is enabled in Development Tools
+   - Check if debug is enabled in the standard header toggle
    - Reload the page after toggling
-   - Verify SiP.Core.debug exists in console
+   - Verify that both WordPress option and localStorage are in sync
+   - Use browser dev tools to check `SiP.Core.debug.isEnabled()`
 
 2. **Too Many Messages**:
    - Use more specific log levels
@@ -238,6 +276,11 @@ try {
    - Ensure sip-plugins-core is active
    - Check script loading order
    - Core must load before other plugins
+
+4. **Toggle Not Working**:
+   - Check for AJAX errors in browser console
+   - Verify that both the wp_localize_script and localStorage are working
+   - Check permissions for updating the WordPress option
 
 ## Examples
 
@@ -308,6 +351,33 @@ function processLargeDataset(items) {
 }
 ```
 
+## Using the Header Debug Toggle
+
+The header toggle is the easiest way for users to control debugging. See the [Dashboard Implementation Guide](./sip-plugin-dashboards.md#header-debug-toggle) for integration examples.
+
+The most user-friendly way to control debug logging is through the standard header toggle:
+
+1. **Include the Toggle**:
+   - The toggle is automatically included in the standard header
+   - Ensure your dashboard uses `sip_render_standard_header()`
+
+2. **Setup Script Dependencies**:
+   ```php
+   // In your enqueue scripts function
+   wp_register_script('your-main-script', 'path/to/script.js', 
+       array('jquery', 'sip-core-debug', 'sip-core-state', 'sip-core-header-debug-toggle')
+   );
+   ```
+
+3. **Localize the Debug Setting**:
+   ```php
+   wp_localize_script('sip-core-debug', 'sipCoreSettings', array(
+       'debugEnabled' => get_option('sip_debug_enabled', 'false')
+   ));
+   ```
+
+For more detailed implementation of dashboards with the debug toggle, see the [Dashboard Implementation Guide](./sip-plugin-dashboards.md#header-debug-toggle).
+
 ## Summary
 
 The SiP debug logging system provides:
@@ -316,5 +386,6 @@ The SiP debug logging system provides:
 - Easy toggle for development vs production
 - Performance-conscious implementation
 - Clean, organized console output
+- Synchronized state between client and server
 
 Use it liberally during development - it has minimal impact when disabled and greatly improves debugging efficiency.

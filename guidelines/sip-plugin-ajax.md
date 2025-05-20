@@ -6,6 +6,8 @@ This guide shows how AJAX works in the SiP Plugin Suite and serves as both a qui
 
 1. **JavaScript makes request** → 2. **Core routes it** → 3. **Plugin shell catches it** → 4. **Handler processes it** → 5. **Response goes back**
 
+For detailed dashboard integration examples, see the [Dashboards Guide](./sip-plugin-dashboards.md#step-4-implement-action-forms).
+
 ## Implementation Checklist & Code Examples
 
 ### ✅ JavaScript Side (File: `assets/js/modules/{feature}-actions.js`)
@@ -208,6 +210,8 @@ plugins/
 
 ## Debugging Tips
 
+Use the [Debug Logging System](./sip-development-debug-logging.md) for more advanced debugging.
+
 1. **Check Network Tab:**
    - Look for `admin-ajax.php` requests
    - Check POST data has all required fields
@@ -227,6 +231,8 @@ plugins/
    ```
 
 ## DataTables Integration
+
+For comprehensive DataTables configuration options, see the [DataTables Guide](./sip-feature-datatables.md).
 
 ```javascript
 $('#products-table').DataTable({
