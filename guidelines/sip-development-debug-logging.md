@@ -159,7 +159,28 @@ For comprehensive testing approaches, see the [Testing Guide](./sip-development-
    debug.log('Debug message');
    ```
 
-2. **Don't Add Fallbacks**:
+2. **Don't Include Console Logs in PHP Files**:
+   ```php
+   // Wrong - console.log in PHP-generated JavaScript
+   <script>
+       console.log('Plugin file:', <?php echo json_encode($file); ?>);
+       console.log('Active plugins:', <?php echo json_encode($active_plugins); ?>);
+   </script>
+   
+   // Right - Use wp_localize_script() and debug in JS files
+   <?php
+   wp_localize_script('plugin-script', 'pluginData', [
+       'file' => $file,
+       'activePlugins' => $active_plugins
+   ]);
+   ?>
+   
+   // In your separate JS file:
+   debug.log('Plugin file:', pluginData.file);
+   debug.log('Active plugins:', pluginData.activePlugins);
+   ```
+
+3. **Don't Add Fallbacks**:
    ```javascript
    // Wrong - unnecessary defensive coding
    const debug = SiP.Core.debug || console;
@@ -168,7 +189,7 @@ For comprehensive testing approaches, see the [Testing Guide](./sip-development-
    const debug = SiP.Core.debug;
    ```
 
-3. **Don't Log Sensitive Data**:
+4. **Don't Log Sensitive Data**:
    ```javascript
    // Wrong
    debug.log('User password:', password);

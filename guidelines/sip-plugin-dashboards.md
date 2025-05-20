@@ -538,6 +538,87 @@ Use this checklist when implementing dashboards:
 4. **Don't forget nonce verification** - Security is crucial
 5. **Don't hardcode strings** - Use proper text domains
 6. **Don't rely on one storage type only** - For system-wide settings like debug mode, use both client and server storage
+7. **Don't embed JavaScript in PHP files** - Always maintain proper separation of concerns
+
+## Separation of Concerns
+
+One of the fundamental architectural principles in SiP plugins is maintaining clear separation between PHP and JavaScript:
+
+### PHP Responsibilities
+- Rendering basic HTML structure
+- Processing data for display
+- Passing data to JavaScript via wp_localize_script()
+- Handling server-side AJAX operations
+
+### JavaScript Responsibilities
+- User interaction handling
+- Dynamic UI updates
+- Client-side validation
+- Data manipulation and display
+- Debug logging
+
+### Proper PHP/JavaScript Data Exchange
+
+**DO** ✅
+```php
+// PHP file
+<?php
+// Get plugin data
+$plugin_data = get_plugins();
+$active_plugins = get_option('active_plugins');
+
+// Pass data to JavaScript properly
+wp_localize_script('sip-plugin-script', 'sipPluginData', array(
+    'plugins' => $plugin_data,
+    'activePlugins' => $active_plugins
+));
+?>
+
+<!-- HTML structure only in PHP view -->
+<div id="plugins-table-container">
+    <!-- JavaScript will populate this container -->
+</div>
+```
+
+```javascript
+// JavaScript file
+const debug = SiP.Core.debug;
+
+// Access localized data
+debug.log('Plugins data:', sipPluginData.plugins);
+debug.log('Active plugins:', sipPluginData.activePlugins);
+
+// Populate table dynamically
+function renderPluginsTable() {
+    const plugins = sipPluginData.plugins;
+    const activePlugins = sipPluginData.activePlugins;
+    
+    // Render table logic...
+}
+```
+
+**DON'T** ❌
+```php
+<!-- Avoid this pattern -->
+<script>
+    // Direct JavaScript in PHP file
+    console.log('Plugins:', <?php echo json_encode($plugins); ?>);
+    
+    // Embedding logic in PHP-generated JavaScript
+    <?php foreach ($plugins as $file => $data) : ?>
+        console.log('Plugin: <?php echo esc_js($file); ?>');
+    <?php endforeach; ?>
+</script>
+```
+
+### Advantages of Proper Separation
+
+1. **Maintainability** - Easier to update either PHP or JavaScript independently
+2. **Caching** - JavaScript files can be cached separately
+3. **Error Handling** - Clearer debugging and error tracking
+4. **Feature Toggling** - Easier to implement features like debug toggling
+5. **Code Reuse** - Functions can be shared across different views
+6. **Testing** - Simpler to write unit tests for separated code
 
 ## Next Steps
 
