@@ -16,7 +16,8 @@
       "Bash(awk:*)",
       "Bash(php:*)",
       "Bash(mkdir:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(rg:*)"
     ],
     "deny": []
   }
