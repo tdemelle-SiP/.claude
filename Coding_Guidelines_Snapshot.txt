@@ -45,4 +45,6 @@ When searching and replacing to update code, do not rely on context for your sea
  
  Always implement proper error handling with graceful degradation when possible.
  
- When reading plugin version data or checking plugin status, always use fresh data that bypasses WordPress caching. WordPress caches plugin data via get_plugins() which becomes stale after plugin updates. Use SiP_Plugins_Core::get_fresh_plugins() instead of get_plugins() for accurate, current plugin information.
+ When reading plugin version data or checking plugin status, always use fresh data that bypasses WordPress caching. WordPress caches plugin data via get_plugins() which becomes stale after plugin updates. Use SiP_Plugins_Core::get_fresh_sip_plugins() instead of get_plugins() for accurate, current SiP plugin information.
+ 
+ The get_fresh_sip_plugins() method uses the update server as the authoritative source for which SiP plugins exist, ensuring maximum efficiency by only checking plugins that are actually available on the server.

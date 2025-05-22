@@ -762,8 +762,8 @@ One of the fundamental architectural principles in SiP plugins is maintaining cl
 ```php
 // PHP file
 <?php
-// Get plugin data
-$plugin_data = get_plugins();
+// Get fresh SiP plugin data (bypasses WordPress caching)
+$plugin_data = SiP_Plugins_Core::get_fresh_sip_plugins();
 $active_plugins = get_option('active_plugins');
 
 // Pass data to JavaScript properly
