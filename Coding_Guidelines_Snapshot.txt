@@ -15,6 +15,10 @@
  Keep code simple, clean and straightforward. Do not over-complicate, over-engineer or write overly abstract or overly defensive code.
  
 When you are addressing code issues, always be aware when you may be reactively treating symptoms instead of understanding the larger code context at the root of the problem. Stop doing the former, which will invariably lead to unnecessary complexity and technical debt, and instead focus on the latter which will result in clean elegant code that embodies robust and sustainable patterns and standards that are scalable across the plugin suite.
+
+When you are familiarizing yourself with code, read the code instead of searching for specific parts; understanding the full context that targetted searches may miss is critical.
+
+When searching and replacing to update code, do not rely on context for your search string; check the actual code to ensure your search string is accurate.  Never use write to file to make code updates.
  
  Do not preserve legacy code.  Clean up all remnants of unused or deprecated code thoroughly.
 
