@@ -103,6 +103,7 @@ Plugin Name: SiP Your Plugin Name
 Description: Brief description of what your plugin does
 Version: 1.0.0
 Author: Stuff is Parts, LLC
+Requires Plugins: sip-plugins-core
 */
 
 if (!defined('ABSPATH')) exit; // Exit if accessed directly
@@ -111,6 +112,18 @@ if (!defined('ABSPATH')) exit; // Exit if accessed directly
 ini_set('error_log', plugin_dir_path(__FILE__) . 'logs/php-errors.log');
 ini_set('log_errors', 1);
 ini_set('display_errors', 0);
+
+// Check for minimum core version compatibility
+$required_core_version = '2.8.9';
+$core_plugin_data = get_plugin_data(WP_PLUGIN_DIR . '/sip-plugins-core/sip-plugins-core.php', false, false);
+$current_core_version = $core_plugin_data['Version'] ?? '0.0.0';
+
+if (version_compare($current_core_version, $required_core_version, '<')) {
+    add_action('admin_notices', function() use ($required_core_version, $current_core_version) {
+        echo '<div class="notice notice-error"><p><strong>SiP Your Plugin Name:</strong> Requires SiP Plugins Core version ' . $required_core_version . ' or higher. Current version: ' . $current_core_version . '. Please update SiP Plugins Core first.</p></div>';
+    });
+    return; // Stop plugin initialization
+}
 
 // Include SiP Plugin Framework
 require_once WP_PLUGIN_DIR . '/sip-plugins-core/includes/plugin-framework.php';
@@ -730,6 +743,66 @@ Use this checklist before considering your plugin complete:
 3. **Don't skip parameter validation** - Always validate and sanitize
 4. **Don't forget to register your plugin** - Use `SiP_Plugin_Framework::init_plugin()`
 5. **Don't use custom spinners** - Use `SiP.Core.utilities.spinner`
+
+## Dependency Management Standards
+
+### Plugin Headers
+
+All SiP child plugins must include the `Requires Plugins` header:
+
+```php
+/*
+Plugin Name: SiP Your Plugin Name
+...
+Requires Plugins: sip-plugins-core
+*/
+```
+
+### Version Compatibility
+
+Child plugins must check for minimum core version compatibility:
+
+```php
+// Check for minimum core version compatibility
+$required_core_version = '2.8.9';
+$core_plugin_data = get_plugin_data(WP_PLUGIN_DIR . '/sip-plugins-core/sip-plugins-core.php', false, false);
+$current_core_version = $core_plugin_data['Version'] ?? '0.0.0';
+
+if (version_compare($current_core_version, $required_core_version, '<')) {
+    add_action('admin_notices', function() use ($required_core_version, $current_core_version) {
+        echo '<div class="notice notice-error"><p><strong>Your Plugin Name:</strong> Requires SiP Plugins Core version ' . $required_core_version . ' or higher. Current version: ' . $current_core_version . '. Please update SiP Plugins Core first.</p></div>';
+    });
+    return; // Stop plugin initialization
+}
+```
+
+### Automated Dependency Management
+
+The SiP release system automatically:
+
+1. **Detects current core version** during child plugin releases
+2. **Updates `Requires Plugins` header** with version requirement (e.g., `sip-plugins-core (2.8.9+)`)
+3. **Prevents version conflicts** by ensuring child plugins require the appropriate core version
+
+### Release Workflow
+
+**For Breaking Changes:**
+1. Release core plugin with breaking changes first
+2. Child plugin releases automatically require the new core version
+3. Users must update core before child plugins will activate
+
+**For Compatible Updates:**
+- Core patches (2.8.9 → 2.8.10) don't require child plugin updates
+- Existing version requirements remain valid
+
+### WordPress Standards Compliance
+
+This approach follows WordPress 6.5+ dependency management standards:
+
+- Uses official `Requires Plugins` header
+- Provides graceful failure with admin notices
+- Prevents fatal errors through version checking
+- Enforces proper update sequencing
 
 ## Next Steps
 
