@@ -4,6 +4,8 @@ The standard pattern for initializing DataTables in SiP plugins. For AJAX integr
 
 DataTables implementation in SiP plugins follows specific patterns for different table types. All tables use client-side processing with local data management.
 
+For complex hierarchical data relationships (like parent-child product relationships), see the [SiP Printify Manager Architecture Guide](./sip-printify-manager-architecture.md).
+
 ## DataTable Initialization Patterns
 
 ### Core Configuration

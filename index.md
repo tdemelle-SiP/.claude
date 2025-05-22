@@ -172,6 +172,13 @@ Guides for using the SiP Development Tools plugin for automated workflows.
 | [Release Management](./guidelines/sip-development-release-mgmt.md) | Versioning, Git workflow, and automated deployment | ✅ Complete |
 | [Testing & Debugging](./guidelines/sip-development-testing.md) | Testing strategies and debugging | ✅ Complete |
 
+### Plugin-Specific Architecture
+Detailed architecture guides for specific SiP plugins with complex systems.
+
+| Guide | Description | Status |
+|-------|-------------|--------|
+| [SiP Printify Manager Architecture](./guidelines/sip-printify-manager-architecture.md) | Complete architecture, data flows, and parent-child product relationships | ✅ Complete |
+
 
 ## Core Components and Utilities
 
