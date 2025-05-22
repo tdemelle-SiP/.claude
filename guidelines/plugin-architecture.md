@@ -35,9 +35,10 @@ sip-plugin-name/             # Feature plugin
 The SiP Plugins Core provides:
 
 1. **Platform Services**: Common utilities, AJAX handling, updater
-2. **UI Framework**: Standardized UI components and styles
+2. **UI Framework**: Standardized UI components and styles  
 3. **Plugin Management**: Registration, activation, deactivation
-4. **Plugin Updates**: Centralized update mechanism
+4. **Plugin Updates**: Centralized update mechanism with dependency validation
+5. **Dependency Management**: Automated dependency checking and version requirements
 
 ### CSS Architecture
 
@@ -55,10 +56,64 @@ Always use these standardized variables rather than hardcoded values.
 
 Feature plugins extend the core functionality with specific features:
 
-1. **Registration**: Register with the core plugin
-2. **Dependency Management**: Core provides required dependencies
-3. **Standardized UI**: Follow the UI guidelines
-4. **Update Mechanism**: Use the core update system
+1. **Registration**: Register with the core plugin using `SiP_Plugin_Framework::init_plugin()`
+2. **Dependency Declaration**: Must include `Requires Plugins: sip-plugins-core` header
+3. **Version Compatibility**: Check minimum core version before initialization
+4. **Standardized UI**: Follow the UI guidelines and use shared components
+5. **Update Mechanism**: Use the core update system with automatic dependency validation
+
+## Dependency Management
+
+### Overview
+
+SiP plugins use WordPress's native dependency system combined with automated version management to ensure compatibility and prevent breaking changes.
+
+### Plugin Headers
+
+All child plugins must include:
+
+```php
+/*
+Plugin Name: SiP Your Plugin Name
+Description: Brief description
+Version: 1.0.0
+Author: Stuff is Parts, LLC
+Requires Plugins: sip-plugins-core
+*/
+```
+
+### Version Compatibility
+
+Child plugins check core version compatibility on initialization:
+
+```php
+// Check for minimum core version compatibility
+$required_core_version = '2.8.9';
+$core_plugin_data = get_plugin_data(WP_PLUGIN_DIR . '/sip-plugins-core/sip-plugins-core.php', false, false);
+$current_core_version = $core_plugin_data['Version'] ?? '0.0.0';
+
+if (version_compare($current_core_version, $required_core_version, '<')) {
+    // Show admin notice and prevent initialization
+    return;
+}
+```
+
+### Automated Dependency Updates
+
+The release system automatically:
+
+1. **Detects current core version** during child plugin releases
+2. **Updates dependency requirements** in plugin headers (e.g., `sip-plugins-core (2.8.9+)`)
+3. **Validates dependencies** during direct updates
+4. **Prevents incompatible updates** through API validation
+
+### Update System Protection
+
+Both WordPress native updates and SiP direct updates respect dependencies:
+
+- **WordPress Updates**: Protected by `Requires Plugins` headers
+- **Direct Updates**: Protected by server-side dependency validation
+- **API Integration**: Update server provides dependency information
 
 ## JavaScript Architecture
 

@@ -26,19 +26,20 @@ The PowerShell script executes these steps:
 
 1. **Safety Checks**: Verify Git branch and uncommitted changes
 2. **Update Version**: Update version in main plugin file
-3. **Commit Changes**: Commit to `develop` branch
-4. **Push Develop**: Push `develop` to GitHub
-5. **Merge to Master**: Checkout and merge `develop` into `master`
-6. **Create Tag**: Create Git tag for release version
-7. **Push Master**: Push `master` and tags to GitHub
-8. **Verify Central Dir**: Check central repository exists
-9. **Ensure Directories**: Create `previous_releases` folder
-10. **Archive Old ZIPs**: Move existing ZIPs to previous releases
-11. **Build Package**: Create clean release ZIP
-12. **Update README**: Create/update central repository README
-13. **Commit Central**: Commit changes to central repository
-14. **Push Central**: Push central repository to GitHub
-15. **Return to Develop**: Checkout `develop` branch
+3. **Update Dependencies**: Automatically set core dependency requirements for child plugins
+4. **Commit Changes**: Commit to `develop` branch
+5. **Push Develop**: Push `develop` to GitHub
+6. **Merge to Master**: Checkout and merge `develop` into `master`
+7. **Create Tag**: Create Git tag for release version
+8. **Push Master**: Push `master` and tags to GitHub
+9. **Verify Central Dir**: Check central repository exists
+10. **Ensure Directories**: Create `previous_releases` folder
+11. **Archive Old ZIPs**: Move existing ZIPs to previous releases
+12. **Build Package**: Create clean release ZIP
+13. **Update README**: Create/update central repository README
+14. **Commit Central**: Commit changes to central repository
+15. **Push Central**: Push central repository to GitHub
+16. **Return to Develop**: Checkout `develop` branch
 
 ## Version Numbering
 
