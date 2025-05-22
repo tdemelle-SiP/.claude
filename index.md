@@ -2,6 +2,22 @@
 
 This document serves as a central reference point and navigation guide for the SiP Plugin Suite codebase. It organizes all documentation in the .claude directory and provides context for understanding the architecture, conventions, and functionality of the plugin suite.
 
+## 🚨 REQUIRED READING - START HERE 🚨
+
+**BEFORE doing ANY work on the SiP Plugin Suite, you MUST read:**
+
+### **[📋 Coding Guidelines](./Coding_Guidelines_Snapshot.txt)** 
+
+**This document defines HOW to work within the SiP ecosystem and contains critical behavioral standards that prevent destructive coding patterns. Failure to follow these guidelines results in broken functionality, wasted time, and technical debt.**
+
+**Key areas covered:**
+- **Planning requirements** - When and how to code
+- **Work methodology** - How to understand and modify existing code
+- **Quality standards** - What constitutes acceptable code changes
+- **Review processes** - How to verify work meets standards
+
+**These guidelines are not suggestions - they are requirements that must be followed rigorously.**
+
 ## Introduction for Claude
 
 >Your mission is twofold: (1) work on the specific code that is the focus of the session, and (2) maintain this document as a map of the overall SiP Plugin Suite codebase. Use this document to orient yourself to where the specific code being worked on resides within the larger framework. Ensure that new code conforms to the patterns described here. If it doesn't, either reconsider the approach to the immediate code task or extend/clarify this documentation to maintain alignment between the map and the terrain.
@@ -194,6 +210,7 @@ These files contain reference information and detailed specifications:
 
 | Document | Description | Status |
 |----------|-------------|--------|
+| **[Coding Guidelines](./Coding_Guidelines_Snapshot.txt)** | **Behavioral standards and work process requirements** | **✅ Critical** |
 | [SiP Plugin Ajax Architecture](./sip_plugin_ajax_architecture.md) | AJAX system architecture details | ✅ Exists |
 | [SiP Code Standards Overview](./sip_code_standards_overview.md) | General coding principles | ✅ Exists |
 | [SiP Plugin File Structure](./sip_plugin_file_structure.md) | File organization and naming | ✅ Exists |

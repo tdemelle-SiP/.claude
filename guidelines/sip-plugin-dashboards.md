@@ -408,7 +408,54 @@ This approach keeps all JavaScript in `.js` files and maintains clean separation
 
 ### Initial Data Loading
 
-Load data when the dashboard initializes:
+There are two primary patterns for loading dashboard data:
+
+#### Pattern 1: Server-Side Data Loading (Recommended)
+
+Use `wp_localize_script()` to pass data from PHP to JavaScript. This is more efficient and reliable:
+
+**PHP Side:**
+```php
+// In your enqueue_admin_scripts method
+public function enqueue_admin_scripts() {
+    // Get the data once in PHP
+    $dashboard_data = $this->get_dashboard_data();
+    
+    // Pass to JavaScript
+    wp_localize_script('your-plugin-script', 'yourPluginData', [
+        'dashboardData' => $dashboard_data,
+        'settings' => get_option('your_plugin_settings', [])
+    ]);
+}
+```
+
+**JavaScript Side:**
+```javascript
+// Module-scope variables to store the data
+let dashboardData = {};
+let pluginSettings = {};
+
+function init(serverData, serverSettings) {
+    // Store server data in module scope
+    dashboardData = serverData || {};
+    pluginSettings = serverSettings || {};
+    
+    $(document).ready(function() {
+        // Use the data immediately - no AJAX call needed
+        renderDashboard();
+        attachEventHandlers();
+    });
+}
+
+// Initialize with localized data
+if (typeof yourPluginData !== 'undefined') {
+    init(yourPluginData.dashboardData, yourPluginData.settings);
+}
+```
+
+#### Pattern 2: Client-Side AJAX Loading
+
+Use this when data must be fetched dynamically or is too large for localization:
 
 ```javascript
 jQuery(document).ready(function($) {
@@ -443,6 +490,150 @@ jQuery(document).ready(function($) {
         });
     }
 });
+```
+
+### Dashboard Refresh Strategies
+
+After performing operations (install, activate, etc.), you need to refresh the dashboard. There are two approaches:
+
+#### Page Reload (Recommended)
+
+**Advantages:**
+- Simple and reliable
+- Handles all edge cases automatically  
+- Guarantees fresh data from WordPress core
+- No additional AJAX endpoints needed
+
+**Usage:**
+```javascript
+// After successful operation
+setTimeout(function() {
+    window.location.reload();
+}, 1000); // Brief delay for user feedback
+```
+
+#### AJAX Refresh (Advanced)
+
+**Advantages:**
+- Better user experience (no page flash)
+- Preserves scroll position and form state
+- Faster perceived performance
+
+**Requirements:**
+- Must create additional endpoint to fetch updated data
+- Must handle all edge cases manually
+- More complex error handling
+
+**Implementation:**
+```javascript
+// Only use if you have a dedicated refresh endpoint
+function refreshDashboard() {
+    const formData = SiP.Core.utilities.createFormData(
+        'your-plugin',
+        'dashboard_management',
+        'get_updated_data'
+    );
+    
+    SiP.Core.ajax.handleAjaxAction('your-plugin', 'dashboard_management', formData)
+        .then(response => {
+            // Update module-scope data
+            dashboardData = response.data.dashboardData;
+            
+            // Re-render affected components
+            renderDashboard();
+        })
+        .catch(error => {
+            // Fall back to page reload if AJAX fails
+            window.location.reload();
+        });
+}
+```
+
+**Guideline:** Use page reload unless you have a specific need for AJAX refresh and are willing to implement the additional endpoint.
+
+### Dual-Purpose Functions
+
+Some functions serve both initial loading and post-operation refresh:
+
+```javascript
+// Example: Plugin dashboard table loading
+function loadPluginsTable() {
+    // Shows loading indicator
+    $('#plugins-loading').show();
+    $('#plugins-table').hide();
+    
+    // Fetches current data from server
+    const formData = SiP.Core.utilities.createFormData(
+        'sip-plugins-core',
+        'plugin_management', 
+        'get_available_plugins'
+    );
+    
+    SiP.Core.ajax.handleAjaxAction('sip-plugins-core', 'plugin_management', formData)
+        .then(response => {
+            if (response.success && response.data.plugins) {
+                renderPluginsTable(response.data.plugins);
+            } else {
+                // Fallback to locally available data
+                renderInstalledPluginsOnly();
+            }
+        })
+        .catch(error => {
+            // Graceful fallback 
+            renderInstalledPluginsOnly();
+        });
+}
+
+// Called during initial load
+function init(installedPlugins, activePlugins) {
+    // Store server data in module scope
+    moduleInstalledPlugins = installedPlugins;
+    moduleActivePlugins = activePlugins;
+    
+    $(document).ready(function() {
+        loadPluginsTable(); // Initial load
+        attachEventHandlers();
+    });
+}
+
+// Could also be called for refresh (but page reload is simpler)
+function refresh() {
+    loadPluginsTable(); // Same function, fresh data
+}
+```
+
+**Important:** These functions must handle both scenarios gracefully and include proper fallback mechanisms.
+
+### Fallback Mechanisms
+
+Always provide fallbacks when external data sources might fail:
+
+```javascript
+function loadDashboardData() {
+    // Try to load from server
+    SiP.Core.ajax.handleAjaxAction('plugin', 'action', formData)
+        .then(response => {
+            if (response.success && response.data) {
+                renderWithServerData(response.data);
+            } else {
+                renderWithLocalData(); // Fallback
+            }
+        })
+        .catch(error => {
+            renderWithLocalData(); // Fallback
+            showErrorNotice(); // Inform user
+        });
+}
+
+function renderWithLocalData() {
+    // Use whatever data is available locally
+    if (moduleLocalData && Object.keys(moduleLocalData).length > 0) {
+        renderDashboard(moduleLocalData);
+        showWarningNotice('Showing cached data - server unavailable');
+    } else {
+        showEmptyState('No data available');
+    }
+}
 ```
 
 ### Progressive Disclosure
@@ -512,6 +703,10 @@ Use this checklist when implementing dashboards:
 - [ ] Registered success handlers for AJAX responses
 - [ ] Utilized SiP.Core.debug utilities for consistent logging
 - [ ] Ensured debug toggle works with WordPress options
+- [ ] Confirmed all AJAX endpoints exist in backend code
+- [ ] Implemented fallback mechanisms for external data sources
+- [ ] Used module-scope variables for data that persists across functions
+- [ ] Chose appropriate refresh strategy (page reload vs AJAX)
 
 ### UI/UX
 - [ ] Consistent section structure with headers
@@ -529,6 +724,8 @@ Use this checklist when implementing dashboards:
 5. **User Feedback** - Provide clear feedback for all actions
 6. **Accessibility** - Include proper labels and ARIA attributes
 7. **Data Synchronization** - For settings that affect both client and server, ensure proper sync between localStorage and WordPress options
+8. **Dual-Purpose Functions** - Functions that handle both initial load and refresh must include proper fallback mechanisms
+9. **Refresh Strategy** - Choose page reload for simplicity or AJAX refresh only when you can implement the required endpoints
 
 ## Common Pitfalls
 
@@ -539,6 +736,8 @@ Use this checklist when implementing dashboards:
 5. **Don't hardcode strings** - Use proper text domains
 6. **Don't rely on one storage type only** - For system-wide settings like debug mode, use both client and server storage
 7. **Don't embed JavaScript in PHP files** - Always maintain proper separation of concerns
+8. **Don't remove dual-purpose functions without understanding their role** - Functions may serve both initial loading and refresh purposes
+9. **Don't implement AJAX refresh without fallbacks** - Always have page reload as a backup strategy
 
 ## Separation of Concerns
 

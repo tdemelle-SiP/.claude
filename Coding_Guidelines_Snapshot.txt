@@ -29,4 +29,18 @@ When searching and replacing to update code, do not rely on context for your sea
 
  Upon completion, review the sip plugin suite documentation in the .claude folder and ensure that it is up to date, clear and complete and that it reflects both any changes or additions to code standards and addresses any issues that may have arisen in implementation from documentation clarity or organization.
 
- Code changes do not need to be recorded in a file.  Please simply provide a brief summary of changes suitable to be included in the source control commit message.      
+ Code changes do not need to be recorded in a file.  Please simply provide a brief summary of changes suitable to be included in the source control commit message.
+
+ -- TECHNICAL STANDARDS --
+ 
+ Always verify that AJAX endpoints exist in the backend code before implementing frontend functionality that depends on them.
+ 
+ Use fallback mechanisms when implementing functionality that depends on external data sources or network requests.
+ 
+ For dashboard refresh after operations, prefer page reload over AJAX refresh unless you can implement the required additional endpoints and error handling.
+ 
+ Understand that functions may serve dual purposes (initial load and refresh) before removing or modifying them.
+ 
+ Use module-scope variables to store data that needs to persist across function calls within a JavaScript module.
+ 
+ Always implement proper error handling with graceful degradation when possible.
