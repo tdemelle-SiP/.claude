@@ -936,6 +936,54 @@ table.clear().rows.add(newData).draw();
 table.ajax.reload();
 ```
 
+## Table Lifecycle Management
+
+### Destruction and Cleanup
+
+When destroying DataTables that have moved UI elements (like search fields or filters), you must clean up the moved elements to prevent orphaning:
+
+```javascript
+// WRONG - leaves orphaned elements
+if ($.fn.DataTable.isDataTable('#image-table')) {
+    $('#image-table').DataTable().destroy();
+}
+
+// CORRECT - cleans up moved elements first
+if ($.fn.DataTable.isDataTable('#image-table')) {
+    // Remove any UI elements that were moved to other locations
+    $('.image-header-left-top h2 .dt-search').remove();
+    $('.sip-filter').remove(); // Remove any moved filters
+    
+    $('#image-table').DataTable().destroy();
+}
+```
+
+### Common Cleanup Scenarios
+
+| Moved Element | Cleanup Selector | When to Use |
+|---------------|------------------|-------------|
+| Search field | `.target-container .dt-search` | When search field moved in initComplete |
+| Column filters | `.sip-filter` | When filters added to column headers |
+| Custom controls | `.custom-control-class` | When custom UI elements added |
+
+### Detection Best Practices
+
+Use consistent table detection patterns:
+
+```javascript
+// Check if DataTable exists
+if ($.fn.DataTable.isDataTable('#table-id')) {
+    // Table exists, can call methods
+    const table = $('#table-id').DataTable();
+}
+
+// Check if table variable is valid
+if (tableVariable && typeof tableVariable.clear === 'function') {
+    // Variable contains valid DataTable instance
+    tableVariable.clear().rows.add(newData).draw();
+}
+```
+
 ## Key Implementation Details
 
 1. All tables use client-side processing (`serverSide: false`)
@@ -946,6 +994,7 @@ table.ajax.reload();
 6. PhotoSwipe integration is updated on each draw
 7. Column filters are added dynamically in initComplete
 8. Custom rendering handles sorting vs display differently
+9. **CRITICAL:** Always clean up moved UI elements before destroying tables
 
 ## Related Guides
 - For dashboard integration examples, see the [Dashboards Guide](./sip-plugin-dashboards.md#step-5-initialize-datatables)
