@@ -184,6 +184,7 @@ The SiP Plugins Core provides these key components (detailed in implementation g
 - Namespace: `SiP.PluginName.moduleName`
 - Module pattern with IIFE
 - Standardized AJAX handling
+- **Module Consolidation**: Related functionality grouped in single module files (2025-01-21)
 
 ## Existing Documentation
 

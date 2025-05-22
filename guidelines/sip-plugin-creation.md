@@ -113,7 +113,7 @@ ini_set('log_errors', 1);
 ini_set('display_errors', 0);
 
 // Include SiP Plugin Framework
-require_once WP_PLUGIN_DIR . '/sip-plugins-core/sip-plugin-framework.php';
+require_once WP_PLUGIN_DIR . '/sip-plugins-core/includes/plugin-framework.php';
 
 // Include AJAX shell
 require_once plugin_dir_path(__FILE__) . 'includes/plugin-ajax-shell.php';
@@ -521,6 +521,12 @@ SiP.Core.ajax.registerSuccessHandler(
 - Always use `SiP.Core.utilities.createFormData()`
 - Always use `SiP.Core.ajax.handleAjaxAction()`
 - Register success handler for each action type
+
+### Module Organization Best Practices (2025-01-21)
+- **Consolidate Related Functionality**: Group all operations for a single interface (e.g., dashboard table) in one module
+- **Avoid Cross-Module Dependencies**: Each module should be self-contained
+- **Use Proper Data Passing**: Pass data via module initialization, not global variables
+- **Example**: All plugin table operations (render, update, install, delete) belong in `plugin-dashboard.js`, not separate files
 
 ## Step 6: Create Main JavaScript File
 
