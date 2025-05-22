@@ -690,7 +690,7 @@ Before releasing your plugin, review these additional resources:
 Use this checklist before considering your plugin complete:
 
 ### PHP Integration
-- [ ] Main plugin file includes sip-plugin-framework.php
+- [ ] Main plugin file includes includes/plugin-framework.php
 - [ ] AJAX shell is included and properly configured
 - [ ] All functionality-specific files are included
 - [ ] AJAX response methods use SiP_AJAX_Response class:

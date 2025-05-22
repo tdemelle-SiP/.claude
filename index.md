@@ -57,8 +57,9 @@ A foundational plugin providing centralized functionality that all other SiP plu
 1. **AJAX System**: Centralized request routing and standardized response formatting
 2. **UI Utilities**: Shared components (spinners, toasts, dialogs)
 3. **Plugin Framework**: Registration system and shared menu management
-4. **Update Mechanism**: Self-registration for updates via central server
-5. **Libraries**: CodeMirror editor and PhotoSwipe lightbox
+4. **Update Mechanism**: Centralized update system with dependency validation
+5. **Dependency Management**: Automated version requirements and compatibility checking
+6. **Libraries**: CodeMirror editor and PhotoSwipe lightbox
 
 ### SiP Development Tools
 Development and deployment utilities for the plugin suite:
@@ -185,6 +186,7 @@ The SiP Plugins Core provides these key components (detailed in implementation g
 - Module pattern with IIFE
 - Standardized AJAX handling
 - **Module Consolidation**: Related functionality grouped in single module files (2025-01-21)
+- **Dependency Management**: Automated version requirements and compatibility validation (2025-05-22)
 
 ## Existing Documentation
 

@@ -21,7 +21,7 @@ The system automatically checks:
 3. Git identity configuration
 4. Local/remote branch synchronization
 
-### 15-Step Release Process
+### 16-Step Release Process
 The PowerShell script executes these steps:
 
 1. **Safety Checks**: Verify Git branch and uncommitted changes
