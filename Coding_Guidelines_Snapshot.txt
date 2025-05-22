@@ -44,3 +44,5 @@ When searching and replacing to update code, do not rely on context for your sea
  Use module-scope variables to store data that needs to persist across function calls within a JavaScript module.
  
  Always implement proper error handling with graceful degradation when possible.
+ 
+ When reading plugin version data or checking plugin status, always use fresh data that bypasses WordPress caching. WordPress caches plugin data via get_plugins() which becomes stale after plugin updates. Use SiP_Plugins_Core::get_fresh_plugins() instead of get_plugins() for accurate, current plugin information.
