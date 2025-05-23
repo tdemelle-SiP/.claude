@@ -17,7 +17,8 @@
       "Bash(php:*)",
       "Bash(mkdir:*)",
       "Bash(cat:*)",
-      "Bash(rg:*)"
+      "Bash(rg:*)",
+      "WebFetch(domain:developer.wordpress.org)"
     ],
     "deny": []
   }

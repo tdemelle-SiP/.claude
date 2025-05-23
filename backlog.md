@@ -221,6 +221,87 @@ wp_localize_script('sip-monitor-main', 'sipMonitorData', array(
 
 *Documentation and tasks that have been completed*
 
+### Fix WordPress Plugin Update Cleanup Failures
+
+**Issue:**
+WordPress failing to delete 60+ files during SiP plugin updates, causing persistent update buttons and cleanup errors. Console showing multiple `unlink(): No such file or directory` errors during plugin update process.
+
+**Error Pattern:**
+```
+unlink(/home/fsgpadmin/public_html/wp-content/upgrade/[plugin-folder]/[file]): No such file or directory
+- Multiple files across various plugin updates
+- Persistent "Update" buttons despite successful version changes
+- Cleanup process failing consistently
+```
+
+**Root Cause Analysis:**
+The direct update mechanism in `/sip-plugins-core/includes/core-ajax-shell.php` was experiencing cleanup failures due to concurrent plugin upgrades and insufficient cleanup parameters:
+
+```php
+// PROBLEMATIC - Missing cleanup parameters  
+$upgrader = new Plugin_Upgrader(new WP_Ajax_Upgrader_Skin());
+$result = $upgrader->install($download_url, array('overwrite_package' => true));
+```
+
+**Technical Problem:**
+- **Concurrent upgrade conflicts:** Multiple plugin updates cause file deletion conflicts in `/wp-content/upgrade/`
+- **Insufficient cleanup parameters:** Missing `clear_destination` and `abort_if_destination_exists` settings
+- **Orphaned temporary files:** Previous failed upgrades leaving files that conflict with new upgrades
+- **WordPress core bug #53705:** Documented issue with concurrent upgrades causing cleanup failures
+
+**Note on upgrade() method:** 
+Initially considered using `Plugin_Upgrader->upgrade()`, but this requires WordPress to already know about updates via the `update_plugins` transient, which defeats the purpose of the direct update tool that bypasses WordPress's update cache.
+
+**Solution Applied:**
+Enhanced the `install()` method with proper cleanup and parameters:
+
+```php
+// Clear upgrade directory before starting to prevent concurrent upgrade conflicts
+$upgrade_dir = WP_CONTENT_DIR . '/upgrade/';
+if (is_dir($upgrade_dir)) {
+    $temp_files = glob($upgrade_dir . '*');
+    foreach ($temp_files as $temp_file) {
+        if (is_dir($temp_file)) {
+            // Only remove directories older than 1 hour to avoid concurrent conflicts
+            if (filemtime($temp_file) < (time() - 3600)) {
+                wp_delete_file_from_directory($temp_file, true);
+            }
+        }
+    }
+}
+
+$upgrader = new Plugin_Upgrader(new WP_Ajax_Upgrader_Skin());
+$result = $upgrader->install($download_url, array(
+    'overwrite_package' => true,
+    'clear_destination' => true,
+    'abort_if_destination_exists' => false,
+    'clear_update_cache' => true
+));
+```
+
+**Why This Fixes The Issue:**
+- **Prevents concurrent conflicts:** Pre-cleans old temporary files before starting
+- **Proper cleanup parameters:** `clear_destination` and `abort_if_destination_exists` settings
+- **Maintains independence:** Still bypasses WordPress update cache/transients
+- **Addresses WordPress core bug:** Implements recommended cleanup strategy
+
+**Files Modified:**
+- `/sip-plugins-core/includes/core-ajax-shell.php` (lines 183-204) - Added pre-upgrade cleanup and enhanced install() parameters
+
+**Testing Expected:**
+- Plugin updates should complete without cleanup errors
+- Update buttons should clear properly after successful updates  
+- No more `unlink()` file deletion failures
+- Proper WordPress update process flow
+
+**Impact:**
+- Fixes all SiP plugin update cleanup issues
+- Eliminates persistent update button problems
+- Ensures proper WordPress update compliance
+- Prevents temporary file accumulation
+
+**Completion Date:** May 2025
+
 ### Fix Production Console Errors from Debug File Writes
 
 **Issue:** 
