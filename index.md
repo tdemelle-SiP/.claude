@@ -186,8 +186,10 @@ The SiP Plugins Core provides these key components (detailed in implementation g
 
 ### AJAX System
 - Centralized routing through `ajax-handler.php`
+- Flexible response routing based on PHP response fields
 - Standardized responses via `SiP_AJAX_Response` class
 - Client-side handling via `SiP.Core.ajax`
+- Cross-table operation support
 - Error handling patterns included
 
 ### UI Utilities
@@ -306,9 +308,11 @@ Here's how you might use the documentation to build a plugin that manages produc
 ### Essential Patterns
 1. **AJAX Requests**: Always use `SiP.Core.utilities.createFormData()` and `SiP.Core.ajax.handleAjaxAction()`
 2. **AJAX Responses**: Always use `SiP_AJAX_Response::success()` or `SiP_AJAX_Response::error()`
-3. **Event Handling**: Follow the module pattern with proper event attachment
-4. **UI Components**: Use the standardized SiP Core utilities
-5. **File Organization**: Maintain the established directory structure
+3. **Response Routing**: PHP controls success handler routing via `action_type` field in response
+4. **Cross-Table Operations**: Use response routing for operations between different table modules
+5. **Event Handling**: Follow the module pattern with proper event attachment
+6. **UI Components**: Use the standardized SiP Core utilities
+7. **File Organization**: Maintain the established directory structure
 
 ### Development Environment
 - **Operating System**: Windows 11 with WSL2

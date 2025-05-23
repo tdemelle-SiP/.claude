@@ -4,7 +4,13 @@ This guide shows how AJAX works in the SiP Plugin Suite and serves as both a qui
 
 ## Quick AJAX Flow (What Happens)
 
-1. **JavaScript makes request** → 2. **Core routes it** → 3. **Plugin shell catches it** → 4. **Handler processes it** → 5. **Response goes back**
+1. **JavaScript makes request** → 2. **Core routes it** → 3. **Plugin shell catches it** → 4. **Handler processes it** → 5. **PHP routes response** → 6. **Success handler receives it**
+
+### Standard Flow
+JavaScript → PHP Handler → JavaScript (same action_type)
+
+### Cross-Table Flow  
+JavaScript (table A) → PHP Handler (table B functions) → JavaScript (table A success handler)
 
 For detailed dashboard integration examples, see the [Dashboards Guide](./sip-plugin-dashboards.md#step-4-implement-action-forms).
 
@@ -140,6 +146,71 @@ function sip_handle_product_action() {
   - [ ] Error: `SiP_AJAX_Response::error($plugin, $action_type, $action, $message)`
 - [ ] Never uses `wp_send_json()`
 
+## Cross-Table Operations & Response Routing
+
+The AJAX system supports cross-table operations where one table's JavaScript calls another table's PHP functions and receives the response back.
+
+### How Response Routing Works
+
+The AJAX system routes responses based on the `action_type` field in the PHP response:
+
+- **Same-table**: PHP sets same `action_type` as the JavaScript call
+- **Cross-table**: PHP sets different `action_type` to route response elsewhere
+
+### Cross-Table Example
+
+```javascript
+// Image table makes cross-table call to creation functions
+const formData = SiP.Core.utilities.createFormData(
+    'sip-printify-manager', 
+    'creation_action',           // Call goes to creation handler
+    'integrate_new_product_images'
+);
+
+SiP.Core.ajax.handleAjaxAction('sip-printify-manager', 'creation_action', formData);
+```
+
+**Why cross-table?** The image module needs functionality from the creation module (image integration), but the response should come back to the image module for UI updates.
+
+```php
+// Creation functions PHP handler processes the call
+function sip_handle_creation_action() {
+    $action = $_POST['creation_action'];
+    
+    if ($action === 'integrate_new_product_images') {
+        // Process the integration...
+        
+        // Route response back to image_action handler (not creation_action)
+        SiP_AJAX_Response::success(
+            'sip-printify-manager',
+            'image_action',              // Routes to image-actions.js handler
+            'integrate_new_product_images',
+            $data,
+            'Images integrated successfully'
+        );
+    }
+}
+```
+
+```javascript
+// Image table success handler receives the response
+function handleSuccessResponse(response) {
+    switch(response.action) {
+        case 'integrate_new_product_images':
+            // Handle the cross-table response
+            updateImageTableStatus(response.data);
+            break;
+    }
+}
+```
+
+### Cross-Table Checklist
+- [ ] JavaScript calls appropriate PHP handler (`'creation_action'`)
+- [ ] PHP processes the request in correct functions file
+- [ ] PHP routes response to originating handler (`'image_action'`)
+- [ ] Originating success handler has case for the action
+- [ ] Response includes all data needed by originating table
+
 ## Standard Response Formats
 
 ### Success Response
@@ -177,24 +248,27 @@ SiP_AJAX_Response::error(
 
 ## Key Points to Remember
 
-1. **Three Levels of Actions:**
-   - Plugin level (which plugin)
-   - Action type (category)
-   - Specific action (exact operation)
+1. **Three-Level Action Structure:**
+   - **Plugin level:** `sip-printify-manager` (which plugin)
+   - **Action type:** `product_action` (functional category)  
+   - **Specific action:** `create_product` (exact operation)
 
-2. **Hook Only Has 2 Parameters:**
-   - `do_action('sip_plugin_handle_action', $plugin, $action_type)`
-   - Get specific action from `$_POST[$action_type]`
+2. **Standardized Hook Pattern:**
+   - Hook: `do_action('sip_plugin_handle_action', $plugin, $action_type)`
+   - Get specific action from: `$_POST[$action_type]`
+   - Example: `$_POST['product_action']` contains `'create_product'`
 
 3. **Never Use:**
    - Direct jQuery.ajax calls
-   - Direct wp_send_json calls
+   - Direct wp_send_json calls  
    - Plugin-specific hooks
+   - Manual FormData creation
 
 4. **Always Use:**
-   - `SiP.Core.ajax.handleAjaxAction()` in JS
+   - `SiP.Core.ajax.handleAjaxAction()` in JavaScript
    - `SiP_AJAX_Response` class in PHP
    - Standardized `sip_plugin_handle_action` hook
+   - `SiP.Core.utilities.createFormData()` for requests
 
 ## File Structure Pattern
 
