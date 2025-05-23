@@ -221,6 +221,77 @@ wp_localize_script('sip-monitor-main', 'sipMonitorData', array(
 
 *Documentation and tasks that have been completed*
 
+### Fix Production Console Errors from Debug File Writes
+
+**Issue:** 
+Console errors on live site caused by debug file_put_contents() calls attempting to write to non-existent directory paths in production environment.
+
+**Error Messages:**
+```
+file_put_contents(/home/fsgpadmin/public_html/wp-c... Failed to open stream: No such file or directory
+- Line 890: input_data.json
+- Line 996: after_processing_placeholders.json  
+- Line 1038: final_output.json
+```
+
+**Root Cause Analysis:**
+- Debug file writes were executing in production environment
+- `WP_CONTENT_DIR` constant resolving to production server path instead of expected local path
+- Function `transform_product_data()` in `product-functions.php` contained debug code that wasn't environment-aware
+
+**Investigation Process:**
+1. Identified errors were occurring on live site, not local development
+2. Located problematic debug file writes in `transform_product_data()` function
+3. Found related issue with provisional gallery feature using same problematic pattern
+
+**Solutions Applied:**
+
+#### 1. Product Functions Debug Writes (Temporary Fix)
+Added environment detection to prevent debug writes in production:
+```php
+// Development-only debug output
+if (defined('WP_DEBUG') && WP_DEBUG && !defined('WP_ENVIRONMENT_TYPE') || (defined('WP_ENVIRONMENT_TYPE') && WP_ENVIRONMENT_TYPE !== 'production')) {
+    $debug_dir = ABSPATH . 'wp-content/debug';
+    if (!file_exists($debug_dir)) {
+        wp_mkdir_p($debug_dir);
+    }
+    file_put_contents($debug_dir . '/input_data.json', json_encode($product, JSON_PRETTY_PRINT));
+}
+```
+
+#### 2. Gallery Feature (Root Fix)
+Disabled provisional gallery shortcode that was using same problematic pattern:
+```php
+// Temporarily disabled - causes WP_CONTENT_DIR path issues in production
+// add_shortcode('sip_gallery', 'sip_printify_manager_gallery_shortcode');
+
+function sip_printify_manager_gallery_shortcode() {
+    return '<p>Gallery feature temporarily disabled.</p>';
+    // return generate_image_gallery_from_directory();
+}
+```
+
+**Files Modified:**
+- `/sip-printify-manager/includes/product-functions.php` - Added environment checks to debug writes
+- `/sip-printify-manager/includes/image-functions.php` - Disabled gallery shortcode registration
+
+**Approach Rationale:**
+- **Product functions:** Used environment detection as temporary fix since this debug code may be useful for development
+- **Gallery feature:** Completely disabled since it was provisional and not in use yet
+- **Root cause:** WP_CONTENT_DIR path issue left unresolved as it may indicate broader configuration issue
+
+**Testing:**
+- Confirmed console errors eliminated on live site
+- Debug functionality preserved for development environments
+- No impact on existing functionality since gallery was provisional
+
+**Future Considerations:**
+- Debug code in product functions should eventually be removed or made more robust
+- Gallery feature needs proper path handling when development resumes
+- Root WP_CONTENT_DIR configuration issue should be investigated if other instances occur
+
+**Completion Date:** May 2025
+
 ### Fix Duplicate Search Fields in Image DataTable
 
 **Issue:** 
