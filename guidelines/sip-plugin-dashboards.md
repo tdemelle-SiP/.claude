@@ -494,15 +494,63 @@ jQuery(document).ready(function($) {
 
 ### Dashboard Refresh Strategies
 
-After performing operations (install, activate, etc.), you need to refresh the dashboard. There are two approaches:
+After performing operations (install, activate, etc.), you need to refresh the dashboard. There are three approaches:
 
-#### Page Reload (Recommended)
+#### Local State Update + Re-render (Recommended)
+
+**Best approach when you have all necessary data already loaded:**
+
+**Advantages:**
+- Instant response (no server round trip)
+- Simple implementation
+- Preserves user experience
+- No additional AJAX endpoints needed
+
+**Requirements:**
+- Store server data in module scope for reuse
+- Update operations must return necessary state changes
+- Have a re-render function that uses existing data
+
+**Implementation:**
+```javascript
+// Module scope storage
+let availableData = {};
+let localState = {};
+
+// Initial load - store server data
+function loadDashboard() {
+    SiP.Core.ajax.handleAjaxAction('plugin', 'get_data', formData)
+        .then(response => {
+            availableData = response.data; // Store for reuse
+            renderDashboard(response.data);
+        });
+}
+
+// Re-render using existing data + updated local state
+function refreshDashboard() {
+    renderDashboard(availableData); // Uses updated localState
+}
+
+// After successful operation
+function handleOperationSuccess(response) {
+    // Update local state with response data
+    if (response.data.newVersion) {
+        localState.installedItems[itemId].version = response.data.newVersion;
+    }
+    
+    // Re-render immediately
+    refreshDashboard();
+}
+```
+
+#### Page Reload (Fallback)
+
+**When local state update isn't feasible:**
 
 **Advantages:**
 - Simple and reliable
 - Handles all edge cases automatically  
 - Guarantees fresh data from WordPress core
-- No additional AJAX endpoints needed
 
 **Usage:**
 ```javascript
@@ -512,44 +560,16 @@ setTimeout(function() {
 }, 1000); // Brief delay for user feedback
 ```
 
-#### AJAX Refresh (Advanced)
+#### Complex AJAX Refresh (Avoid)
 
-**Advantages:**
-- Better user experience (no page flash)
-- Preserves scroll position and form state
-- Faster perceived performance
+**Only when other approaches don't work:**
 
-**Requirements:**
-- Must create additional endpoint to fetch updated data
-- Must handle all edge cases manually
-- More complex error handling
+**Disadvantages:**
+- Requires additional server endpoints
+- Complex error handling
+- Additional network overhead
 
-**Implementation:**
-```javascript
-// Only use if you have a dedicated refresh endpoint
-function refreshDashboard() {
-    const formData = SiP.Core.utilities.createFormData(
-        'your-plugin',
-        'dashboard_management',
-        'get_updated_data'
-    );
-    
-    SiP.Core.ajax.handleAjaxAction('your-plugin', 'dashboard_management', formData)
-        .then(response => {
-            // Update module-scope data
-            dashboardData = response.data.dashboardData;
-            
-            // Re-render affected components
-            renderDashboard();
-        })
-        .catch(error => {
-            // Fall back to page reload if AJAX fails
-            window.location.reload();
-        });
-}
-```
-
-**Guideline:** Use page reload unless you have a specific need for AJAX refresh and are willing to implement the additional endpoint.
+**Guideline:** Prefer local state update when possible, fall back to page reload for complex cases. Avoid additional AJAX refresh endpoints.
 
 ### Dual-Purpose Functions
 
@@ -724,8 +744,8 @@ Use this checklist when implementing dashboards:
 5. **User Feedback** - Provide clear feedback for all actions
 6. **Accessibility** - Include proper labels and ARIA attributes
 7. **Data Synchronization** - For settings that affect both client and server, ensure proper sync between localStorage and WordPress options
-8. **Dual-Purpose Functions** - Functions that handle both initial load and refresh must include proper fallback mechanisms
-9. **Refresh Strategy** - Choose page reload for simplicity or AJAX refresh only when you can implement the required endpoints
+8. **Local State Management** - Store server data in module scope and update local state for instant UI updates
+9. **Refresh Strategy** - Prefer local state update + re-render for instant response, fall back to page reload for complex cases
 
 ## Common Pitfalls
 
@@ -736,8 +756,8 @@ Use this checklist when implementing dashboards:
 5. **Don't hardcode strings** - Use proper text domains
 6. **Don't rely on one storage type only** - For system-wide settings like debug mode, use both client and server storage
 7. **Don't embed JavaScript in PHP files** - Always maintain proper separation of concerns
-8. **Don't remove dual-purpose functions without understanding their role** - Functions may serve both initial loading and refresh purposes
-9. **Don't implement AJAX refresh without fallbacks** - Always have page reload as a backup strategy
+8. **Don't create additional AJAX endpoints for simple refreshes** - Use local state updates when operation responses contain needed data
+9. **Don't forget to store server data for reuse** - Module-scope variables prevent unnecessary server round trips
 
 ## Separation of Concerns
 
