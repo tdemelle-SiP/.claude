@@ -49,9 +49,14 @@ PHP: Load products from DB + templates from JSON → Localize to JavaScript
 JavaScript: processProductTypes() → Assign Parent/Child types → Display hierarchy
 ```
 
-##### 4. Refresh/Sync Flow
+##### 4. Upload and Synchronization Flow
 ```
-Fetch from Printify API → Save to DB (overwrites type to 'single') → Update template statuses → JavaScript reprocesses relationships
+Upload Child Products → Save WIP to Main Template → Update window.masterTemplateData → Reload Products → Correct Parent/Child identification
+```
+
+##### 5. Manual Refresh/Sync Flow
+```
+Fetch from Printify API → Save to DB (overwrites type to 'single') → JavaScript reprocesses relationships using existing masterTemplateData
 ```
 
 #### Key Data Structures
@@ -161,6 +166,18 @@ After uploading child products or refreshing from Printify:
 2. `sip_update_template_product_statuses()` updates template JSON files
 3. Template status mappings: `Published` → `Uploaded - Published`, `Unpublished` → `Uploaded - Unpublished`
 
+#### Upload Synchronization Mechanism
+The upload process includes automatic synchronization to ensure parent-child relationships are correctly identified:
+
+1. **Individual Uploads**: Each `sip_upload_child_product_to_printify()` call updates both WIP and main template files with new `printify_product_id`
+2. **Batch Completion**: After all uploads complete:
+   - `handleSaveWipToMain()` ensures final WIP→main template synchronization
+   - `updateMasterTemplateDataFromWip()` updates `window.masterTemplateData` directly from WIP data
+   - Product reload triggers `processProductTypes()` with current template data
+3. **Result**: Newly uploaded child products are correctly identified as "Child" type instead of "Single"
+
+This eliminates timing issues where `window.masterTemplateData` might be outdated when `processProductTypes()` runs.
+
 ## Critical Implementation Details
 
 ### PHP Template Data Structure (template-functions.php)
@@ -219,6 +236,7 @@ $formatted_templates[] = array(
 - Ensure `template_title` field is included in PHP template data structure
 - Verify template JSON files contain valid `child_products` arrays with `printify_product_id` values
 - Check that `window.masterTemplateData.templates` is properly populated on page load
+- **Note**: As of the latest implementation, `window.masterTemplateData` is automatically updated after upload operations complete, so timing issues between uploads and product reloads have been resolved
 
 ### Template Status Sync Issues
 
