@@ -1,3 +1,10 @@
+ Here is the message I will send at the beginning of a task that should lead to this documentation
+
+ Please review the documentation for the plugin suite at /plugins/.claude/index.md and be sure to look at /plugins/.claude/Coding_Guidelines_Snapshot.txt.  Then please look over the relevant code and then respond in the chat with a summary of the issue and any questions you may have. Once we've discussed the correct approach, I'll ask you to make the necessary updates adhering to the documented guidelines and standards.
+
+ Here is the message that I will send at the end of a task to ensure we are following through correctly
+
+  Great! Can you look over the code and make sure there are no remaining remnants of any depreccated solutions and no backward compatibility code or legacy code of any kind?  And can you please look over the documentation files to make sure that they are accurate and reflect the current functioning of the code? Please make sure to check on related documentation to ensure that it doesn't retain any deprecated references.  If there were aspects of the code that were unclear to you as you worked, without straying into corner cases or one off issues, please update the documentation to reflect the patterns, principles and structures that were not initially clear, but were needed to correctly implement your solution. 
  
  -- PLANNING --
 
@@ -10,6 +17,8 @@
  Always use the methods and standards in the sip plugin suite documentation outlined in the index.md file in the .claude folder  making sure to observe the established coding standards and to use shared functions and utilities in all cases where they have been established as the plugin suite standard. 
  
  If in the course of review or implementation you have ideas for additions or alternate approaches, stop what you're doing and mention them in a chat message so that we can discuss them, decide upon the best path forward and you can proceed with coding with explicit direction.
+
+ If you are analyzing code in order to understand how it functions or to understand why a bug is occurring, please don't be satisfied basing your analysis and recommendation on what a superficial read of the immediate code suggests, what it seems like or what it "might" be; look at the actual code context when you have a theory and replace your speculation with a definitive understanding of the actual situation.  
  
  -- WORKING --
  Keep code simple, clean and straightforward. Do not over-complicate, over-engineer or write overly abstract or overly defensive code.
