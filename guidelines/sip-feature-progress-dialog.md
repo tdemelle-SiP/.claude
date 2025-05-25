@@ -24,9 +24,9 @@ function processMultipleItems(items) {
         
         dialogOptions: {
             title: 'Processing Items',
-            initialMessage: `Processing ${items.length} items...`,
-            waitForUserOnStart: false,
-            waitForUserOnComplete: true
+            initialMessage: `Processing ${items.length} items...`,  // Shows before user clicks Continue
+            waitForUserOnStart: false,   // true shows Continue button first
+            waitForUserOnComplete: true   // true shows Close button at end
         },
         
         processItemFn: async function(item, dialog) {
@@ -117,12 +117,15 @@ const dialog = SiP.Core.progressDialog.create({
             upload: 30,     // 30% of progress bar
             process: 40,    // 40% of progress bar
             finalize: 10    // 10% of progress bar
-        }
+        },
+        batchCount: 1      // Number of batches (optional, default: 1)
     }
 });
 
 dialog.start();
 ```
+
+Note: When using `processBatch`, set `batchCount` to the number of items to properly distribute step weights across all batches.
 
 ### Execute Each Step
 
@@ -238,7 +241,8 @@ SiP.PrintifyManager.productActions = (function($, ajax, utilities) {
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | title | string | Required | Dialog title |
-| details | string | '' | Longer description |
+| details | string | '' | Longer description (shown in manual create method) |
+| initialMessage | string | '' | Initial message (used in processBatch method) |
 | totalItems | number | 0 | Total items to process |
 | waitForUserOnStart | boolean | false | Show "Continue" button at start |
 | waitForUserOnComplete | boolean | true | Show "Close" button when done |
@@ -275,6 +279,46 @@ SiP.PrintifyManager.productActions = (function($, ajax, utilities) {
 2. **Don't forget to handle errors** - Always catch and display errors
 3. **Don't block the UI** - Use async/await or promises
 4. **Don't skip progress updates** - Users need feedback
+
+## Advanced Patterns
+
+### Pre-Processing Before Batch Operations
+
+When you need to perform an operation (like saving) before processing items:
+
+```javascript
+let preprocessCompleted = false;
+
+SiP.Core.progressDialog.processBatch({
+    items: items,
+    
+    dialogOptions: {
+        title: 'Processing',
+        initialMessage: 'Pre-processing required before continuing.',
+        waitForUserOnStart: true
+    },
+    
+    processItemFn: async (item, dialog) => {
+        // Do preprocessing on first item only
+        if (!preprocessCompleted) {
+            dialog.updateStatus('Performing pre-processing...');
+            await doPreprocessing();
+            preprocessCompleted = true;
+            dialog.updateStatus('Starting main processing...');
+        }
+        
+        // Process item normally
+        return await processItem(item, dialog);
+    }
+});
+```
+
+### Important Notes
+
+- The progress dialog buttons use fixed text: "Continue" and "Cancel" (cannot be customized)
+- The `processItemFn` receives exactly two parameters: `(item, dialog)`
+- Use `dialog.showError()` to display errors within the dialog
+- Throw an exception from `processItemFn` to stop all processing
 
 ## Related Guides
 - For testing batch operations, refer to the [Testing Guide](./sip-development-testing.md)
