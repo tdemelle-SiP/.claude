@@ -287,8 +287,14 @@ SiP.PrintifyManager.productActions = (function($, ajax, utilities) {
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | title | string | Required | Dialog title |
-| details | string | '' | Longer description (shown in manual create method) |
-| initialMessage | string | '' | Initial message (used in processBatch method) |
+| initialMessage | string | '' | Primary message shown before processing starts |
+| secondaryInitialMessage | string | '' | Secondary message shown before processing starts |
+| progressMessage | string | '' | Primary message template during processing (supports {stepCount}, {count}, {item}) |
+| secondaryProgressMessage | string | '' | Secondary message template during processing (supports {name}) |
+| completionMessage | string | '' | Primary message template when complete (supports {successCount}, {item}) |
+| secondaryCompletionMessage | string | '' | Secondary message when complete |
+| item | string | 'item' | Singular name of items being processed |
+| hideInitialOnStart | boolean | false | Hide initial messages when processing starts |
 | totalItems | number | 0 | Total items to process |
 | waitForUserOnStart | boolean | false | Show "Continue" button at start |
 | waitForUserOnComplete | boolean | true | Show "Close" button when done |
@@ -302,7 +308,7 @@ SiP.PrintifyManager.productActions = (function($, ajax, utilities) {
 |--------|-------------|
 | `start()` | Start the dialog (if not waiting for user) |
 | `updateProgress(current, total)` | Update progress bar |
-| `updateStatus(message)` | Update status text |
+| `updateStatus(message, variables)` | Update status text with optional variables for template substitution |
 | `showError(message)` | Display error message |
 | `isCancelled()` | Check if user cancelled |
 | `complete(success, errors, errorList)` | Show completion summary |
@@ -319,6 +325,18 @@ SiP.PrintifyManager.productActions = (function($, ajax, utilities) {
 5. **Batch operations** - Process multiple items in a single request when possible
 6. **Error handling** - Continue processing other items after errors
 7. **Use processBatch for simple cases** - It handles all the boilerplate
+
+## Template Variables
+
+The following variables are available for use in message templates:
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `{count}` | Total number of items | "Processing {count} products" → "Processing 10 products" |
+| `{stepCount}` | Current item number | "Item {stepCount} of {count}" → "Item 3 of 10" |
+| `{successCount}` | Number of successful items | "{successCount} items completed" → "8 items completed" |
+| `{item}` | Item name (singular) | "Uploading {item}" → "Uploading product" |
+| `{name}` | Current item's name | "Processing {name}" → "Processing Blue Widget" |
 
 ## Common Pitfalls
 
