@@ -160,6 +160,52 @@ dialog.completeStep('finalize');
 dialog.complete(successCount, errorCount);
 ```
 
+## Real-World Example: Upload with Sequential Operations
+
+Here's an example showing dynamic status updates and dialog reuse from the SiP Printify Manager:
+
+```javascript
+// Upload products then reload the product table in the same dialog
+SiP.Core.progressDialog.processBatch({
+    items: selectedProducts,
+    batchSize: 1,
+    
+    dialogOptions: {
+        title: 'Printify Product Upload',
+        initialMessage: hasUnsavedChanges 
+            ? 'Press Continue to Save Changes and Upload Selected Products'
+            : `${selectedProducts.length} items selected for processing`,
+        waitForUserOnStart: true,
+        waitForUserOnComplete: true
+    },
+    
+    processItemFn: async (productId, dialog) => {
+        // Dynamic status update when starting
+        if (!processStarted) {
+            dialog.updateStatus(`Processing ${selectedProducts.length} items`);
+            processStarted = true;
+        }
+        
+        // Process individual item
+        dialog.updateStatus(`Uploading product "${productTitle}"...`);
+        const result = await uploadProduct(productId);
+        return result;
+    },
+    
+    onAllComplete: async function(successCount, failureCount) {
+        const dialog = this; // 'this' is the dialog instance
+        const totalItems = successCount + failureCount;
+        
+        // Update status to show completion
+        dialog.updateStatus(`${totalItems} items processed`);
+        
+        // Continue with reload operation in same dialog
+        dialog.updateStatus('Product upload complete, reloading product table...');
+        await SiP.PrintifyManager.productActions.fetchShopProductsInChunks(null, dialog);
+    }
+});
+```
+
 ## Real-World Example: Bulk Product Update
 
 Here's a complete example from the SiP Printify Manager:
@@ -269,9 +315,10 @@ SiP.PrintifyManager.productActions = (function($, ajax, utilities) {
 1. **Always provide progress feedback** - Update the dialog regularly
 2. **Handle cancellation** - Check `isCancelled()` in loops
 3. **Show meaningful status messages** - Tell users what's happening
-4. **Batch operations** - Process multiple items in a single request when possible
-5. **Error handling** - Continue processing other items after errors
-6. **Use processBatch for simple cases** - It handles all the boilerplate
+4. **Dynamic status updates** - Change status text as operations progress (e.g., "3 items selected" → "Processing 3 items" → "3 items processed")
+5. **Batch operations** - Process multiple items in a single request when possible
+6. **Error handling** - Continue processing other items after errors
+7. **Use processBatch for simple cases** - It handles all the boilerplate
 
 ## Common Pitfalls
 
@@ -313,10 +360,50 @@ SiP.Core.progressDialog.processBatch({
 });
 ```
 
+### Reusing Progress Dialogs Across Operations
+
+When you have sequential operations (like uploading then reloading), you can reuse the same dialog:
+
+```javascript
+// In the processBatch onAllComplete callback
+onAllComplete: async function(successCount, failureCount, errors) {
+    // 'this' refers to the dialog instance
+    const dialog = this;
+    
+    // Update status for the next operation
+    dialog.updateStatus('Upload complete, reloading data...');
+    
+    // Pass the dialog to another operation
+    await anotherOperation(data, dialog);
+}
+
+// Function that accepts an existing dialog
+async function anotherOperation(data, existingDialog) {
+    let dialog;
+    let shouldCloseDialog = true;
+    
+    if (existingDialog) {
+        dialog = existingDialog;
+        shouldCloseDialog = false; // Don't close dialog we didn't create
+    } else {
+        dialog = SiP.Core.progressDialog.create({...});
+        dialog.start();
+    }
+    
+    // Do your work...
+    
+    // Only close if we created it
+    if (shouldCloseDialog) {
+        dialog.complete(...);
+    }
+}
+```
+
 ### Important Notes
 
 - The progress dialog buttons use fixed text: "Continue" and "Cancel" (cannot be customized)
 - The `processItemFn` receives exactly two parameters: `(item, dialog)`
+- The `onAllComplete` callback context (`this`) is the dialog instance
 - Use `dialog.showError()` to display errors within the dialog
 - Throw an exception from `processItemFn` to stop all processing
 

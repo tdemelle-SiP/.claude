@@ -14,8 +14,8 @@
 
  Before doing work, refer to the index.md file in the .claude folder and then make sure that you are familiar with any relevant utilities and standards outlined in the documentation.
 
- Always use the methods and standards in the sip plugin suite documentation outlined in the index.md file in the .claude folder  making sure to observe the established coding standards and to use shared functions and utilities in all cases where they have been established as the plugin suite standard. 
- 
+When coding, only use the methods and standards in the sip plugin suite documentation.  If there is cause to code using methods or standards that are not detailed in the documentatio, stop what you are doing and explain the situation in chat so that the new approach can be discussed and validated before you implement it with explicit direction to do so.
+
  If in the course of review or implementation you have ideas for additions or alternate approaches, stop what you're doing and mention them in a chat message so that we can discuss them, decide upon the best path forward and you can proceed with coding with explicit direction.
 
  If you are analyzing code in order to understand how it functions or to understand why a bug is occurring, please don't be satisfied basing your analysis and recommendation on what a superficial read of the immediate code suggests, what it seems like or what it "might" be; look at the actual code context when you have a theory and replace your speculation with a definitive understanding of the actual situation.  
@@ -23,7 +23,7 @@
  -- WORKING --
  Keep code simple, clean and straightforward. Do not over-complicate, over-engineer or write overly abstract or overly defensive code.
 
- Do not take shortcuts to prioritize speed. Always prioritize being thorough, careful, doing the job right and working from definitive understanding instead of speculation over speed.
+ Do not take shortcuts to prioritize speed. Always prioritize being thorough, careful, doing the job right and working from definitive understanding instead of speculation.
  
 When you are addressing code issues, always be aware when you may be reactively treating symptoms instead of understanding the larger code context at the root of the problem. Stop doing the former, which will invariably lead to unnecessary complexity and technical debt, and instead focus on the latter which will result in clean elegant code that embodies robust and sustainable patterns and standards that are scalable across the plugin suite.
 
