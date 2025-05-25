@@ -270,6 +270,12 @@ SiP_AJAX_Response::error(
    - Standardized `sip_plugin_handle_action` hook
    - `SiP.Core.utilities.createFormData()` for requests
 
+5. **Cross-Table Operations:**
+   - FormData `action_type` can differ from `handleAjaxAction` parameter
+   - FormData contains target PHP handler's action_type
+   - handleAjaxAction parameter determines which success handler receives response
+   - No validation prevents action_type differences for cross-table routing
+
 ## File Structure Pattern
 
 ```
