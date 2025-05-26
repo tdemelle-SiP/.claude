@@ -298,6 +298,7 @@ SiP.PrintifyManager.productActions = (function($, ajax, utilities) {
 | totalItems | number | 0 | Total items to process |
 | waitForUserOnStart | boolean | false | Show "Continue" button at start |
 | waitForUserOnComplete | boolean | true | Show "Close" button when done |
+| deferCompletion | boolean | false | Defer dialog completion when onAllComplete is provided (for multi-stage operations) |
 | width | number | 500 | Dialog width in pixels |
 | closeOnEscape | boolean | false | Allow ESC key to close |
 | steps | object | null | Multi-step configuration |
@@ -417,11 +418,58 @@ async function anotherOperation(data, existingDialog) {
 }
 ```
 
+### Using deferCompletion for Multi-Stage Operations
+
+When you need to perform multiple operations in sequence without showing the close button between stages, use the `deferCompletion` option:
+
+```javascript
+SiP.Core.progressDialog.processBatch({
+    items: selectedProducts,
+    batchSize: 1,
+    
+    dialogOptions: {
+        title: 'Multi-Stage Operation',
+        waitForUserOnStart: true,
+        waitForUserOnComplete: true,
+        deferCompletion: true  // Prevents close button between stages
+    },
+    
+    processItemFn: async (item, dialog) => {
+        // Process each item
+        return await processItem(item);
+    },
+    
+    // When deferCompletion is true, onAllComplete receives a 4th parameter
+    onAllComplete: async function(successCount, failureCount, errors, completeDialog) {
+        const dialog = this;
+        
+        try {
+            // Stage 2: Perform additional operations
+            dialog.updateStatus('Stage 1 complete, starting stage 2...');
+            await performStage2Operations(dialog);
+            
+            // Stage 3: Final operations
+            dialog.updateStatus('Stage 2 complete, finalizing...');
+            await performFinalOperations(dialog);
+            
+            // Now manually complete the dialog
+            completeDialog();
+            
+        } catch (error) {
+            dialog.showError(`Error in post-processing: ${error.message}`);
+            // Always complete the dialog, even on error
+            completeDialog();
+        }
+    }
+});
+```
+
 ### Important Notes
 
 - The progress dialog buttons use fixed text: "Continue" and "Cancel" (cannot be customized)
 - The `processItemFn` receives exactly two parameters: `(item, dialog)`
 - The `onAllComplete` callback context (`this`) is the dialog instance
+- When `deferCompletion: true`, `onAllComplete` receives a 4th parameter: the completion function
 - Use `dialog.showError()` to display errors within the dialog
 - Throw an exception from `processItemFn` to stop all processing
 
