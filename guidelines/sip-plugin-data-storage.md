@@ -1262,5 +1262,89 @@ function get_product_with_cache($product_id) {
 | Cache | Transients | Temporary | Fast | API responses, calculations |
 | Dual-Purpose | WP Options + localStorage | Permanent | Fast + Fastest | Debug toggle, system-wide settings |
 
+## Migrating Existing Plugins to Centralized Storage
+
+When migrating an existing SiP plugin to use the centralized storage system, follow these steps:
+
+### 1. Add Storage Registration
+
+After `SiP_Plugin_Framework::init_plugin()` in your main plugin file, add:
+
+```php
+sip_plugin_storage()->register_plugin('your-plugin-slug', array(
+    'database' => array(
+        'tables' => array(
+            'table_name' => array(
+                'version' => '1.0.0',
+                'custom_table_name' => 'existing_table_name', // For backward compatibility
+                'create_sql' => "CREATE TABLE IF NOT EXISTS {table_name} ..."
+            )
+        )
+    ),
+    'folders' => array(
+        'folder1',
+        'folder2/subfolder'
+    )
+));
+```
+
+### 2. Remove Legacy Patterns
+
+**Remove these patterns from your code:**
+- Manual directory creation with `wp_mkdir_p()`
+- Direct usage of `wp_upload_dir()`
+- Database table creation in activation hooks
+- Manual database version checking
+
+**Example of code to remove:**
+```php
+// Remove this:
+function init_plugin_directories() {
+    $upload_dir = wp_upload_dir();
+    $base_dir = $upload_dir['basedir'] . '/my-plugin';
+    if (!file_exists($base_dir)) {
+        wp_mkdir_p($base_dir);
+    }
+}
+
+// Remove this:
+register_activation_hook(__FILE__, 'create_database_tables');
+```
+
+### 3. Update Path References
+
+Replace direct path construction with storage manager methods:
+
+```php
+// Old way:
+$upload_dir = wp_upload_dir();
+$plugin_dir = $upload_dir['basedir'] . '/my-plugin/';
+
+// New way:
+$plugin_dir = sip_plugin_storage()->get_plugin_dir('my-plugin');
+$specific_folder = sip_plugin_storage()->get_folder_path('my-plugin', 'logs');
+```
+
+### 4. Clean Up Activation Hooks
+
+If your activation hook only created directories or database tables, you can remove it entirely:
+
+```php
+// If this was your only activation code, remove the entire hook:
+public static function activate_plugin() {
+    create_database_tables();
+    create_plugin_directories();
+}
+```
+
+### Migration Benefits
+
+- **Automatic initialization** - Folders and tables are created automatically
+- **Version management** - Database updates handled by the storage manager
+- **Consistent paths** - Standardized directory structure across all plugins
+- **Reduced boilerplate** - No manual directory or table creation code
+- **Better maintainability** - Centralized storage logic
+
 ## Related Guides
 - For handling batch operations with progress feedback, see the [Progress Dialog Guide](./sip-feature-progress-dialog.md)
+- For creating new plugins with storage support, see the [Plugin Creation Guide](./sip-plugin-creation.md)

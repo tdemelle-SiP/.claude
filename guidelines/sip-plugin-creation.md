@@ -154,8 +154,8 @@ class SiP_Your_Plugin_Name {
         // Hook for admin scripts and styles
         add_action('admin_enqueue_scripts', array($this, 'enqueue_admin_assets'));
         
-        // Hook for activation
-        register_activation_hook(__FILE__, array($this, 'activate'));
+        // Storage initialization is handled by the storage manager
+        // No activation hooks needed
     }
     
     // Singleton pattern
