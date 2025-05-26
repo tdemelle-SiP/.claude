@@ -200,7 +200,9 @@ SiP Core provides a centralized storage management system that handles folder cr
 
 ```php
 // In your main plugin file, after SiP_Plugin_Framework::init_plugin()
-sip_plugin_storage()->register_plugin('sip-printify-manager', array(
+// Register on the 'init' hook to ensure storage manager is available
+add_action('init', function() {
+    sip_plugin_storage()->register_plugin('sip-printify-manager', array(
     'database' => array(
         'tables' => array(
             'products' => array(
@@ -232,6 +234,7 @@ sip_plugin_storage()->register_plugin('sip-printify-manager', array(
         'exports'
     )
 ));
+}, 5); // Priority 5 to run after storage manager initialization
 ```
 
 ### Using the Storage Manager
@@ -1262,6 +1265,105 @@ function get_product_with_cache($product_id) {
 | Cache | Transients | Temporary | Fast | API responses, calculations |
 | Dual-Purpose | WP Options + localStorage | Permanent | Fast + Fastest | Debug toggle, system-wide settings |
 
+## Complete Plugin Examples
+
+Here are the complete storage registrations for all migrated SiP plugins:
+
+### SiP Printify Manager
+```php
+// Complex plugin with database and multiple folders
+add_action('init', function() {
+    sip_plugin_storage()->register_plugin('sip-printify-manager', array(
+    'database' => array(
+        'tables' => array(
+            'products' => array(
+                'version' => '1.0.0',
+                'custom_table_name' => 'sip_printify_products',
+                'drop_existing' => false,
+                'create_sql' => "CREATE TABLE IF NOT EXISTS {table_name} (
+                    id VARCHAR(64) NOT NULL,
+                    title TEXT NOT NULL,
+                    status VARCHAR(50) NOT NULL,
+                    type VARCHAR(50) NOT NULL DEFAULT 'single',
+                    blueprint_id VARCHAR(64) NOT NULL,
+                    image_url TEXT NOT NULL,
+                    full_data LONGTEXT NOT NULL,
+                    PRIMARY KEY (id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;"
+            )
+        )
+    ),
+    'folders' => array(
+        'products',
+        'templates',
+        'templates/wip',
+        'images',
+        'images/thumbnails',
+        'images/uploaded-images',
+        'blueprints',
+        'logs',
+        'exports'
+    )
+));
+}, 5);
+```
+
+### SiP WooCommerce Monitor
+```php
+// Plugin with database only, no file storage
+add_action('init', function() {
+    sip_plugin_storage()->register_plugin('sip-woocommerce-monitor', array(
+    'database' => array(
+        'tables' => array(
+            'events' => array(
+                'version' => '1.0.0',
+                'custom_table_name' => 'sip_woocommerce_events',
+                'drop_existing' => false,
+                'create_sql' => "CREATE TABLE IF NOT EXISTS {table_name} (
+                    id bigint(20) NOT NULL AUTO_INCREMENT,
+                    event_type varchar(50) NOT NULL,
+                    product_id bigint(20) NOT NULL,
+                    product_sku varchar(100),
+                    product_title text,
+                    event_data longtext,
+                    created_at datetime DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (id),
+                    KEY product_id (product_id),
+                    KEY event_type (event_type),
+                    KEY product_sku (product_sku)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;"
+            )
+        )
+    ),
+    'folders' => array(
+        // No folders needed for this plugin
+    )
+));
+}, 5);
+```
+
+### SiP Development Tools
+```php
+// Plugin with folders only, no database
+add_action('init', function() {
+    sip_plugin_storage()->register_plugin('sip-development-tools', array(
+    'folders' => array(
+        'logs',
+        'temp',
+        'releases'
+    )
+));
+}, 5);
+```
+
+### Key Patterns from Examples
+
+1. **Register on 'init' hook** with priority 5 to ensure storage manager is available
+2. **Use `custom_table_name`** only when maintaining existing table names for backward compatibility
+3. **Always set `drop_existing` to false** in production (true only during initial development)
+4. **Empty arrays are fine** - Use `'folders' => array()` when no folders are needed
+5. **Nested folders** - Use forward slashes for subdirectories (e.g., 'templates/wip')
+
 ## Migrating Existing Plugins to Centralized Storage
 
 When migrating an existing SiP plugin to use the centralized storage system, follow these steps:
@@ -1271,7 +1373,8 @@ When migrating an existing SiP plugin to use the centralized storage system, fol
 After `SiP_Plugin_Framework::init_plugin()` in your main plugin file, add:
 
 ```php
-sip_plugin_storage()->register_plugin('your-plugin-slug', array(
+add_action('init', function() {
+    sip_plugin_storage()->register_plugin('your-plugin-slug', array(
     'database' => array(
         'tables' => array(
             'table_name' => array(
@@ -1286,6 +1389,7 @@ sip_plugin_storage()->register_plugin('your-plugin-slug', array(
         'folder2/subfolder'
     )
 ));
+}, 5);
 ```
 
 ### 2. Remove Legacy Patterns
@@ -1344,6 +1448,31 @@ public static function activate_plugin() {
 - **Consistent paths** - Standardized directory structure across all plugins
 - **Reduced boilerplate** - No manual directory or table creation code
 - **Better maintainability** - Centralized storage logic
+
+### What NOT to Migrate
+
+Keep these patterns unchanged during migration:
+
+1. **Internal Plugin Files** - Files within the plugin directory structure
+   ```php
+   // Keep this pattern for plugin assets:
+   $script_path = dirname(__FILE__) . '/../tools/script.ps1';
+   $template_path = plugin_dir_path(__FILE__) . 'templates/template.php';
+   ```
+
+2. **Plugin URL References** - For assets served by the plugin
+   ```php
+   // Keep this pattern for plugin assets:
+   wp_enqueue_script('my-script', plugin_dir_url(__FILE__) . 'assets/js/script.js');
+   ```
+
+3. **System Paths** - Paths to system files or other plugins
+   ```php
+   // Keep this pattern for system references:
+   require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+   ```
+
+Only migrate paths that point to the WordPress uploads directory structure.
 
 ## Related Guides
 - For handling batch operations with progress feedback, see the [Progress Dialog Guide](./sip-feature-progress-dialog.md)

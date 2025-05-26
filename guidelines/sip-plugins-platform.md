@@ -51,6 +51,14 @@ The following core features are always available to child plugins. For details o
 | Direct Updater | `SiP.Core.directUpdater` | Plugin update utilities |
 | PhotoSwipe Lightbox | `SiP.Core.photoswipeLightbox` | Image lightbox functionality |
 
+### Server-Side Features
+
+| Feature | PHP Function | Description |
+|---------|--------------|-------------|
+| Storage Manager | `sip_plugin_storage()` | Centralized storage management for folders and database tables |
+| Plugin Framework | `SiP_Plugin_Framework::init_plugin()` | Plugin initialization and menu registration |
+| AJAX Response | `SiP_AJAX_Response` | Standardized AJAX response formatting |
+
 ### Third-Party Libraries
 
 - **DataTables**: Available via jQuery plugin interface
@@ -104,9 +112,34 @@ In child plugin PHP files:
 
 1. **DO NOT** register or enqueue any core scripts.
 2. **DO NOT** check if core features are available - they always are.
-3. **DO** only register and enqueue plugin-specific scripts:
+3. **DO** only register and enqueue plugin-specific scripts.
+4. **DO** register your storage needs with the storage manager.
 
 ```php
+// Plugin initialization
+SiP_Plugin_Framework::init_plugin(
+    'Your Plugin Name',
+    __FILE__,
+    'Your_Plugin_Class'
+);
+
+// Register storage configuration on init hook
+add_action('init', function() {
+    sip_plugin_storage()->register_plugin('your-plugin-slug', array(
+    'database' => array(
+        'tables' => array(
+            // Your table definitions
+        )
+    ),
+    'folders' => array(
+        'logs',
+        'data',
+        // Other folders
+    )
+));
+}, 5); // After storage manager initialization
+
+// Script enqueueing
 function enqueue_your_plugin_scripts($hook) {
     if ($hook !== 'your_plugin_page') {
         return;
@@ -132,6 +165,8 @@ function enqueue_your_plugin_scripts($hook) {
 3. **ONLY** enqueue plugin-specific scripts with no unnecessary dependencies
 4. **USE** the `SiP.Core` namespace for all core features
 5. **MAINTAIN** your plugin's namespace to avoid conflicts
+6. **REGISTER** storage needs with `sip_plugin_storage()` - no manual directory creation
+7. **AVOID** activation hooks for storage initialization - the storage manager handles it
 
 ## Troubleshooting
 

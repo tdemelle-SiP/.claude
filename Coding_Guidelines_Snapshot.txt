@@ -34,6 +34,78 @@ When searching and replacing to update code, do not rely on context for your sea
  Do not preserve legacy code.  Clean up all remnants of unused or deprecated code thoroughly.
 
  Do not create custom test tools or instructions.  Testing will take place in the actual code.
+
+-- SYMPTOM VS ROOT CAUSE DISTINCTION --
+  Symptom vs. Root Cause: A Critical Distinction
+
+  The Problem Pattern:
+  When encountering an error, there are two paths:
+  1. Symptom Treatment: Adding defensive code around the error point
+  2. Root Cause Resolution: Understanding WHY the error occurs and fixing the underlying issue      
+
+  Example of Symptom Treatment (WRONG):
+  // Error: Call to undefined function sip_plugin_storage()
+  // Symptom treatment: Add defensive check
+  if (function_exists('sip_plugin_storage')) {
+      sip_plugin_storage()->register_plugin(...);
+  }
+  This "fixes" the error but creates technical debt:
+  - The defensive check will exist forever
+  - Every usage requires this check
+  - The real problem remains hidden
+  - Code becomes cluttered with defensive patterns
+
+  Example of Root Cause Resolution (CORRECT):
+  // Error: Call to undefined function sip_plugin_storage()
+  // Investigation: When is this code running vs. when is the function available?
+  // Discovery: Running at plugin load, but function available at 'init'
+  // Root cause fix: Align timing
+  add_action('init', function() {
+      sip_plugin_storage()->register_plugin(...);
+  }, 5);
+  This fixes the actual problem:
+  - No defensive code needed
+  - Clean, simple implementation
+  - Problem solved permanently
+  - Code expresses proper dependencies
+
+  How to Identify You're Treating Symptoms
+
+  Warning Signs:
+  - Adding if (function_exists()), if (class_exists()), try/catch blocks reactively
+  - Adding isset() checks for variables that "should" exist
+  - Creating workarounds for "edge cases" that keep appearing
+  - Defensive coding that protects against "what if" scenarios
+  - Multiple layers of error handling for the same issue
+
+  The Correct Approach:
+  1. Ask "Why?" - Why is this function undefined? Why is this variable missing?
+  2. Trace the Execution - When does my code run? When is the dependency available?
+  3. Find the Mismatch - There's always a logical reason for the error
+  4. Fix the Root Cause - Align timing, fix initialization order, correct dependencies
+
+  Key Principle
+
+  If you're adding defensive code to prevent an error, STOP.
+  You're treating a symptom. Instead:
+  - Understand the execution flow
+  - Identify the timing/dependency mismatch
+  - Fix the structural problem
+  - The error should become impossible, not defended against
+
+  Real-World Application
+
+  In the WordPress plugin context:
+  - Symptom: Function undefined errors → Adding function_exists() checks
+  - Root Cause: Wrong hook timing → Move code to appropriate hook
+  - Symptom: Missing array keys → Adding isset() checks everywhere
+  - Root Cause: Incomplete initialization → Fix initialization logic
+  - Symptom: Null object errors → Adding null checks before every usage
+  - Root Cause: Object not created when expected → Fix creation timing
+
+  The goal is code that CAN'T fail because it's structurally correct, not code that's defended      
+  against failure.
+
  
  -- REVIEWING --
  If you have implemented changes to the code, carefully review your changes and any code that may be affected by those changes to ensure all code adheres to the prevailing suite coding standard, and there is no legacy code or remnants of deprecated code.
