@@ -230,7 +230,7 @@ $formatted_templates[] = array(
 2. **Verify template data structure**: `console.log(window.masterTemplateData)`
 3. **Check for type assignment logs**: `🟢💻 Set product "..." to Parent/Child type`
 4. **Verify template-product ID matches** in PHP logs and JavaScript data
-5. **Check template file structure** in `/wp-content/uploads/sip-printify-manager/templates/`
+5. **Check template file structure** using `sip_plugin_storage()->get_folder_path('sip-printify-manager', 'templates')`
 
 **Common Fixes**:
 - Ensure `template_title` field is included in PHP template data structure

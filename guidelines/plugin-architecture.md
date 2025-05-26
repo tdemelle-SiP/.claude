@@ -39,6 +39,7 @@ The SiP Plugins Core provides:
 3. **Plugin Management**: Registration, activation, deactivation
 4. **Plugin Updates**: Centralized update mechanism with dependency validation
 5. **Dependency Management**: Automated dependency checking and version requirements
+6. **Storage Management**: Centralized storage system for database tables and directories
 
 ### CSS Architecture
 
@@ -61,6 +62,45 @@ Feature plugins extend the core functionality with specific features:
 3. **Version Compatibility**: Check minimum core version before initialization
 4. **Standardized UI**: Follow the UI guidelines and use shared components
 5. **Update Mechanism**: Use the core update system with automatic dependency validation
+
+## Storage Management
+
+### Overview
+
+The SiP Plugins Core provides a centralized storage management system that handles:
+
+- **Database Tables**: Automatic creation and version management
+- **Directory Structure**: Standardized folder creation in wp-content/uploads
+- **Path Utilities**: Consistent path and URL generation
+
+### Storage Registration
+
+Plugins register their storage needs after initialization:
+
+```php
+sip_plugin_storage()->register_plugin('sip-plugin-name', array(
+    'database' => array(
+        'tables' => array(
+            'table_name' => array(
+                'version' => '1.0.0',
+                'create_sql' => "CREATE TABLE IF NOT EXISTS {table_name} ..."
+            )
+        )
+    ),
+    'folders' => array(
+        'data',
+        'exports',
+        'logs'
+    )
+));
+```
+
+### Benefits
+
+1. **Automatic Creation**: Tables and folders are created during plugin activation
+2. **Version Tracking**: Database schema changes are managed automatically
+3. **Consistent Paths**: All plugins use the same path structure
+4. **No Boilerplate**: Eliminates repetitive folder/table creation code
 
 ## Dependency Management
 

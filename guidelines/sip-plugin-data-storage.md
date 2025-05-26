@@ -192,35 +192,94 @@ sessionStorage.setItem('sip-progress-dialog-state', JSON.stringify({
 const progressState = JSON.parse(sessionStorage.getItem('sip-progress-dialog-state') || '{}');
 ```
 
-## 3. SQL Database (Server-Side)
+## Centralized Storage Management
 
-For more complex data structures or when you need to perform queries. When implementing tables, follow the [Database Operations Checklist](./sip-development-testing.md#php-error-logging) for proper error handling.
+SiP Core provides a centralized storage management system that handles folder creation, database tables, and path utilities for all plugins. This system ensures consistency and reduces boilerplate code.
 
-### Custom Tables
+### Registering Plugin Storage
 
-#### SiP Printify Manager - Products Table
-```sql
-CREATE TABLE {$wpdb->prefix}sip_printify_products (
-    id int(11) NOT NULL AUTO_INCREMENT,
-    printify_id varchar(255) NOT NULL,
-    title varchar(255) NOT NULL,
-    status varchar(50) DEFAULT 'draft',
-    type varchar(50) DEFAULT 'product',
-    blueprint_id int(11),
-    image_url varchar(255),
-    full_data longtext,
-    created_at datetime DEFAULT CURRENT_TIMESTAMP,
-    updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    PRIMARY KEY (id),
-    KEY printify_id (printify_id),
-    KEY status (status),
-    KEY blueprint_id (blueprint_id)
-);
+```php
+// In your main plugin file, after SiP_Plugin_Framework::init_plugin()
+sip_plugin_storage()->register_plugin('sip-printify-manager', array(
+    'database' => array(
+        'tables' => array(
+            'products' => array(
+                'version' => '1.0.0',
+                'custom_table_name' => 'sip_printify_products', // Optional custom name
+                'drop_existing' => false, // Set to true only during development
+                'create_sql' => "CREATE TABLE IF NOT EXISTS {table_name} (
+                    id VARCHAR(64) NOT NULL,
+                    title TEXT NOT NULL,
+                    status VARCHAR(50) NOT NULL,
+                    type VARCHAR(50) NOT NULL DEFAULT 'single',
+                    blueprint_id VARCHAR(64) NOT NULL,
+                    image_url TEXT NOT NULL,
+                    full_data LONGTEXT NOT NULL,
+                    PRIMARY KEY (id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;"
+            )
+        )
+    ),
+    'folders' => array(
+        'products',
+        'templates',
+        'templates/wip',
+        'images',
+        'images/thumbnails',
+        'images/uploaded-images',
+        'blueprints',
+        'logs',
+        'exports'
+    )
+));
 ```
 
-#### SiP WooCommerce Monitor - Events Table
-```sql
-CREATE TABLE {$wpdb->prefix}sip_woocommerce_events (
+### Using the Storage Manager
+
+```php
+// Get a folder path
+$products_dir = sip_plugin_storage()->get_folder_path('sip-printify-manager', 'products');
+
+// Get the plugin's base URL
+$plugin_url = sip_plugin_storage()->get_plugin_url('sip-printify-manager');
+
+// Get the plugin's base directory
+$plugin_dir = sip_plugin_storage()->get_plugin_dir('sip-printify-manager');
+```
+
+## 3. SQL Database (Server-Side)
+
+For more complex data structures or when you need to perform queries. The centralized storage manager handles table creation and version management automatically.
+
+### Database Registration
+
+Database tables are registered with the storage manager, which handles:
+- Table creation on plugin activation
+- Version management and migrations
+- Proper charset and collation
+- Custom table names if needed
+
+### Custom Tables Examples
+
+#### SiP Printify Manager - Products Table
+```php
+// Registered via storage manager with create_sql:
+CREATE TABLE IF NOT EXISTS {table_name} (
+    id VARCHAR(64) NOT NULL,
+    title TEXT NOT NULL,
+    status VARCHAR(50) NOT NULL,
+    type VARCHAR(50) NOT NULL DEFAULT 'single',
+    blueprint_id VARCHAR(64) NOT NULL,
+    image_url TEXT NOT NULL,
+    full_data LONGTEXT NOT NULL,
+    PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+```
+
+#### SiP WooCommerce Monitor - Events Table  
+```php
+// Would be registered similarly:
+CREATE TABLE IF NOT EXISTS {table_name} (
     id mediumint(9) NOT NULL AUTO_INCREMENT,
     event_type varchar(50) NOT NULL,
     product_id mediumint(9),
@@ -232,7 +291,7 @@ CREATE TABLE {$wpdb->prefix}sip_woocommerce_events (
     KEY event_type (event_type),
     KEY product_id (product_id),
     KEY created_at (created_at)
-) DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ```
 
 ### Database Operations
@@ -341,6 +400,9 @@ window.shopConfig = {
 Used for templates, configurations, and data exports.
 
 ### Directory Structure
+
+Plugin directories are managed by the centralized storage system. The standard structure is:
+
 ```
 wp-content/uploads/
 ├── sip-printify-manager/
@@ -361,29 +423,26 @@ wp-content/uploads/
 │       └── build-log-2024-01.log
 ```
 
+**Important**: Never create directories manually. Use the storage manager's folder registration system.
+
 ### JSON Operations
 
 #### Server-Side (PHP)
 ```php
-// Save JSON file
-function save_json_file($data, $filename) {
-    $upload_dir = wp_upload_dir();
-    $plugin_dir = $upload_dir['basedir'] . '/sip-printify-manager/';
+// Save JSON file using the storage manager
+function save_json_file($data, $filename, $folder = '') {
+    $filepath = sip_plugin_storage()->get_folder_path('sip-printify-manager', $folder);
+    $filepath .= '/' . $filename;
     
-    if (!file_exists($plugin_dir)) {
-        wp_mkdir_p($plugin_dir);
-    }
-    
-    $filepath = $plugin_dir . $filename;
     $result = file_put_contents($filepath, json_encode($data, JSON_PRETTY_PRINT));
     
     return $result !== false;
 }
 
-// Load JSON file
-function load_json_file($filename) {
-    $upload_dir = wp_upload_dir();
-    $filepath = $upload_dir['basedir'] . '/sip-printify-manager/' . $filename;
+// Load JSON file using the storage manager
+function load_json_file($filename, $folder = '') {
+    $filepath = sip_plugin_storage()->get_folder_path('sip-printify-manager', $folder);
+    $filepath .= '/' . $filename;
     
     if (!file_exists($filepath)) {
         return null;
@@ -467,17 +526,14 @@ function handle_image_upload() {
     }
     
     $file_name = sanitize_file_name($_FILES['file']['name']);
-    $upload_dir = wp_upload_dir();
-    $sip_upload_dir = $upload_dir['basedir'] . '/sip-printify-manager/images/';
-    $sip_upload_url = $upload_dir['baseurl'] . '/sip-printify-manager/images/';
+    $sip_upload_dir = sip_plugin_storage()->get_folder_path('sip-printify-manager', 'images');
+    $sip_upload_url = sip_plugin_storage()->get_plugin_url('sip-printify-manager') . '/images';
     
-    // Create directory if it doesn't exist
-    if (!file_exists($sip_upload_dir)) {
-        wp_mkdir_p($sip_upload_dir);
-    }
+    // Storage manager ensures directories exist during registration
+    // No need to check or create directories manually
     
     // Move uploaded file
-    $destination = $sip_upload_dir . $file_name;
+    $destination = $sip_upload_dir . '/' . $file_name;
     if (!move_uploaded_file($_FILES['file']['tmp_name'], $destination)) {
         return ['error' => 'Failed to move uploaded file'];
     }
@@ -487,14 +543,15 @@ function handle_image_upload() {
     if (!is_wp_error($image_editor)) {
         // Create thumbnail
         $image_editor->resize(256, 256, true);
-        $thumb_path = $sip_upload_dir . 'thumbnails/' . $file_name;
+        $thumb_path = sip_plugin_storage()->get_folder_path('sip-printify-manager', 'images/thumbnails');
+        $thumb_path .= '/' . $file_name;
         $image_editor->save($thumb_path);
     }
     
     return [
         'success' => true,
-        'url' => $sip_upload_url . $file_name,
-        'thumbnail' => $sip_upload_url . 'thumbnails/' . $file_name
+        'url' => $sip_upload_url . '/' . $file_name,
+        'thumbnail' => $sip_upload_url . '/thumbnails/' . $file_name
     ];
 }
 ```
@@ -754,14 +811,12 @@ function validateFiles(files) {
 ### Log File Operations
 ```php
 function write_to_log($message, $log_file = 'debug.log') {
-    $upload_dir = wp_upload_dir();
-    $log_dir = $upload_dir['basedir'] . '/sip-printify-manager/logs/';
+    $log_dir = sip_plugin_storage()->get_folder_path('sip-printify-manager', 'logs');
     
-    if (!file_exists($log_dir)) {
-        wp_mkdir_p($log_dir);
-    }
+    // Storage manager ensures the logs directory exists
+    // No need to check or create it manually
     
-    $log_path = $log_dir . $log_file;
+    $log_path = $log_dir . '/' . $log_file;
     $timestamp = date('[Y-m-d H:i:s]');
     $formatted_message = $timestamp . ' ' . $message . PHP_EOL;
     
@@ -772,15 +827,13 @@ function write_to_log($message, $log_file = 'debug.log') {
 ### CSV Export
 ```php
 function export_products_csv() {
-    $upload_dir = wp_upload_dir();
-    $export_dir = $upload_dir['basedir'] . '/sip-printify-manager/exports/';
+    $export_dir = sip_plugin_storage()->get_folder_path('sip-printify-manager', 'exports');
     
-    if (!file_exists($export_dir)) {
-        wp_mkdir_p($export_dir);
-    }
+    // Storage manager ensures the exports directory exists
+    // No need to check or create it manually
     
     $filename = 'products-export-' . date('Y-m-d-His') . '.csv';
-    $filepath = $export_dir . $filename;
+    $filepath = $export_dir . '/' . $filename;
     
     $handle = fopen($filepath, 'w');
     
@@ -801,7 +854,7 @@ function export_products_csv() {
     
     fclose($handle);
     
-    return $upload_dir['baseurl'] . '/sip-printify-manager/exports/' . $filename;
+    return sip_plugin_storage()->get_plugin_url('sip-printify-manager') . '/exports/' . $filename;
 }
 ```
 
@@ -946,15 +999,14 @@ The template system uses a WIP pattern to safely edit templates:
 ```php
 // Create WIP file when loading template
 function sip_create_template_wip($template_name) {
-    $base_path = wp_upload_dir()['basedir'] . '/sip-printify-manager/templates/';
-    $wip_path = $base_path . 'wip/';
+    $base_path = sip_plugin_storage()->get_folder_path('sip-printify-manager', 'templates');
+    $wip_path = sip_plugin_storage()->get_folder_path('sip-printify-manager', 'templates/wip');
     
-    if (!file_exists($wip_path)) {
-        wp_mkdir_p($wip_path);
-    }
+    // Storage manager ensures directories exist during registration
+    // No need to check or create directories manually
     
-    $source = $base_path . $template_name . '.json';
-    $destination = $wip_path . $template_name . '_wip.json';
+    $source = $base_path . '/' . $template_name . '.json';
+    $destination = $wip_path . '/' . $template_name . '_wip.json';
     
     return copy($source, $destination);
 }
@@ -1123,8 +1175,8 @@ $wpdb->query($wpdb->prepare($query, $values));
 ```php
 // Remove old log files
 function cleanup_old_logs($days = 30) {
-    $log_dir = wp_upload_dir()['basedir'] . '/sip-printify-manager/logs/';
-    $files = glob($log_dir . '*.log');
+    $log_dir = sip_plugin_storage()->get_folder_path('sip-printify-manager', 'logs');
+    $files = glob($log_dir . '/*.log');
     
     foreach ($files as $file) {
         if (filemtime($file) < strtotime("-$days days")) {
@@ -1135,23 +1187,27 @@ function cleanup_old_logs($days = 30) {
 ```
 
 5. **Version Control for Data Structures**
+
+The storage manager includes integrated database version management:
+
 ```php
-// Track schema versions
-function update_database_schema() {
-    $current_version = get_option('sip_db_version', '0');
-    
-    if (version_compare($current_version, '1.0', '<')) {
-        // Run version 1.0 migrations
-        create_products_table();
-        update_option('sip_db_version', '1.0');
-    }
-    
-    if (version_compare($current_version, '2.0', '<')) {
-        // Run version 2.0 migrations
-        add_status_column();
-        update_option('sip_db_version', '2.0');
-    }
-}
+// Database versions are handled automatically by the storage manager
+// When registering your table, specify the version:
+'products' => array(
+    'version' => '1.0.0',
+    'create_sql' => "CREATE TABLE IF NOT EXISTS {table_name} ..."
+)
+
+// The storage manager:
+// - Tracks version in wp_options as 'sip_{plugin_slug}_db_version_{table_name}'
+// - Only creates/updates tables when version changes
+// - Handles migrations automatically
+
+// To update a table schema, simply increment the version:
+'products' => array(
+    'version' => '1.1.0', // Changed from 1.0.0
+    'create_sql' => "CREATE TABLE IF NOT EXISTS {table_name} ..."
+)
 ```
 
 6. **Implement Data Validation**

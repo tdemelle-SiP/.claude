@@ -211,8 +211,15 @@ class SiP_Your_Plugin_Name {
     
     // Plugin activation
     public function activate() {
-        // Create any necessary database tables or options
-        // Set up initial plugin data
+        // The storage manager handles database table creation
+        // and folder creation automatically when the plugin is registered
+        
+        // Add any plugin-specific initialization here
+        // For example, setting default options:
+        add_option('sip_your_plugin_settings', array(
+            'feature1_enabled' => true,
+            'feature2_enabled' => false
+        ));
     }
     
     // Required method for SiP framework
@@ -229,6 +236,33 @@ class SiP_Your_Plugin_Name {
 
 // Initialize the plugin
 SiP_Your_Plugin_Name::get_instance();
+
+// Register storage configuration with the centralized storage manager
+sip_plugin_storage()->register_plugin('sip-your-plugin-name', array(
+    'database' => array(
+        'tables' => array(
+            'items' => array(
+                'version' => '1.0.0',
+                'create_sql' => "CREATE TABLE IF NOT EXISTS {table_name} (
+                    id INT(11) NOT NULL AUTO_INCREMENT,
+                    name VARCHAR(255) NOT NULL,
+                    description TEXT,
+                    status VARCHAR(50) DEFAULT 'active',
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    PRIMARY KEY (id),
+                    KEY status (status)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;"
+            )
+        )
+    ),
+    'folders' => array(
+        'data',
+        'exports',
+        'logs',
+        'cache'
+    )
+));
 ```
 
 ### Plugin Header Standards
@@ -236,7 +270,54 @@ SiP_Your_Plugin_Name::get_instance();
 - Author: Should be "Stuff is Parts, LLC"
 - Version: Start at 1.0.0 and follow semantic versioning
 
-## Step 3: Create AJAX Handler Shell
+## Step 3: Configure Storage Management
+
+Register your plugin's storage needs with the centralized storage manager. This should be done after initializing your plugin instance.
+
+### Storage Registration Pattern
+
+```php
+// Register storage configuration with the centralized storage manager
+sip_plugin_storage()->register_plugin('sip-your-plugin-name', array(
+    'database' => array(
+        'tables' => array(
+            'table_name' => array(
+                'version' => '1.0.0',
+                'custom_table_name' => 'sip_custom_name', // Optional
+                'drop_existing' => false, // Only true during development
+                'create_sql' => "CREATE TABLE IF NOT EXISTS {table_name} ..."
+            )
+        )
+    ),
+    'folders' => array(
+        'folder1',
+        'folder2',
+        'nested/folder'
+    )
+));
+```
+
+### Key Points:
+- **Automatic Creation**: Folders and tables are created automatically during plugin activation
+- **Version Management**: Database schema changes are tracked by version
+- **Path Access**: Use `sip_plugin_storage()->get_folder_path()` to get folder paths
+- **No Manual Creation**: Never use `wp_mkdir_p()` or manual `CREATE TABLE` queries
+
+### Example Usage in Functions:
+
+```php
+// Get a folder path
+$logs_dir = sip_plugin_storage()->get_folder_path('sip-your-plugin-name', 'logs');
+
+// Get plugin URL
+$plugin_url = sip_plugin_storage()->get_plugin_url('sip-your-plugin-name');
+
+// Save a file
+$export_dir = sip_plugin_storage()->get_folder_path('sip-your-plugin-name', 'exports');
+file_put_contents($export_dir . '/data.json', json_encode($data));
+```
+
+## Step 4: Create AJAX Handler Shell
 
 Create `includes/{plugin-prefix}-ajax-shell.php` to handle AJAX requests. For comprehensive AJAX implementation details, see the [AJAX Guide](./sip-plugin-ajax.md):
 
@@ -285,7 +366,7 @@ function sip_your_plugin_route_action($action_type) {
 - Always include default case with error response
 - Use `SiP_AJAX_Response` class for all responses
 
-## Step 4: Create Feature Functions
+## Step 5: Create Feature Functions
 
 Create `includes/feature1-functions.php`:
 
@@ -369,7 +450,7 @@ function sip_delete_item() {
 - Always validate required parameters
 - Always use `SiP_AJAX_Response` for responses
 
-## Step 5: Create JavaScript Module
+## Step 6: Create JavaScript Module
 
 Create `assets/js/modules/feature1-actions.js`:
 
@@ -541,7 +622,7 @@ SiP.Core.ajax.registerSuccessHandler(
 - **Use Proper Data Passing**: Pass data via module initialization, not global variables
 - **Example**: All plugin table operations (render, update, install, delete) belong in `plugin-dashboard.js`, not separate files
 
-## Step 6: Create Main JavaScript File
+## Step 7: Create Main JavaScript File
 
 Create `assets/js/main.js`:
 
@@ -568,7 +649,7 @@ jQuery(document).ready(function($) {
 });
 ```
 
-## Step 7: Create Dashboard View
+## Step 8: Create Dashboard View
 
 Create `views/dashboard.php`:
 
@@ -588,7 +669,7 @@ Create `views/dashboard.php`:
 </div>
 ```
 
-## Step 8: Add CSS Styling
+## Step 9: Add CSS Styling
 
 Create `assets/css/admin.css`:
 
@@ -616,7 +697,7 @@ Create `assets/css/admin.css`:
 }
 ```
 
-## Step 9: Implement DataTables (if needed)
+## Step 10: Implement DataTables (if needed)
 
 For server-side data tables. Follow the [DataTables Integration Guide](./sip-feature-datatables.md) for detailed configuration options:
 
@@ -674,7 +755,7 @@ function sip_get_items() {
 }
 ```
 
-## Step 10: Test Your Plugin
+## Step 11: Test Your Plugin
 
 1. Check plugin activation
 2. Verify menu appears under SiP Plugins
@@ -682,7 +763,7 @@ function sip_get_items() {
 4. Check console for JavaScript errors
 5. Verify responses follow standard format
 
-## Step 11: Final Checklist
+## Step 12: Final Checklist
 
 Before releasing your plugin, review these additional resources:
 - For dashboard implementation, review the [Dashboards Guide](./sip-plugin-dashboards.md)
