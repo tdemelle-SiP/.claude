@@ -186,4 +186,35 @@ When extending the platform:
 3. Maintain proper dependency chains
 4. Document new features in this guide
 
+## Plugin Update System
+
+The SiP platform provides a custom update system that works alongside WordPress's update infrastructure:
+
+### How It Works
+
+1. **Update Detection**: The platform bypasses WordPress's update checks and connects directly to the SiP update server
+2. **Dependency Checking**: Before updates, the system verifies that all plugin dependencies are met
+3. **Installation Process**: Uses WordPress's `Plugin_Upgrader` class for the actual file installation
+4. **Cleanup Handling**: Lets WordPress handle its own upgrade directory cleanup (no pre-emptive deletion)
+
+### Key Implementation Details
+
+```php
+// The update process in core-ajax-shell.php
+$upgrader = new Plugin_Upgrader(new WP_Ajax_Upgrader_Skin());
+$result = $upgrader->install($download_url, array(
+    'overwrite_package' => true,
+    'clear_destination' => true,
+    'abort_if_destination_exists' => false,
+    'clear_update_cache' => true
+));
+```
+
+### Important Notes
+
+- The system uses WordPress's installation machinery for reliability
+- File cleanup is handled by WordPress to prevent "file not found" warnings
+- Updates check core plugin version requirements before proceeding
+- The process provides real-time status updates through AJAX
+
 To get started creating your own SiP plugin, see the [Plugin Creation Guide](./sip-plugin-creation.md).
