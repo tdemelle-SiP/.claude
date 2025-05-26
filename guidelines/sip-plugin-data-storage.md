@@ -278,19 +278,19 @@ CREATE TABLE IF NOT EXISTS {table_name} (
 
 #### SiP WooCommerce Monitor - Events Table  
 ```php
-// Would be registered similarly:
+// Registered via storage manager with create_sql:
 CREATE TABLE IF NOT EXISTS {table_name} (
-    id mediumint(9) NOT NULL AUTO_INCREMENT,
+    id bigint(20) NOT NULL AUTO_INCREMENT,
     event_type varchar(50) NOT NULL,
-    product_id mediumint(9),
+    product_id bigint(20) NOT NULL,
     product_sku varchar(100),
     product_title text,
     event_data longtext,
     created_at datetime DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
-    KEY event_type (event_type),
     KEY product_id (product_id),
-    KEY created_at (created_at)
+    KEY event_type (event_type),
+    KEY product_sku (product_sku)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ```
 
