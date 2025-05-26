@@ -44,6 +44,23 @@ SiP.Core.ajax.registerSuccessHandler(
     'product_action',
     YourModule.handleSuccessResponse
 );
+
+// 4. Manual spinner control (when needed for multi-step operations)
+// Show spinner manually
+SiP.Core.utilities.spinner.show();
+
+// Make AJAX call without automatic spinner
+SiP.Core.ajax.handleAjaxAction('sip-printify-manager', 'product_action', formData, { showSpinner: false })
+    .then(response => {
+        // Do additional work...
+        refreshTable();
+        // Hide spinner after all operations complete
+        SiP.Core.utilities.spinner.hide();
+    })
+    .catch(error => {
+        // Always hide spinner on error
+        SiP.Core.utilities.spinner.hide();
+    });
 ```
 
 **JavaScript Checklist:**
@@ -52,6 +69,7 @@ SiP.Core.ajax.registerSuccessHandler(
 - [ ] Registered success handler (if needed)
 - [ ] Handled errors with .catch()
 - [ ] Validated before sending
+- [ ] For multi-step operations: used manual spinner control with `{ showSpinner: false }`
 
 ### ✅ PHP Ajax Shell (File: `includes/{plugin}-ajax-shell.php`)
 
