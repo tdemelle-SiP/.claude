@@ -159,6 +159,7 @@ Guides for implementing specific SiP Core features in your plugins.
 |-------|-------------|--------|
 | [Progress Dialog](./guidelines/sip-feature-progress-dialog.md) | Batch operations and progress feedback | ✅ Complete |
 | [DataTables](./guidelines/sip-feature-datatables.md) | Server-side data tables | ✅ Complete |
+| [Table Management](./guidelines/sip-table-management.md) | Table visibility and lifecycle management | ✅ Complete |
 | [UI Components](./guidelines/sip-feature-ui-components.md) | Core UI utilities and localStorage for UI state | ✅ Complete |
 | [Modals](./guidelines/sip-feature-modals.md) | Modal dialogs and toast notifications | ✅ Complete |
 | [CodeMirror](./guidelines/sip-feature-codemirror.md) | Code editor integration | ✅ Complete |

@@ -998,5 +998,149 @@ if (tableVariable && typeof tableVariable.clear === 'function') {
 8. Custom rendering handles sorting vs display differently
 9. **CRITICAL:** Always clean up moved UI elements before destroying tables
 
+## Table Visibility Management
+
+### Critical Lesson Learned
+
+**Always check basic visibility first.** A multi-hour debugging session revealed that a table wasn't showing simply because it was hidden with `$('#element').hide()` and never shown again. Before investigating complex initialization issues, always verify:
+
+1. Is the element visible? Check with browser inspector
+2. Is it explicitly hidden in CSS or JavaScript?
+3. Is there a corresponding `.show()` call?
+
+### The Three-Layer Structure
+
+Most SiP tables have three layers of visibility to manage:
+
+1. **Parent Container**: e.g., `#product-creation-container`
+2. **Table Container**: e.g., `#creation-datatable`  
+3. **Table Element**: e.g., `#creation-table`
+
+**All three must be visible for the table to display properly.**
+
+### Standard Pattern for Showing Tables
+
+```javascript
+function showTable() {
+    // 1. Hide any "no data" messages
+    $('#no-data-message').hide();
+    
+    // 2. Show all containers from parent to child
+    $('#parent-container').show();
+    $('#table-container').show();
+    $('#table-element').show();
+    
+    // 3. Initialize or refresh DataTable
+    initializeDataTable();
+}
+```
+
+### Standard Pattern for Hiding Tables
+
+```javascript
+function hideTable() {
+    // 1. Destroy DataTable if it exists
+    if ($.fn.DataTable.isDataTable('#table-element')) {
+        $('#table-element').DataTable().destroy();
+    }
+    
+    // 2. Hide the table element (but usually keep containers visible)
+    $('#table-element').hide();
+    
+    // 3. Show any "no data" messages
+    $('#no-data-message').show();
+}
+```
+
+### Common Visibility Issues
+
+#### Issue 1: Table Hidden After Close
+**Problem**: Table doesn't appear after being closed and reopened.
+**Cause**: Close handler hides table element but reopen doesn't show it.
+**Solution**: Always include `$('#table-element').show()` when displaying tables.
+
+#### Issue 2: Container Hierarchy
+**Problem**: Table appears blank even though DataTable has data.
+**Cause**: Parent container is hidden while child elements are shown.
+**Solution**: Show all containers in the hierarchy.
+
+#### Issue 3: Page Reload vs Dynamic Load
+**Problem**: Table works on page reload but not on AJAX load.
+**Cause**: HTML default state differs from JavaScript-managed state.
+**Solution**: Ensure dynamic operations explicitly set all visibility states.
+
+### Debugging Checklist
+
+When a table isn't showing:
+
+1. **Check Basic Visibility**
+   ```javascript
+   console.log($('#table-element').is(':visible')); // Is it visible?
+   console.log($('#table-element').css('display')); // What's the display value?
+   ```
+
+2. **Check Parent Visibility**
+   ```javascript
+   $('#table-element').parents().each(function() {
+       console.log(this.id, $(this).is(':visible'));
+   });
+   ```
+
+3. **Check DataTable State**
+   ```javascript
+   console.log($.fn.DataTable.isDataTable('#table-element')); // Is it initialized?
+   ```
+
+4. **Check for Hidden Calls**
+   - Search codebase for `#table-element.*hide`
+   - Search for corresponding `.show()` calls
+   - Verify they're balanced
+
+### Best Practices
+
+1. **Always Show What You Hide**: If you hide an element, ensure there's a corresponding show operation.
+
+2. **Manage Visibility at the Right Level**: 
+   - Hide containers for major state changes
+   - Hide table elements for data updates
+   - Hide rows for filtering
+
+3. **Document Visibility Dependencies**: Comment when visibility depends on other state.
+
+4. **Use Consistent Patterns**: All tables should follow the same show/hide patterns.
+
+5. **Test Both Paths**: Always test both page reload and dynamic load scenarios.
+
+### Implementation Examples
+
+#### Product Table
+- Hidden when shop is cleared
+- Shown when shop is selected
+- Parent container managed by `updateShopVisibility()`
+
+#### Template Table  
+- Always visible (no hide operations)
+- Only rows are filtered
+
+#### Creation Table
+- Hidden when template is closed
+- Must explicitly show table element when loading template
+- Parent container managed separately
+
+#### Image Table
+- Hidden when shop is cleared
+- Shown when shop is selected
+- Filters managed independently
+
+### Common Mistakes to Avoid
+
+1. **Hiding without showing**: `$('#element').hide()` without corresponding `.show()`
+2. **Showing child while parent is hidden**: Child won't be visible
+3. **Initializing DataTable on hidden element**: Causes rendering issues
+4. **Forgetting the table element**: Showing container but not table itself
+5. **Not checking simplest solution first**: Always verify basic visibility before complex debugging
+
+Remember: When something isn't showing, first check if it's simply hidden. The simplest explanation is usually correct.
+
 ## Related Guides
 - For dashboard integration examples, see the [Dashboards Guide](./sip-plugin-dashboards.md#step-5-initialize-datatables)

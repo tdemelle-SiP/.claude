@@ -1,6 +1,6 @@
  Here is the message I will send at the beginning of a task that should lead to this documentation.
 
- Please review the documentation for the plugin suite at /plugins/.claude/index.md and be sure to look at /plugins/.claude/Coding_Guidelines_Snapshot.txt.  Then please look over the relevant code and then respond in the chat with a summary of the issue and any questions you may have. Once we've discussed the correct approach, I'll ask you to make the necessary updates adhering to the documented guidelines and standards.
+Before you begin, please review the documentation for the plugin suite at /plugins/.claude/index.md and be sure to look at /plugins/.claude/Coding_Guidelines_Snapshot.txt.  Then please look over the relevant code and then respond in the chat with a summary of the issue and any questions you may have. Once we've discussed the correct approach, I'll ask you to make the necessary updates adhering to the documented guidelines and standards.
 
  Here is the message that I will send at the end of a task to ensure we are following through correctly
 
