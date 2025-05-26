@@ -9,7 +9,7 @@ The SiP plugin suite uses an automated release system that handles version updat
 ### Components
 - **SiP Development Tools Admin UI**: Web interface for triggering releases
 - **PHP Backend** (`release-functions.php`): Handles AJAX requests and launches PowerShell script
-- **PowerShell Script** (`release-plugin.ps1`): Executes 15-step release process
+- **PowerShell Script** (`release-plugin.ps1`): Executes 16-step release process
 - **JavaScript Frontend** (`release-actions.js`): Real-time status monitoring and UI updates
 
 ## Release Process Workflow
@@ -35,7 +35,7 @@ The PowerShell script executes these steps:
 9. **Verify Central Dir**: Check central repository exists
 10. **Ensure Directories**: Create `previous_releases` folder
 11. **Archive Old ZIPs**: Move existing ZIPs to previous releases
-12. **Build Package**: Create clean release ZIP
+12. **Build Package**: Create clean release ZIP using 7-Zip via PHP
 13. **Update README**: Create/update central repository README
 14. **Commit Central**: Commit changes to central repository
 15. **Push Central**: Push central repository to GitHub
@@ -92,6 +92,23 @@ git checkout develop
 Default identity if not configured:
 - Name: `SiP Development Tools`
 - Email: `support@stuffisparts.com`
+
+## ZIP Creation Process
+
+### Overview
+The release process creates ZIP files using 7-Zip through a PHP function that can be called from the PowerShell script without requiring WordPress context.
+
+### Key Points
+- **7-Zip Requirement**: The system requires 7-Zip to be installed at `C:\Program Files\7-Zip\7z.exe`
+- **WordPress Independence**: The `sip_create_zip_archive()` function works without WordPress loaded
+- **Temp Directory**: Uses the WordPress uploads structure for temporary files
+- **Compression**: Uses store method (no compression) for faster processing
+
+### Process Flow
+1. PowerShell creates a temporary directory structure
+2. Copies plugin files (excluding .git, logs, etc.)
+3. Calls PHP function to create ZIP using 7-Zip
+4. Cleans up temporary files
 
 ## Implementation Details
 
