@@ -1,10 +1,10 @@
- Here is the message I will send at the beginning of a task that should lead to this documentation
+ Here is the message I will send at the beginning of a task that should lead to this documentation.
 
  Please review the documentation for the plugin suite at /plugins/.claude/index.md and be sure to look at /plugins/.claude/Coding_Guidelines_Snapshot.txt.  Then please look over the relevant code and then respond in the chat with a summary of the issue and any questions you may have. Once we've discussed the correct approach, I'll ask you to make the necessary updates adhering to the documented guidelines and standards.
 
  Here is the message that I will send at the end of a task to ensure we are following through correctly
 
-  Great! Can you look over the code and make sure there are no remaining remnants of any depreccated solutions and no backward compatibility code or legacy code of any kind?  And can you please look over the documentation files to make sure that they are accurate and reflect the current functioning of the code? Please make sure to check on related documentation to ensure that it doesn't retain any deprecated references.  If there were aspects of the code that were unclear to you as you worked, without straying into corner cases or one off issues, please update the documentation to reflect the patterns, principles and structures that were not initially clear, but were needed to correctly implement your solution. 
+ Great! Can you please look over the code that you just updated and make sure there are no remaining remnants of any deprecated solutions and no backward compatibility code or legacy code of any kind? Please don't simply search for strings to find deprecated code; read through the complete flow and context around the changes you made for deprecated remnants and search for any references to the deprecated code that may themselves need to be updated or deprecated.  Next, can you please look over the documentation files to make sure that they are accurate and reflect the current functioning of the code? Please make sure to check on related documentation to ensure that it doesn't retain any deprecated references.  Finally, if there were aspects of the code that were unclear to you as you worked, without straying into corner cases or one off issues, please update the documentation to reflect the patterns, principles and structures that were needed to correctly implement your solution.
  
  -- PLANNING --
 
@@ -12,7 +12,7 @@
 
  Images shared by the user will be uploaded here: /mnt/c/Users/tdeme/Documents/VSCode_Images_Repo/. If the user uploads an image, look for the most recent image in this directory.
 
- Before doing work, refer to the index.md file in the .claude folder and then make sure that you are familiar with any relevant utilities and standards outlined in the documentation.
+ Before doing work, refer to the index.md file in the .claude folder and make sure that you are familiar with any relevant utilities and standards outlined in the documentation.
 
 When coding, only use the methods and standards in the sip plugin suite documentation.  If there is cause to code using methods or standards that are not detailed in the documentatio, stop what you are doing and explain the situation in chat so that the new approach can be discussed and validated before you implement it with explicit direction to do so.
 
@@ -29,7 +29,9 @@ When you are addressing code issues, always be aware when you may be reactively 
 
 When you are familiarizing yourself with code, read the code instead of searching for specific parts; understanding the full context that targetted searches may miss is critical.
 
-When searching and replacing to update code, do not rely on context for your search string; check the actual code to ensure your search string is accurate.  Never use write to file to make code updates.
+When searching and replacing to update code, do not rely on your saved context for your search string; check the actual code to ensure your search string is accurate.
+
+Never use write to file to make code updates.
  
  Do not preserve legacy code.  Clean up all remnants of unused or deprecated code thoroughly.
 
@@ -108,7 +110,7 @@ When searching and replacing to update code, do not rely on context for your sea
 
  
  -- REVIEWING --
- If you have implemented changes to the code, carefully review your changes and any code that may be affected by those changes to ensure all code adheres to the prevailing suite coding standard, and there is no legacy code or remnants of deprecated code.
+ If you have implemented changes to the code, carefully review your changes and any code that may be affected by those changes to ensure that all code adheres to the prevailing sip plugin suite coding standard, and that there is no legacy code or remnants of deprecated code.
 
  Upon completion, review the sip plugin suite documentation in the .claude folder and ensure that it is up to date, clear and complete and that it reflects both any changes or additions to code standards and addresses any issues that may have arisen in implementation from documentation clarity or organization.
 

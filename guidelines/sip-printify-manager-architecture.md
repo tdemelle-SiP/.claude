@@ -271,6 +271,33 @@ $formatted_templates[] = array(
 3. Update JavaScript processing logic
 4. Consider migration strategy for existing templates
 
+### Product Options Handling
+
+The system handles product options (colors and sizes) with flexibility to accommodate different Printify product naming conventions:
+
+#### Option Name Variations
+The `transform_product_data()` function in `product-functions.php` checks for multiple variations of option names:
+- **Colors**: Accepts "color", "colors", "colour", "colours" (case-insensitive)
+- **Sizes**: Accepts "size", "sizes" (case-insensitive)
+
+This flexible approach ensures compatibility with different product types that may use singular/plural or regional spelling variations.
+
+#### Data Transformation Process
+1. **Option Extraction**: The system extracts color and size options from the Printify API response
+2. **Variant Filtering**: Only options from enabled variants are included in the final template
+3. **Standardized Output**: Options are always output as "options - colors" and "options - sizes" for consistent JavaScript processing
+
+#### Important Assumptions
+The system makes certain assumptions about variant option ordering:
+- **Option Position**: The code assumes `variant['options'][0]` contains the color ID and `variant['options'][1]` contains the size ID
+- This assumption works for most Printify products but may need adjustment for products with different option arrangements
+
+#### Color Swatch Display
+In the creation table, color swatches are rendered using:
+- The first color value from the `colors` array in each color option
+- CSS background styling to display the actual color
+- Tooltip showing the color name on hover
+
 ### API Integration Changes
 1. Update `save_products_to_database()` for new Printify API fields
 2. Modify `sip_update_template_product_statuses()` for new status types
