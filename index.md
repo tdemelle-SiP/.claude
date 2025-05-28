@@ -36,7 +36,7 @@ Do NOT update for routine code changes, bug fixes, or implementation details tha
 
 New to SiP Plugin development? Follow this path to get up to speed quickly:
 
-1. **Understand the Platform** → Start with [SiP Plugins Platform](./guidelines/sip-plugins-platform.md)
+1. **Understand the Platform** → Start with [SiP Plugins Platform](./guidelines/sip-plugin-platform.md)
    - Learn the key principles and architecture
    - Understand how plugins interact with the core platform
 
@@ -100,7 +100,7 @@ Each guide presents standards and conventions in the context where they're used.
 ```
 ┌─────────────────────────────────────┐
 │       SiP Plugin Suite Platform      │
-│       [sip-plugins-platform.md]      │
+│       [sip-plugin-platform.md]      │
 └───────────────────┬─────────────────┘
                     │
         ┌───────────┴───────────┐
@@ -160,7 +160,7 @@ Guides for implementing specific SiP Core features in your plugins.
 | [Progress Dialog](./guidelines/sip-feature-progress-dialog.md) | Batch operations and progress feedback | ✅ Complete |
 | [DataTables](./guidelines/sip-feature-datatables.md) | Server-side data tables | ✅ Complete |
 | [Table Management](./guidelines/sip-table-management.md) | Table visibility and lifecycle management | ✅ Complete |
-| [UI Components](./guidelines/sip-feature-ui-components.md) | Core UI utilities and localStorage for UI state | ✅ Complete |
+| [UI Components](./guidelines/sip-feature-ui-components.md) | Core UI utilities, checkbox patterns, and localStorage for UI state | ✅ Complete |
 | [Modals](./guidelines/sip-feature-modals.md) | Modal dialogs and toast notifications | ✅ Complete |
 | [CodeMirror](./guidelines/sip-feature-codemirror.md) | Code editor integration | ✅ Complete |
 | [PhotoSwipe](./guidelines/sip-feature-photoswipe.md) | Image lightbox functionality | ✅ Complete |
@@ -179,7 +179,7 @@ Standards and best practices for SiP plugin development.
 
 | Guide | Description | Status |
 |-------|-------------|--------|
-| [CSS Standards](./guidelines/sip-css-standards.md) | CSS architecture, naming conventions, and best practices | ✅ Complete |
+| [CSS Development](./guidelines/sip-development-css.md) | CSS architecture, naming conventions, and best practices | ✅ Complete |
 
 ### Plugin-Specific Architecture
 Detailed architecture guides for specific SiP plugins with complex systems.

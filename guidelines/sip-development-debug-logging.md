@@ -1,6 +1,6 @@
 # SiP Development Debug Logging
 
-This guide explains how to use the centralized debug logging system in SiP plugins. This system is integrated into the [SiP Plugins Platform](./sip-plugins-platform.md) architecture.
+This guide explains how to use the centralized debug logging system in SiP plugins. This system is integrated into the [SiP Plugins Platform](./sip-plugin-platform.md) architecture.
 
 ## Overview
 

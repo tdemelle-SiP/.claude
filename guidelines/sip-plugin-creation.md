@@ -1,6 +1,6 @@
 # Creating a New SiP Plugin
 
-Understand the [SiP Plugins Platform](./sip-plugins-platform.md) architecture before proceeding.
+Understand the [SiP Plugins Platform](./sip-plugin-platform.md) architecture before proceeding.
 
 This guide walks you through creating a new SiP plugin from scratch, presenting standards and conventions in the context where you'll use them.
 

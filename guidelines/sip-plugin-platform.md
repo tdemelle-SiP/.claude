@@ -19,6 +19,32 @@ The SiP Plugins Platform follows a layered architecture:
 2. **Module Layer**: Feature modules built on the core (progress-dialog, header-debug-toggle, etc.)
 3. **Child Plugin Layer**: Plugin-specific functionality that uses core and module features
 
+### Directory Structure
+
+```
+sip-plugins-core/            # Core plugin with shared functionality
+├── assets/                  # Shared assets
+│   ├── css/                 # CSS files
+│   │   ├── variables.css    # CSS variables
+│   │   └── ...
+│   ├── js/                  # JavaScript files
+│   │   ├── core/            # Core JS modules
+│   │   └── modules/         # Feature modules
+│   └── images/              # Shared images
+├── includes/                # PHP includes
+└── sip-plugins-core.php     # Main plugin file
+
+sip-plugin-name/             # Feature plugin
+├── assets/                  # Plugin-specific assets
+│   ├── css/
+│   │   └── modules/         # CSS modules
+│   └── js/
+│       └── modules/         # JS modules
+├── includes/                # PHP includes
+├── views/                   # HTML templates
+└── sip-plugin-name.php      # Main plugin file
+```
+
 ### How Scripts Load
 
 The platform uses a central loader function `sip_core_load_platform()` that:
@@ -185,6 +211,41 @@ When extending the platform:
 2. Update the platform loader to include new scripts
 3. Maintain proper dependency chains
 4. Document new features in this guide
+
+## Data Flow Architecture
+
+The standard data flow in SiP plugins follows this pattern:
+
+1. **User Interaction**: User interacts with the UI
+2. **Event Handling**: JavaScript captures the event
+3. **AJAX Request**: Data is sent to the server via standardized AJAX
+4. **Server Processing**: PHP processes the request through registered handlers
+5. **Response**: Server sends a standardized response
+6. **UI Update**: JavaScript updates the UI based on response
+
+### JavaScript Architecture
+
+The JavaScript architecture follows a modular namespace pattern:
+
+```
+SiP.Core              # Core namespace (provided by platform)
+├── debug             # Debugging utilities
+├── utilities         # Shared utilities
+├── ajax              # AJAX handling
+└── state             # State management
+
+SiP.PluginName        # Plugin-specific namespace
+├── init              # Initialization
+└── modules           # Feature modules
+```
+
+## Best Practices
+
+1. **Separation of Concerns**: Keep logic, presentation, and data separate
+2. **Use Core Features**: Always use platform-provided utilities
+3. **Consistent Error Handling**: Use standardized error patterns
+4. **Performance**: Leverage platform caching and optimization
+5. **Documentation**: Document architectural decisions
 
 ## Plugin Update System
 

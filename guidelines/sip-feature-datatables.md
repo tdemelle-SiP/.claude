@@ -1178,4 +1178,5 @@ When a table isn't showing:
 Remember: When something isn't showing, first check if it's simply hidden. The simplest explanation is usually correct.
 
 ## Related Guides
+- For CSS styling standards and DataTables-specific CSS architecture, see the [CSS Development Guide](./sip-development-css.md#datatables-styling-standards)
 - For dashboard integration examples, see the [Dashboards Guide](./sip-plugin-dashboards.md#step-5-initialize-datatables)
