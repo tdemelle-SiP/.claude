@@ -599,17 +599,19 @@ templateTable = new DataTable("#template-table", {
 
 ## Product Creation Table
 
-The creation table implements complex rowGroup functionality with template and variant management.
+The creation table implements complex rowGroup functionality with template and variant management. 
 
-### Creation Table Configuration
+**Note**: The creation table underwent a column reorganization to improve alignment across different row types. For detailed architecture information, see the [Creation Table System section](./sip-printify-manager-architecture.md#creation-table-system) in the SiP Printify Manager Architecture guide.
+
+### Creation Table Configuration (After Column Reorganization)
 
 ```javascript
 creationTable = new DataTable("#creation-table", {
     serverSide: false,
     processing: false,
     
-    order: [[5, "asc"], [3, "asc"]], // Order by status column then title column
-    orderFixed: [3, "asc"],
+    order: [[5, "asc"], [3, "asc"]], // Order by row_type column then title column
+    orderFixed: [4, "asc"], // Fixed ordering on row_type column (now column 4)
     
     deferRender: true,
     bAutoWidth: false,
@@ -633,10 +635,25 @@ creationTable = new DataTable("#creation-table", {
     
     columns: [
         {
+            data: "row_number",
+            name: "row_number",
+            defaultContent: "",
+            className: "row-number-column",
+            orderable: false,
+            visible: true
+        },
+        {
             data: "selector",
             name: "checkbox",
             defaultContent: "",
             className: "select-column"
+        },
+        {
+            data: "visibility",
+            name: "visibility",
+            defaultContent: "",
+            className: "visibility-column",
+            orderable: false
         },
         {
             data: "variant_title",
@@ -681,6 +698,22 @@ creationTable = new DataTable("#creation-table", {
         }
     ],
     
+    columnDefs: [
+        {
+            orderable: false,
+            targets: [0, 2]  // Row number and visibility columns
+        },
+        {
+            orderable: false,
+            render: DataTable.render.select(),
+            targets: 1  // Checkbox column is now index 1
+        },
+        {
+            orderSequence: ['asc', 'desc'],
+            targets: '_all'  // Applies to all columns
+        }
+    ],
+    
     rowGroup: {
         dataSrc: function(row) {
             return row.is_template ? "template" : row.child_product_id;
@@ -693,7 +726,9 @@ creationTable = new DataTable("#creation-table", {
             if (isTemplate) {
                 // Template summary row
                 return `<tr class="template-summary-row" data-template="true">
-                    <td class="sip-visibility select-column toggle-group" data-template="true">▶</td>
+                    <td class="row-number-column"></td>
+                    <td class="select-column"></td>
+                    <td class="visibility-column toggle-group" data-template="true">▶</td>
                     <td class="title-column">${rowData.template_title || rowData.variant_title.split(" - Variant")[0]}</td>
                     <td class="row-type-column">Template Summary</td>
                     <td class="status-column">Template</td>
@@ -705,16 +740,16 @@ creationTable = new DataTable("#creation-table", {
                     <td class="price-column"></td>
                 </tr>`;
             } else {
-                // Child product summary row
-                let childData = rowData;
-                let childCount = rows.count();
-                let productTitle = childData.product_title || childData.child_product_id;
+                // Child product summary row with row number
+                let childProductTitle = rowData.variant_title.split(" - Variant")[0];
                 
-                return `<tr class="child-summary-row" data-child_product_id="${childData.child_product_id}">
-                    <td class="sip-visibility select-column toggle-group" data-child_product_id="${childData.child_product_id}">▶</td>
-                    <td class="child-title-column">${productTitle} (${childCount})</td>
-                    <td class="row-type-column">${childData.child_product_tag}</td>
-                    <td class="status-column">${childData.status}</td>
+                return `<tr class="child-product-summary-row" data-child_product_id="${rowData.child_product_id}">
+                    <td class="row-number-column"><span class="row-number"></span></td>
+                    <td class="select-column"><input type="checkbox" class="child-product-group-select"></td>
+                    <td class="visibility-column toggle-group" data-child_product_id="${rowData.child_product_id}" style="cursor: pointer;">▶</td>
+                    <td class="title-column">${childProductTitle}</td>
+                    <td class="row-type-column">Child Product Summary</td>
+                    <td class="status-column">${rowData.status}</td>
                     <td class="print-area-column"></td>
                     <td class="colors-column"></td>
                     <td class="sizes-column"></td>

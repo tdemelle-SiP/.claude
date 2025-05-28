@@ -20,6 +20,8 @@ When coding, only use the methods and standards in the sip plugin suite document
 
  If you are analyzing code in order to understand how it functions or to understand why a bug is occurring, please don't be satisfied basing your analysis and recommendation on what a superficial read of the immediate code suggests, what it seems like or what it "might" be; look at the actual code context when you have a theory and replace your speculation with a definitive understanding of the actual situation.  
  
+ Systematically follow through the whole code sequence in question from beginning to end without making any leaps in logic based on assumptions so that you understand the structure of the entire contextual framework before drilling into details speculatively.    
+ 
  -- WORKING --
  Keep code simple, clean and straightforward. Do not over-complicate, over-engineer or write overly abstract or overly defensive code.
 

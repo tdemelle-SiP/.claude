@@ -24,6 +24,44 @@ assets/css/
     └── ...
 ```
 
+### Dashboard Element Organization
+
+Table styles should be organized in clear sections within tables.css:
+
+```css
+/*==============================================================================
+SHARED TABLE STYLES
+==============================================================================*/
+/* Common DataTables overrides, base table styling, shared utilities */
+
+/*==============================================================================
+TEMPLATE TABLE
+==============================================================================*/
+/* All styles specific to #template-table */
+
+/*==============================================================================
+PRODUCT TABLE
+==============================================================================*/
+/* All styles specific to #product-table */
+
+/*==============================================================================
+CREATION TABLE
+==============================================================================*/
+/* All styles specific to #creation-table */
+
+/*==============================================================================
+IMAGE TABLE
+==============================================================================*/
+/* All styles specific to #image-table */
+```
+
+This organization allows:
+- Easy location of specific component styles
+- Simple commenting out of entire sections for debugging
+- Shared styles remain accessible to all tables
+- Clear boundaries between components
+- Maintainable and intuitive structure
+
 ## CSS Variables
 
 Always use CSS variables for consistent values:
@@ -108,8 +146,15 @@ Place media queries at the end of each component's style section:
 5. Keep selectors as simple as possible
 6. Specify proper fallbacks for variables
 
+## DataTables
+
+For styling DataTables, we have a comprehensive standard that ensures consistency across all table implementations, especially when dealing with multiple row types.
+
+See the [DataTables Styling Standard](datatables-styling-standard.md) for detailed guidelines.
+
 ## Related Documents
 
 - [Z-Index Standards](z-index-standards.md)
 - [UI Components](ui-components.md)
 - [SiP Plugin Architecture](plugin-architecture.md)
+- [DataTables Styling Standard](datatables-styling-standard.md)

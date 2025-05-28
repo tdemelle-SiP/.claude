@@ -120,6 +120,112 @@ initComplete: function() {
 - Add table lifecycle management section
 - Document UI element movement best practices
 
+## Creation Table Column Reorganization - Phase 2
+
+### Context
+The creation table column reorganization (Phase 1) was partially completed but revealed fundamental structural issues:
+
+1. **Current State**: 
+   - Added 3 new columns (row_number, selector, visibility) to align data across row types
+   - Template/child summary rows are manually injected after DataTables initialization
+   - Content is injected into summary rows via jQuery after table draw
+   - CSS uses nth-child selectors for column widths
+   - Nested `<td>` elements in print_area causing invalid HTML
+
+2. **Issues Found**:
+   - Variant rows have misaligned columns due to print_area HTML structure
+   - Tags column not truncating despite CSS rules
+   - Title columns expanding inconsistently across row types
+   - `table-layout: fixed` only respects first DOM row, not injected rows
+   - nth-child selectors are fragile and hard to maintain
+
+### Proposed Solution
+
+#### 1. Fix Immediate Issues
+- **Fix nested TD bug**: Modify `buildImageCells()` to not create `<td>` elements
+- **Replace nth-child with column classes**: Use `.title-column`, `.tags-column` etc for all column styling
+- **Ensure consistent data formatting**: All data should be formatted before passing to DataTables
+
+#### 2. Restructure Using DataTables Conventions
+
+**Current Approach (problematic):**
+```javascript
+// In initComplete
+api.row.add(variantData); // Add variant rows
+api.draw();
+buildTemplateSummaryCells(); // Manually inject content
+buildChildProductSummaryCells(); // More manual injection
+```
+
+**Proposed Approach:**
+```javascript
+// In rowGroup.startRender
+return `<tr class="template-summary-row">
+    <td class="row-number-column"></td>
+    <td class="select-column"></td>
+    <!-- ... all 12 cells with classes but empty content ... -->
+</tr>`;
+
+// After draw, inject content into existing structure
+$('.template-summary-row .colors-column').html(colorSwatches);
+```
+
+**Benefits:**
+- DataTables manages all row structure
+- Consistent column count guaranteed
+- `table-layout: fixed` works properly
+- Sorting can be triggered after content injection
+
+#### 3. Implementation Steps
+
+1. **Update rowGroup.startRender** (creation-table-setup-actions.js lines 322-387):
+   - Create full 12-column structure with empty cells
+   - Add all necessary classes to cells
+   - Remove inline content generation
+
+2. **Fix buildImageCells** (creation-table-setup-actions.js line 1507):
+   - Change from creating `<td>` to creating `<div>` wrapper only
+   - Ensure image selection functionality preserved
+
+3. **Update CSS** (tables.css):
+   - Replace all nth-child selectors with class-based selectors
+   - Ensure truncation works on injected content
+   - Test with `table-layout: fixed`
+
+4. **Test injection timing**:
+   - Verify content injection works after draw
+   - Add `api.draw()` after injection to resort if needed
+   - Confirm state management (expand/collapse) still works
+
+### Files to Modify
+1. `/assets/js/modules/creation-table-setup-actions.js`
+   - Lines 322-387 (rowGroup.startRender)
+   - Lines 1507-1545 (buildImageCells)
+   - Lines 773-896 (buildTemplateSummaryCells)
+   - Lines 1239-1498 (buildChildProductSummaryCells)
+
+2. `/assets/css/modules/tables.css`
+   - Lines 707-777 (column width definitions)
+   - Remove all creation table nth-child selectors
+   - Add class-based column width rules
+
+### Testing Checklist
+- [ ] All row types have 12 columns
+- [ ] Tags column truncates properly
+- [ ] Title column maintains consistent width
+- [ ] Print area shows images without nested TDs
+- [ ] Row selection works correctly
+- [ ] Expand/collapse functionality preserved
+- [ ] Sorting works after content injection
+- [ ] No JavaScript errors in console
+
+### Notes
+- Current truncation of description to 100 chars in JS should remain
+- Consider applying similar truncation to tags in JavaScript
+- Image selection code in image-actions.js (line 780) uses `.image-cell input.creation-table-image-select` - must preserve this structure
+
+**Priority:** High - Current implementation has fundamental structural issues affecting usability
+
 ## Low Priority / Future Enhancements
 
 *Nice-to-have improvements for future consideration*

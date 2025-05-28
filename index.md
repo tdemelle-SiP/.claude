@@ -172,6 +172,14 @@ Guides for using the SiP Development Tools plugin for automated workflows.
 |-------|-------------|--------|
 | [Release Management](./guidelines/sip-development-release-mgmt.md) | Versioning, Git workflow, and automated deployment | ✅ Complete |
 | [Testing & Debugging](./guidelines/sip-development-testing.md) | Testing strategies and debugging | ✅ Complete |
+| [Debug Logging](./guidelines/sip-development-debug-logging.md) | Implementing and using debug logging | ✅ Complete |
+
+### Development Standards
+Standards and best practices for SiP plugin development.
+
+| Guide | Description | Status |
+|-------|-------------|--------|
+| [CSS Standards](./guidelines/sip-css-standards.md) | CSS architecture, naming conventions, and best practices | ✅ Complete |
 
 ### Plugin-Specific Architecture
 Detailed architecture guides for specific SiP plugins with complex systems.

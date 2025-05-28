@@ -318,3 +318,197 @@ In the creation table, color swatches are rendered using:
 - Large template files can slow processing - monitor file sizes
 - JavaScript relationship processing is client-side - consider server-side processing for scale
 - DataTable rendering can be slow with many products - implement pagination if needed
+
+## Creation Table System
+
+### Overview
+
+The creation table is a complex DataTable implementation that manages product templates and their child products during the creation/editing process. It uses row grouping to organize data hierarchically and provides a rich interface for managing product variants.
+
+### Table Architecture
+
+#### Row Types
+
+The creation table displays three distinct types of rows:
+
+1. **Template Summary Row** - Header row for template products
+   - Not a DataTable row, injected via `rowGroup.startRender`
+   - Contains aggregated template data
+   - No checkbox (templates cannot be selected)
+   - Always sorts to the top
+
+2. **Child Product Summary Row** - Header row for each child product
+   - Not a DataTable row, injected via `rowGroup.startRender`
+   - Contains aggregated child product data
+   - Has group checkbox for selecting all variants
+   - Shows row numbers (sequential, updates with filtering)
+
+3. **Variant Rows** - Actual DataTable rows
+   - Represent individual product variants
+   - Can be selected individually
+   - Hidden by default, toggled via visibility control
+
+#### Column Structure (After Reorganization)
+
+| Index | Column Name | Purpose | Class Name | Notes |
+|-------|------------|---------|------------|-------|
+| 0 | Row Number | Sequential numbering | `row-number-column` | Only shows for child products |
+| 1 | Checkbox | Selection control | `select-column` | Uses DataTable.render.select() |
+| 2 | Visibility | Expand/collapse toggle | `visibility-column` | Shows ▶/▼ icons |
+| 3 | Title | Product/variant name | `title-column` | Main identifier |
+| 4 | Row Type | Type identifier | `row-type-column` | Used for sorting |
+| 5 | Status | Product status | `status-column` | Work in Progress, Uploaded, etc. |
+| 6 | Print Area | Image thumbnails | `print-area-column` | Multiple image cells |
+| 7 | Colors | Color swatches | `colors-column` | Visual color options |
+| 8 | Sizes | Size options | `sizes-column` | Comma-separated list |
+| 9 | Tags | Product tags | `tags-column` | Metadata |
+| 10 | Description | Product description | `description-column` | Truncated text |
+| 11 | Price | Price range | `price-column` | Min-max pricing |
+
+### Key Files and Responsibilities
+
+#### PHP Files
+
+- **`creation-table-functions.php`**
+  - Main PHP handler for the creation table
+  - Generates initial HTML structure
+  - Handles AJAX actions for child product operations
+  - Manages WIP (Work In Progress) file operations
+  - Integrates with Printify API for uploads
+
+- **`creation-table-setup-functions.php`**
+  - Handles WIP file creation and loading
+  - Template initialization
+  - Cross-table operations (template to creation table)
+  - File system operations for temporary edits
+
+#### JavaScript Files
+
+- **`creation-table-setup-actions.js`**
+  - DataTable initialization and configuration
+  - Row rendering and grouping logic
+  - Cell building functions
+  - State management functions
+  - Event listener attachment
+
+- **`creation-table-actions.js`**
+  - User interaction handlers
+  - AJAX action triggers
+  - Image selection management
+  - Save/close dialog handling
+  - Form submission processing
+  - Success response handlers
+
+### Technical Implementation Details
+
+#### DataTable Configuration
+
+```javascript
+creationTable = new DataTable("#creation-table", {
+    serverSide: false,
+    processing: false,
+    order: [[5, "asc"], [3, "asc"]], // Order by row_type then title
+    orderFixed: [4, "asc"], // Fixed ordering on row_type column
+    
+    rowGroup: {
+        dataSrc: function(row) {
+            return row.is_template ? "template" : row.child_product_id;
+        },
+        startRender: function(rows, group) {
+            // Renders summary rows
+        }
+    },
+    
+    select: {
+        style: "multi",
+        selector: "td.select-column",
+        headerCheckbox: true
+    }
+});
+```
+
+#### Row Grouping Logic
+
+- Groups are determined by `is_template` flag or `child_product_id`
+- Template variants group under "template"
+- Child product variants group under their `child_product_id`
+- Summary rows are injected HTML, not DataTable rows
+- Variant rows are actual DataTable rows that can be hidden/shown
+
+#### State Management
+
+**Global State**:
+```javascript
+window.creationTemplateWipData = {
+    path: 'template_name_wip.json',
+    data: { /* template data */ }
+}
+```
+
+**Local Storage Structure**:
+```javascript
+{
+    "sip-core": {
+        "sip-printify-manager": {
+            "creations-table": {
+                "loaded-wip": "template_title",
+                "wipFilename": "template_name_wip.json",
+                "templateFile": "template_name.json",
+                "isDirty": true/false
+            }
+        }
+    }
+}
+```
+
+### WIP (Work In Progress) System
+
+1. When a template is loaded, a WIP copy is created
+2. All edits happen on the WIP file
+3. Save operation copies WIP back to main file
+4. Close without saving discards WIP changes
+5. Dirty state tracking prevents accidental data loss
+
+### Key Functions
+
+#### JavaScript Functions
+
+- **`updateChildProductRowNumbers()`**
+  - Dynamically numbers visible child product summary rows
+  - Updates on table draw, filter, and sort
+  - Sequential numbering starting from 1
+  - Only shows for child products, not templates
+
+- **`buildTemplateVariantCells(templateWipData)`**
+  - Processes raw template data into variant row objects
+  - Groups variants by unique image sets
+  - Returns array of variant objects with HTML cells
+
+- **`buildChildProductVariantCells(templateWipData, childProduct)`**
+  - Similar to template variant builder
+  - Overlays child product data on template structure
+  - Handles image replacements and option overrides
+
+- **`buildTemplateSummaryCells()`**
+  - Aggregates template data for summary row
+  - Builds image cells with header checkboxes
+  - Calculates price ranges and option sets
+
+- **`buildChildProductSummaryCells()`**
+  - Aggregates child product data for summary rows
+  - Inherits from template where child data missing
+  - Updates status-specific styling
+
+### Common Issues and Solutions
+
+#### Issue: Template rows not sorting to top
+**Solution**: Ensure `orderFixed` is set on the row_type column (now column 4)
+
+#### Issue: Row numbers not updating
+**Solution**: Call `updateChildProductRowNumbers()` in `drawCallback`
+
+#### Issue: Checkboxes in wrong column
+**Solution**: Update `columnDefs` targets when adding new columns
+
+#### Issue: Summary rows misaligned
+**Solution**: Ensure summary row HTML has same number of `<td>` elements as columns array
