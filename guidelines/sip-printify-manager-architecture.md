@@ -293,3 +293,93 @@ When updating existing code:
 3. Remove all redundant processing
 4. Remove backward compatibility code immediately
 5. Let errors surface to identify missing updates
+
+## WIP File Lifecycle Management
+
+The SIP Printify Manager uses Work-In-Progress (WIP) files to manage the state of the product creation table.
+
+### Purpose
+
+- A WIP (Work In Progress) file represents the current state of the product creation table
+- Only one WIP file exists at a time (single active template)
+- Created by copying a template file with `_wip.json` suffix
+
+### Core Principle: Single Entry Point
+
+All WIP file operations flow through `sip_check_and_load_template_wip()` which handles the complete lifecycle.
+
+### WIP File Structure
+
+- **Location**: `/templates/wip/` directory
+- **Naming**: `{template_basename}_wip.json`
+- **Creation**: Copy of template file with modified suffix
+- **Constraint**: Only one WIP file exists at a time
+
+### Lifecycle Stages
+
+1. **Check**: Determine if a WIP file exists
+2. **Create**: Copy template to create new WIP if needed  
+3. **Load**: Read WIP file contents
+4. **Update**: Modify WIP file as user makes changes
+5. **Clear**: Delete WIP file when done
+
+### Lifecycle Operations
+
+```php
+// Single entry point for all WIP operations
+$result = sip_check_and_load_template_wip($template_name);
+
+// Returns:
+[
+    'success' => true,
+    'path' => '/path/to/template_wip.json',
+    'data' => [...],  // Parsed JSON data
+    'filename' => 'template_wip.json',
+    'template_name' => 'template'
+]
+```
+
+### Operation Flow
+
+1. **Check**: Looks for existing WIP file
+2. **Validate**: If template requested, ensures WIP matches
+3. **Create**: Copies template to create WIP if needed
+4. **Load**: Reads and parses JSON data once
+5. **Return**: Provides complete data structure
+
+### AJAX Integration
+
+For AJAX requests, use the wrapper function:
+```php
+// In AJAX handler
+case 'check_and_load_template_wip':
+    sip_ajax_check_and_load_template_wip();
+    break;
+```
+
+### Benefits
+
+1. **Single file read**: Data loaded once per operation
+2. **Atomic operations**: Check/create/load in one call
+3. **Clear ownership**: One function manages lifecycle
+4. **Consistent state**: Automatic cleanup of old WIP files
+
+### Anti-Patterns to Avoid
+
+❌ **Don't** check for WIP files in multiple places:
+```php
+// Bad - multiple checks
+if (file_exists($wip_path)) { ... }
+// Then checking again in another function
+$wip = check_wip_exists();
+if ($wip) { ... }
+```
+
+✅ **Do** use the single entry point:
+```php
+// Good - single operation
+$result = sip_check_and_load_template_wip();
+if ($result['success']) {
+    // Use $result['data']
+}
+```
