@@ -21,5 +21,6 @@
       "WebFetch(domain:developer.wordpress.org)"
     ],
     "deny": []
-  }
+  },
+  "enableAllProjectMcpServers": false
 }

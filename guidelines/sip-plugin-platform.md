@@ -65,7 +65,7 @@ The following core features are always available to child plugins. For details o
 | Debug | `SiP.Core.debug` | Centralized debug logging system |
 | AJAX | `SiP.Core.ajax` | Standardized AJAX handling |
 | State | `SiP.Core.state` | Client-side state management |
-| Utilities | `SiP.Core.utilities` | Common utility functions |
+| Utilities | `SiP.Core.utilities` | Common utility functions including string normalization, HTML escaping, and UI helpers |
 
 ### Module Features
 
@@ -120,6 +120,17 @@ SiP.YourPlugin.someModule = (function($) {
             .catch(error => {
                 debug.error('Error:', error);
             });
+    }
+
+    // Use utility functions
+    function applyStatusStyling(element, status) {
+        // Generate consistent CSS class from dynamic data
+        const statusClass = SiP.Core.utilities.normalizeForClass(status, 'status-');
+        $(element).addClass(statusClass);
+        
+        // Escape HTML for safe display
+        const safeStatus = SiP.Core.utilities.escapeHtml(status);
+        $(element).attr('title', safeStatus);
     }
 
     // Return public methods

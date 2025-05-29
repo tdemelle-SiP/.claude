@@ -42,6 +42,40 @@ This file tracks technical improvements and refactoring ideas for the SiP Plugin
 
 **Priority:** High - Ensures documentation accurately reflects code
 
+### Propagate PHP Debug Logging to All SiP Plugins
+
+**Current State:**
+- PHP debug utility class (`SiP_Debug`) created in sip-plugins-core
+- Implements controlled debug logging that respects `sip_debug_enabled` option
+- Matches patterns established by JavaScript debug system
+- Applied to sip-printify-manager creation-table-setup-functions.php
+
+**Required Tasks:**
+1. Search all SiP plugins for `error_log()` calls
+2. Replace with appropriate `sip_debug()` calls using proper contexts:
+   - `ajax_request` - AJAX request handling
+   - `creation_setup` - Creation table operations
+   - `template_ops` - Template operations
+   - `api_call` - External API calls
+   - `file_ops` - File system operations
+3. Remove debug code that writes directly to files (like provisional gallery)
+4. Update documentation to include PHP debug utility usage
+5. Add examples to coding guidelines
+
+**Benefits:**
+- Consistent debug logging across PHP and JavaScript
+- Respects debug enabled setting (no output in production)
+- Centralized debug log location
+- Better context tracking for debugging
+
+**Affected Plugins:**
+- sip-printify-manager (partially complete)
+- sip-woocommerce-monitor
+- sip-development-tools
+- Any other SiP plugins with PHP code
+
+**Priority:** High - Improves debugging workflow and prevents production console errors
+
 ## Medium Priority
 
 *Improvements that would enhance maintainability or performance*

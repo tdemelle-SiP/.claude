@@ -645,6 +645,129 @@ Headers are used consistently across all SiP plugins with the following structur
 
 For header implementation details, see the [Dashboard Guide](sip-plugin-dashboards.md#step-3-create-the-dashboard-header).
 
+## Utility Functions
+
+SiP Core provides utility functions to help with common UI tasks.
+
+### String Normalization - normalizeForClass()
+
+When generating CSS classes dynamically from data (e.g., status values, product types), use the `normalizeForClass()` utility to ensure consistent, valid CSS class names:
+
+```javascript
+// Basic usage
+const className = SiP.Core.utilities.normalizeForClass('Work In Progress');
+// Returns: 'work-in-progress'
+
+// With prefix
+const statusClass = SiP.Core.utilities.normalizeForClass('Uploaded - Unpublished', 'status-');
+// Returns: 'status-uploaded-unpublished'
+
+// Handles various input formats
+SiP.Core.utilities.normalizeForClass('Some_Complex String!'); // Returns: 'some-complex-string'
+SiP.Core.utilities.normalizeForClass('Multiple   Spaces'); // Returns: 'multiple-spaces'
+SiP.Core.utilities.normalizeForClass(' - Leading/Trailing - '); // Returns: 'leading-trailing'
+```
+
+#### Normalization Rules
+
+The utility applies these transformations in order:
+1. Convert to lowercase
+2. Replace " - " with single dash (prevents multiple dashes)
+3. Replace remaining spaces with dashes
+4. Replace underscores with dashes
+5. Collapse multiple consecutive dashes
+6. Remove non-alphanumeric characters (except dashes)
+7. Remove leading/trailing dashes
+
+#### Common Use Cases
+
+```javascript
+// Status-based styling
+const status = rowData.status; // e.g., "Uploaded - Published"
+const statusClass = SiP.Core.utilities.normalizeForClass(status, 'status-');
+$row.addClass(statusClass); // Adds 'status-uploaded-published'
+
+// Type-based styling
+const productType = product.type; // e.g., "Parent Product"
+const typeClass = SiP.Core.utilities.normalizeForClass(productType, 'type-');
+$element.addClass(typeClass); // Adds 'type-parent-product'
+
+// Data attributes
+const categoryName = "Home & Garden";
+const categoryId = SiP.Core.utilities.normalizeForClass(categoryName);
+$element.attr('data-category', categoryId); // Sets 'data-category="home-garden"'
+```
+
+#### Implementation Pattern
+
+```javascript
+// ❌ Bad - Inconsistent normalization
+const className = 'status-' + status.toLowerCase().replace(/\s+/g, '-');
+
+// ❌ Bad - Missing edge case handling
+const className = status.replace(/ /g, '-').toLowerCase();
+
+// ✅ Good - Use standard utility
+const className = SiP.Core.utilities.normalizeForClass(status, 'status-');
+
+// ✅ Good - For multiple classes
+const classes = [
+    SiP.Core.utilities.normalizeForClass(status, 'status-'),
+    SiP.Core.utilities.normalizeForClass(type, 'type-'),
+    'base-class'
+].join(' ');
+```
+
+For more details on dynamic class generation and CSS standards, see [CSS Development - Dynamic Class Generation](sip-development-css.md#dynamic-class-generation).
+
+### HTML Escaping - escapeHtml()
+
+When displaying user-generated content or dynamic data in the UI, use the `escapeHtml()` utility to prevent XSS attacks:
+
+```javascript
+// Basic usage
+const safeText = SiP.Core.utilities.escapeHtml('<script>alert("XSS")</script>');
+// Returns: '&lt;script&gt;alert(&quot;XSS&quot;)&lt;/script&gt;'
+
+// Common use cases
+const userInput = $('#user-input').val();
+const safeInput = SiP.Core.utilities.escapeHtml(userInput);
+$('#display-area').html(safeInput);
+
+// In dynamic HTML generation
+const productTitle = response.data.title;
+const html = `<h3>${SiP.Core.utilities.escapeHtml(productTitle)}</h3>`;
+```
+
+#### Characters Escaped
+
+The utility escapes these potentially dangerous characters:
+- `&` → `&amp;`
+- `<` → `&lt;`
+- `>` → `&gt;`
+- `"` → `&quot;`
+- `'` → `&#39;`
+- `/` → `&#x2F;`
+
+#### Usage Patterns
+
+```javascript
+// ❌ Bad - Direct HTML injection
+$('#title').html(userData.title);
+
+// ❌ Bad - String concatenation without escaping
+const html = '<div>' + userData.content + '</div>';
+
+// ✅ Good - Escape user data
+$('#title').html(SiP.Core.utilities.escapeHtml(userData.title));
+
+// ✅ Good - Escape in template literals
+const html = `<div>${SiP.Core.utilities.escapeHtml(userData.content)}</div>`;
+
+// ✅ Good - Use .text() for plain text (jQuery handles escaping)
+$('#title').text(userData.title);
+```
+
 ## Best Practices
 
 1. **Namespace Storage**: Always use the `sip-core` namespace
@@ -655,3 +778,4 @@ For header implementation details, see the [Dashboard Guide](sip-plugin-dashboar
 6. **User Privacy**: Don't store sensitive information in localStorage
 7. **Cross-Browser**: Test localStorage availability before use
 8. **Component Stacking**: Use the standardized z-index system (see [CSS Development](sip-development-css.md#z-index-management))
+9. **Consistent Class Names**: Use `normalizeForClass()` for all dynamic CSS class generation

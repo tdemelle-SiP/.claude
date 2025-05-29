@@ -4,11 +4,17 @@ This guide explains how to use the centralized debug logging system in SiP plugi
 
 ## Overview
 
-The SiP Plugin Suite includes a centralized debug logging system that allows developers to control console output through a simple toggle. This helps keep the console clean in production while providing detailed logging during development.
+The SiP Plugin Suite includes a centralized debug logging system for both JavaScript and PHP that allows developers to control debug output through a simple toggle. This helps keep logs clean in production while providing detailed logging during development.
+
+The system provides:
+- **JavaScript Debug**: Console logging with `SiP.Core.debug`
+- **PHP Debug**: File-based logging with `SiP_Debug` class and `sip_debug()` helper
 
 ## Quick Start
 
 ### For Developers
+
+#### JavaScript Debug Logging
 
 1. **Using Debug in Your Code**:
    ```javascript
@@ -39,6 +45,45 @@ The SiP Plugin Suite includes a centralized debug logging system that allows dev
    })(jQuery);
    ```
 
+#### PHP Debug Logging
+
+1. **Using Debug in PHP**:
+   ```php
+   // Simple debug message
+   sip_debug('Processing template', 'template_ops');
+   
+   // With data
+   sip_debug('API response received', 'api_call', $response);
+   
+   // Error logging (always logs regardless of debug setting)
+   sip_error('Failed to connect to API', 'api_call', [
+       'url' => $api_url,
+       'error' => $error_message
+   ]);
+   ```
+
+2. **Using the Debug Class Directly**:
+   ```php
+   // For more control over plugin identification
+   SiP_Debug::log('Custom message', 'sip-printify-manager', 'context', $data);
+   
+   // Check if debug is enabled
+   if (SiP_Debug::isEnabled()) {
+       // Perform expensive debug operations
+       $debug_data = generate_debug_report();
+       SiP_Debug::log('Debug report', 'my-plugin', 'report', $debug_data);
+   }
+   ```
+
+3. **Standard Contexts**:
+   - `ajax_request` - AJAX request handling
+   - `api_call` - External API calls
+   - `file_ops` - File system operations
+   - `template_ops` - Template operations
+   - `creation_setup` - Creation table operations
+   - `db_query` - Database operations
+   - `cache_ops` - Cache operations
+
 ### For End Users
 
 1. **Enable Debug Logging**:
@@ -52,7 +97,7 @@ The SiP Plugin Suite includes a centralized debug logging system that allows dev
 
 ## Implementation Details
 
-### Core Debug Module
+### JavaScript Core Debug Module
 
 Located in `sip-plugins-core/assets/js/core/debug.js`, this module provides:
 
@@ -73,6 +118,37 @@ SiP.Core.debug = {
     disable: function() { /* ... */ },
     syncWithWordPressOption: function() { /* ... */ }
 };
+```
+
+### PHP Core Debug Module
+
+Located in `sip-plugins-core/includes/class-sip-debug.php`, this module provides:
+
+```php
+class SiP_Debug {
+    public static function log($message, $plugin = 'sip-plugins-core', $context = '', $data = null);
+    public static function error($message, $plugin = 'sip-plugins-core', $context = '', $data = null);
+    public static function isEnabled();
+    public static function clearLog();
+}
+
+// Helper functions
+function sip_debug($message, $context = '', $data = null);
+function sip_error($message, $context = '', $data = null);
+```
+
+**Key Features:**
+- Respects the same `sip_debug_enabled` WordPress option as JavaScript debug
+- Automatically detects calling plugin from file path
+- Writes to `/wp-content/plugins/sip-plugins-core/logs/sip-debug.log`
+- Error logging always active (writes to `sip-php-errors.log`)
+- JSON encodes data parameters for easy reading
+- Includes timestamp, plugin name, and context in log entries
+- Uses Eastern Time (ET) with 12-hour AM/PM format
+
+**Log Format:**
+```
+[2025-01-29 10:15:23 AM ET] [sip-printify-manager][template_ops] Processing template: Template Name | Data: {"id":123,"status":"active"}
 ```
 
 ### How It Works
@@ -107,9 +183,10 @@ wp_localize_script('sip-core-debug', 'sipCoreSettings', array(
 
 ### Core Files
 
-1. **debug.js**: Core module that provides debug methods and state checking
-2. **header-debug-toggle.js**: UI toggle that syncs between client and server state
-3. **core-ajax-shell.php**: Server-side handler for toggle AJAX requests
+1. **debug.js**: JavaScript core module that provides debug methods and state checking
+2. **class-sip-debug.php**: PHP debug class providing file-based logging
+3. **header-debug-toggle.js**: UI toggle that syncs between client and server state
+4. **core-ajax-shell.php**: Server-side handler for toggle AJAX requests
 
 For more details on the dual storage pattern, see the [Data Storage Guide](./sip-plugin-data-storage.md#client-server-synchronized-state).
 
@@ -150,13 +227,21 @@ For comprehensive testing approaches, see the [Testing Guide](./sip-development-
 
 ### DON'T ❌
 
-1. **Don't Use console Directly**:
+1. **Don't Use console or error_log Directly**:
    ```javascript
    // Wrong
    console.log('Debug message');
    
    // Right
    debug.log('Debug message');
+   ```
+   
+   ```php
+   // Wrong
+   error_log('Debug message');
+   
+   // Right
+   sip_debug('Debug message', 'context');
    ```
 
 2. **Don't Include Console Logs in PHP Files**:
@@ -372,6 +457,63 @@ function processLargeDataset(items) {
 }
 ```
 
+### PHP AJAX Handler Example
+```php
+function sip_handle_template_action() {
+    sip_debug('Template action handler started', 'ajax_request', $_POST);
+    
+    $action = isset($_POST['template_action']) ? sanitize_text_field($_POST['template_action']) : '';
+    
+    switch ($action) {
+        case 'create_template':
+            sip_debug('Creating new template', 'template_ops');
+            $result = create_template($_POST);
+            
+            if ($result['success']) {
+                sip_debug('Template created successfully', 'template_ops', $result);
+            } else {
+                sip_error('Template creation failed', 'template_ops', $result);
+            }
+            break;
+            
+        default:
+            sip_error('Invalid template action', 'ajax_request', ['action' => $action]);
+    }
+}
+```
+
+### PHP API Integration Example
+```php
+function fetch_printify_products($shop_id) {
+    sip_debug("Fetching products for shop: {$shop_id}", 'api_call');
+    
+    $api_url = "https://api.printify.com/v1/shops/{$shop_id}/products.json";
+    
+    $response = wp_remote_get($api_url, [
+        'headers' => [
+            'Authorization' => 'Bearer ' . get_option('printify_api_token')
+        ]
+    ]);
+    
+    if (is_wp_error($response)) {
+        sip_error('API request failed', 'api_call', [
+            'url' => $api_url,
+            'error' => $response->get_error_message()
+        ]);
+        return false;
+    }
+    
+    $body = wp_remote_retrieve_body($response);
+    $data = json_decode($body, true);
+    
+    sip_debug('Products fetched successfully', 'api_call', [
+        'count' => count($data['data'] ?? [])
+    ]);
+    
+    return $data;
+}
+```
+
 ## Using the Header Debug Toggle
 
 The header toggle is the easiest way for users to control debugging. See the [Dashboard Implementation Guide](./sip-plugin-dashboards.md#header-debug-toggle) for integration examples.
@@ -402,11 +544,13 @@ For more detailed implementation of dashboards with the debug toggle, see the [D
 ## Summary
 
 The SiP debug logging system provides:
-- Centralized control over console output
-- Consistent logging interface across all plugins
+- Centralized control over console output (JavaScript) and log files (PHP)
+- Consistent logging interface across all plugins and languages
 - Easy toggle for development vs production
 - Performance-conscious implementation
-- Clean, organized console output
+- Clean, organized output in both console and log files
 - Synchronized state between client and server
+- Automatic plugin detection in PHP logs
+- Context-based log categorization
 
-Use it liberally during development - it has minimal impact when disabled and greatly improves debugging efficiency.
+Use it liberally during development - it has minimal impact when disabled and greatly improves debugging efficiency across both JavaScript and PHP code.

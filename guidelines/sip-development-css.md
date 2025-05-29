@@ -155,6 +155,59 @@ All classes must use BEM (Block Element Modifier) with the plugin prefix:
 .sip-pm-u-[utility] { }              /* u-hidden, u-text-center */
 ```
 
+## Dynamic Class Generation
+
+### String Normalization for CSS Classes
+When generating CSS classes dynamically from data (e.g., status values), use the standard normalization utility:
+
+```javascript
+// Use SiP.Core.utilities.normalizeForClass()
+const statusClass = SiP.Core.utilities.normalizeForClass('Uploaded - Unpublished', 'status-');
+// Returns: 'status-uploaded-unpublished'
+```
+
+### Normalization Rules
+The `normalizeForClass()` utility applies these transformations in order:
+1. Convert to lowercase
+2. Replace " - " with single dash (prevents triple dashes)
+3. Replace remaining spaces with dashes
+4. Replace underscores with dashes
+5. Collapse multiple consecutive dashes
+6. Remove non-alphanumeric characters (except dashes)
+7. Remove leading/trailing dashes
+
+### Common Dynamic Classes
+```css
+/* Status-based classes */
+.status-work-in-progress { }
+.status-uploaded-unpublished { }
+.status-uploaded-published { }
+.status-archived { }
+
+/* Type-based classes */
+.type-parent { }
+.type-child { }
+.type-single { }
+
+/* Template relationship classes */
+.template-blueprint { }
+.template-parent { }
+.template-child { }
+```
+
+### Implementation Pattern
+```javascript
+// ❌ Bad - Inconsistent normalization
+const statusClass = 'status-' + status.toLowerCase().replace(/\s+/g, '-');
+
+// ✅ Good - Use standard utility
+const statusClass = SiP.Core.utilities.normalizeForClass(status, 'status-');
+
+// ✅ Also Good - For data attributes
+const statusId = SiP.Core.utilities.normalizeForClass(status);
+element.setAttribute('data-status', statusId);
+```
+
 ## Selector Strategy
 
 ### Use Classes, Not IDs

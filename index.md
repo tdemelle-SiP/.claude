@@ -72,10 +72,11 @@ A foundational plugin providing centralized functionality that all other SiP plu
 
 1. **AJAX System**: Centralized request routing and standardized response formatting
 2. **UI Utilities**: Shared components (spinners, toasts, dialogs)
-3. **Plugin Framework**: Registration system and shared menu management
-4. **Update Mechanism**: Centralized update system with dependency validation
-5. **Dependency Management**: Automated version requirements and compatibility checking
-6. **Libraries**: CodeMirror editor and PhotoSwipe lightbox
+3. **Debug Logging**: Unified JavaScript and PHP debug logging system
+4. **Plugin Framework**: Registration system and shared menu management
+5. **Update Mechanism**: Centralized update system with dependency validation
+6. **Dependency Management**: Automated version requirements and compatibility checking
+7. **Libraries**: CodeMirror editor and PhotoSwipe lightbox
 
 ### SiP Development Tools
 Development and deployment utilities for the plugin suite:
