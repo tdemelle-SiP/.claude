@@ -83,6 +83,25 @@ The system provides:
    - `creation_setup` - Creation table operations
    - `db_query` - Database operations
    - `cache_ops` - Cache operations
+   - `system_test` - Debug system testing
+
+4. **When to Use Class Methods vs Helper Functions**:
+   
+   Use helper functions for most cases:
+   ```php
+   sip_debug('Message', 'context', $data);
+   sip_error('Error message', 'context', $data);
+   ```
+   
+   Use class methods directly when:
+   - You need to specify the plugin name explicitly (e.g., in AJAX handlers)
+   - The automatic plugin detection might fail (deep call stacks)
+   - You're in sip-plugins-core itself
+   
+   ```php
+   SiP_Debug::log('Message', 'my-plugin', 'context', $data);
+   SiP_Debug::error('Error', 'my-plugin', 'context', $data);
+   ```
 
 ### For End Users
 
