@@ -203,3 +203,93 @@ Enable debug logging to trace highlighting:
 debug.log("Product highlighting - Blueprint ID:", blueprintId);
 debug.log("Blueprint row not found for bp_id=" + blueprintId);
 ```
+
+## Template Data Handling
+
+The SIP Printify Manager implements a standardized pattern for handling template data throughout the application.
+
+### Core Principle: Process Once at the Source
+
+Template identifiers are processed once when loaded, then passed consistently throughout the application without further manipulation.
+
+### Template Data Structure
+
+When loading templates, the following fields are provided:
+
+```php
+$formatted_templates[] = array(
+    'basename' => $template_basename,        // Template identifier without extension
+    'filename' => $template_filename,        // Full filename with extension
+    'title' => $template_title,             // Display title (from JSON or basename fallback)
+    'template_title' => $template_title,    // Legacy field for compatibility
+    // ... other fields
+);
+```
+
+### Naming Conventions
+
+#### Template Files
+- **Regular templates**: `{basename}.json` in `/templates/`
+- **WIP templates**: `{basename}_wip.json` in `/templates/wip/`
+
+#### Data Flow
+1. **Backend**: Process filename → basename once in `sip_load_templates_for_table()`
+2. **Frontend**: Use `row.basename` directly from table data
+3. **AJAX**: Pass basename in requests, no processing needed
+
+### Implementation Pattern
+
+#### PHP (Backend)
+```php
+// Process once when loading
+$template_basename = basename($template_file, '.json');
+$template_filename = basename($template_file);
+
+// Use basename directly elsewhere
+$template_path = $templates_dir . $template_basename . '.json';
+$wip_path = $wip_dir . $template_basename . '_wip.json';
+```
+
+#### JavaScript (Frontend)
+```javascript
+// Use basename from table data
+const templateBasename = selectedRows[0].basename;
+
+// Pass to AJAX without processing
+formData.append('template_name', templateBasename);
+```
+
+### Anti-Patterns to Avoid
+
+❌ **Don't** process extensions multiple times:
+```php
+// Bad - processing in multiple places
+$name = str_replace('.json', '', $template_id);
+$name = basename($template_file, '.json');
+```
+
+❌ **Don't** add backward compatibility fallbacks:
+```javascript
+// Bad - fallback logic hides errors
+const name = row.basename || row.filename.replace('.json', '');
+```
+
+✅ **Do** expect and require proper data structure:
+```javascript
+// Good - fail fast if data is incorrect
+const templateBasename = selectedRows[0].basename;
+```
+
+### Benefits
+1. **Single source of truth**: No confusion about where processing happens
+2. **Performance**: Fewer string operations
+3. **Maintainability**: Clear data flow
+4. **Debugging**: Errors surface immediately at the source
+
+### Migration Notes
+When updating existing code:
+1. Add basename field to data sources
+2. Update consumers to use basename
+3. Remove all redundant processing
+4. Remove backward compatibility code immediately
+5. Let errors surface to identify missing updates
