@@ -357,6 +357,45 @@ case 'check_and_load_template_wip':
     break;
 ```
 
+### Parameter Naming Convention
+
+The system uses two distinct parameter names to clearly indicate the lifecycle stage:
+
+#### `template_basename` - Pre-WIP Selection
+- **Used when**: Selecting a template from the template table to create/load a WIP
+- **Contains**: Template basename without any suffixes (e.g., "my_template")
+- **Example**: 
+```javascript
+// In template-actions.js when selecting a template
+formData.append('template_basename', templateBasename);
+```
+
+#### `wip_basename` - Post-WIP Operations
+- **Used when**: Performing operations on an already-loaded WIP file
+- **Contains**: Template basename without any suffixes (e.g., "my_template")
+- **Example**:
+```javascript
+// In creation-table-actions.js when working with loaded WIP
+formData.append('wip_basename', templateBasename);
+```
+
+#### Implementation Pattern
+
+JavaScript always sends just the basename:
+```javascript
+// Extract basename if you have a full filename
+const templateBasename = templateWipFilename ? templateWipFilename.replace('_wip.json', '') : '';
+formData.append('wip_basename', templateBasename);
+```
+
+PHP handles all file path construction:
+```php
+// PHP builds the complete path
+$wip_path = $wip_dir . $template_basename . '_wip.json';
+```
+
+This clear distinction prevents confusion about which lifecycle stage an operation is in and ensures consistent data handling throughout the system.
+
 ### Benefits
 
 1. **Single file read**: Data loaded once per operation
