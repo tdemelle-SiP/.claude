@@ -422,3 +422,45 @@ if ($result['success']) {
     // Use $result['data']
 }
 ```
+
+### WIP Data Access Patterns
+
+#### Frontend (JavaScript)
+
+The WIP data is stored in `window.creationTemplateWipData` with this structure:
+```javascript
+window.creationTemplateWipData = {
+    path: 'template_name_wip.json',  // Just the filename, not full path
+    data: { /* template data */ }
+}
+```
+
+To get the WIP basename for AJAX requests:
+```javascript
+// Standard pattern for all creation table actions
+const templateWipData = SiP.PrintifyManager.creationTableSetupActions.utils.getCreationTemplateWipData();
+const wipFilename = templateWipData?.path;
+const wipBasename = wipFilename ? wipFilename.replace('_wip.json', '') : '';
+formData.append('wip_basename', wipBasename);
+```
+
+#### Backend (PHP)
+
+When handling AJAX requests, use `sip_load_creation_template_wip_for_table()`:
+```php
+$creation_template_wip = sip_load_creation_template_wip_for_table();
+if (!$creation_template_wip || empty($creation_template_wip['data'])) {
+    // Handle error - no WIP file found
+    return;
+}
+
+// Access the data directly
+$wip_data = $creation_template_wip['data'];
+
+// Save changes back to the file
+if (file_put_contents($creation_template_wip['path'], json_encode($wip_data, JSON_PRETTY_PRINT))) {
+    // Success
+}
+```
+
+**Important**: Always use `$creation_template_wip['data']` directly instead of trying to read the file again with `file_get_contents()`.
