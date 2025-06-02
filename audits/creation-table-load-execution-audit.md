@@ -1,147 +1,156 @@
-# Load Into Creation Table Execution Audit
+# Creation Table Load Execution Audit
 
 ## Purpose
-Trace the complete execution path of the "Load Into Creation Table" action with no assumptions, referencing exact file locations and line numbers.
+Complete trace of "Load Into Creation Table" action execution path with zero assumptions.
 
 ## Execution Trace
 
-1. User selects option "Load Into Creation Table" (dashboard-html.php:184)
-2. Form submission triggers preventDefault (template-actions.js:39)
-3. Calls handleTemplateActionFormSubmit() (template-actions.js:42)
-4. Gets action value "check_and_load_template_wip" (template-actions.js:206)
-5. Gets selected rows from DataTable (template-actions.js:212)
-6. Checks if rows selected (template-actions.js:215)
-7. Extracts templateTitle from selectedRows[0] (template-actions.js:223)
-8. Extracts templateBasename from selectedRows[0] (template-actions.js:224)
-9. Uses basename directly - no processing needed (template-actions.js:229)
-10. Creates formData using createFormData() (template-actions.js:232)
-11. Creates new FormData object (utilities.js:216)
-12. Appends 'action' with config.ajaxAction (utilities.js:217)
-13. Appends 'plugin' parameter (utilities.js:218)
-14. Appends 'action_type' parameter (utilities.js:219)
-15. Appends action_type value (utilities.js:220)
-16. Appends 'nonce' from sipCoreAjax.nonce (utilities.js:223)
-17. Returns FormData object (utilities.js:225)
-18. Appends 'template_title' to formData (template-actions.js:233)
-19. Calls handleAjaxAction() (template-actions.js:236)
-20. Shows spinner if enabled (ajax.js:63)
-21. Validates formData is FormData object (ajax.js:67)
-22. Gets action from formData (ajax.js:73)
-23. Gets plugin from formData (ajax.js:74)
-24. Gets action_type from formData (ajax.js:75)
-25. Validates action equals 'sip_handle_ajax_request' (ajax.js:77)
-26. Validates plugin matches parameter (ajax.js:82)
-27. Creates Promise for AJAX request (ajax.js:88)
-28. Makes jQuery AJAX POST request (ajax.js:89)
-29. Server receives request at 'sip_handle_ajax_request' (ajax-handler.php:52)
-30. Gets plugin parameter from POST (ajax-handler.php:54)
-31. Gets action_type parameter from POST (ajax-handler.php:55)
-32. Verifies nonce security (ajax-handler.php:59)
-33. Checks if plugin is in registered list (ajax-handler.php:76)
-34. Triggers 'sip_plugin_handle_action' hook (ajax-handler.php:78)
-35. Calls sip_printify_route_action() (printify-ajax-shell.php:15)
-36. Checks plugin_id equals 'sip-printify-manager' (printify-ajax-shell.php:27)
-37. Switches on action_type 'creation_setup_action' (printify-ajax-shell.php:30)
-38. Calls sip_handle_creation_setup_action() (printify-ajax-shell.php:44)
-39. Gets creation_setup_action from POST (creation-table-setup-functions.php:103)
-40. Switches to 'check_and_load_template_wip' case (creation-table-setup-functions.php:106)
-41. Calls sip_check_and_load_template_wip() (creation-table-setup-functions.php:107)
-42. Gets template_name from POST['template_title'] (creation-table-setup-functions.php:17)
-43. Calls sip_load_creation_template_wip_for_table() (creation-table-setup-functions.php:25)
-44. Calls sip_plugin_storage()->get_folder_path() (creation-table-functions.php:1439)
-45. Gets WIP files with glob() pattern (creation-table-functions.php:1440)
-46. Checks if WIP files exist (creation-table-functions.php:1443)
-47. If no WIP exists, checks template_name (creation-table-setup-functions.php:28)
-48. Calls sip_create_wip_file() with template_name (creation-table-setup-functions.php:32)
-49. Uses basename directly - already processed (creation-table-setup-functions.php:197-198)
-50. Gets template path using sip_plugin_storage() (creation-table-setup-functions.php:199)
-51. Checks if template file exists (creation-table-setup-functions.php:200)
-52. Gets WIP directory path (creation-table-setup-functions.php:208)
-53. Creates WIP filename with _wip suffix (creation-table-setup-functions.php:209)
-54. Copies template file to WIP path (creation-table-setup-functions.php:210)
-55. Returns success with WIP path (creation-table-setup-functions.php:218)
-56. Checks if wip_result['success'] is true (creation-table-setup-functions.php:34)
-57. Creates creation_template_wip array (creation-table-setup-functions.php:36)
-58. Checks if WIP file exists (creation-table-setup-functions.php:45)
-59. Reads WIP file contents (creation-table-setup-functions.php:47)
-60. Decodes JSON to creation_template_wip_data (creation-table-setup-functions.php:47)
-    61. Calls sip_update_referenced_images() (creation-table-setup-functions.php:50)
-62. Prepares response_data array (creation-table-setup-functions.php:55)
-63. Sets creation_template_wip_data value (creation-table-setup-functions.php:56)
-64. Sets creation_template_wip_name value (creation-table-setup-functions.php:57)
-65. Sets template_file value (creation-table-setup-functions.php:58)
-66. Calls SiP_AJAX_Response::success() (creation-table-setup-functions.php:61)
-67. Creates response array structure (class-ajax-response.php:53)
-68. Sets success to true (class-ajax-response.php:54)
-69. Sets plugin to 'sip-printify-manager' (class-ajax-response.php:55)
-70. Sets action_type to 'template_action' (class-ajax-response.php:56)
-71. Sets action to 'check_and_load_template_wip' (class-ajax-response.php:57)
-72. Sets message to 'Template WIP loaded successfully' (class-ajax-response.php:58)
-73. Sets data with response_data array (class-ajax-response.php:59)
-74. Sends JSON response with wp_send_json() (class-ajax-response.php:68)
-75. Client receives AJAX response (ajax.js:98)
-76. Hides spinner if shown (ajax.js:101)
-77. Calls handleSuccessResponse() (ajax.js:109)
-78. Validates response structure (ajax.js:163)
-79. Gets routePlugin from response.plugin (ajax.js:174)
-80. Gets routeActionType from response.action_type (ajax.js:175)
-81. Creates handler key 'sip-printify-manager:template_action' (ajax.js:185)
-82. Finds registered handler for key (ajax.js:189)
-83. Calls template_action success handler (ajax.js:191)
-84. Returns to template-actions handleSuccessResponse() (template-actions.js:339)
-85. Checks response.success is true (template-actions.js:343)
-86. Switches on response.action 'check_and_load_template_wip' (template-actions.js:349)
-87. Enters check_and_load_template_wip case (template-actions.js:361)
-88. Checks response.data exists (template-actions.js:364)
-89. Checks setCreationTemplateWipData function exists (template-actions.js:371)
-90. Calls setCreationTemplateWipData() (template-actions.js:372)
-91. Checks if reloadCreationTable exists (template-actions.js:388)
-    92. Calls reloadCreationTable() (template-actions.js:389)
-93. Checks if updateImageTableStatus exists (template-actions.js:393)
-    94. Calls updateImageTableStatus() (template-actions.js:394)
-95. Checks if updateProductTableHighlights exists (template-actions.js:398)
-    96. Calls updateProductTableHighlights() (template-actions.js:399)
-97. Gets templateFilename from response data (template-actions.js:403)
-    98. Calls highlightSelectedTemplate() (template-actions.js:404)
-99. Calls deselectAllTemplateRows() (template-actions.js:414)
-100. Checks if templateTable exists (template-actions.js:420)
-101. Deselects all rows in table (template-actions.js:421)
-102. Execution complete - template loaded into creation table
+1. User selects "Load Into Creation Table" (dashboard-html.php:181)
+2. Form contains template_action select element (dashboard-html.php:180)
+3. Form has id "template-action-form" (dashboard-html.php:177)
+4. JavaScript listens for form submit (template-actions.js:223)
+5. Checks action equals "check_and_load_template_wip" (template-actions.js:223)
+6. Gets templateTitle from selectedRows[0].title (template-actions.js:225)
+7. Gets templateBasename from selectedRows[0].basename (template-actions.js:226)
+8. Assigns templateBasename to templateName (template-actions.js:231)
+9. Creates formData via createFormData() (template-actions.js:234)
+10. Appends template_basename to formData (template-actions.js:235)
+11. Calls handleAjaxAction() function (template-actions.js:238)
+12. handleAjaxAction validates formData (ajax.js:67)
+13. Gets action from formData (ajax.js:73)
+14. Verifies action equals "sip_handle_ajax_request" (ajax.js:77)
+15. Creates jQuery ajax request (ajax.js:89)
+16. Sets url to sipCoreAjax.ajaxUrl (ajax.js:90)
+17. Sets type to POST (ajax.js:91)
+18. Sets processData to false (ajax.js:93)
+19. Sets contentType to false (ajax.js:94)
+20. Sets X-SiP-Plugin header (ajax.js:96)
+21. Sends AJAX POST request (ajax.js:89)
+22. PHP receives sip_handle_ajax_request action (ajax-handler.php:52)
+23. Gets plugin from $_POST (ajax-handler.php:54)
+24. Gets action_type from $_POST (ajax-handler.php:55)
+25. Verifies nonce (ajax-handler.php:59)
+26. Checks plugin in registered_plugins (ajax-handler.php:76)
+27. Calls do_action sip_plugin_handle_action (ajax-handler.php:78)
+28. sip_printify_route_action receives hook (printify-ajax-shell.php:25)
+29. Checks plugin_id equals sip-printify-manager (printify-ajax-shell.php:27)
+30. Switches on creation_setup_action (printify-ajax-shell.php:43)
+31. Calls sip_handle_creation_setup_action (printify-ajax-shell.php:44)
+32. Gets creation_setup_action from $_POST (creation-table-setup-functions.php:185)
+33. Switches to check_and_load_template_wip case (creation-table-setup-functions.php:188)
+34. Calls sip_ajax_check_and_load_template_wip (creation-table-setup-functions.php:189)
+35. Calls sip_check_and_load_template_wip (creation-table-setup-functions.php:139)
+36. Gets template_basename from $_POST (creation-table-setup-functions.php:20)
+37. Gets WIP directory path (creation-table-setup-functions.php:29)
+38. Globs for *_wip.json files (creation-table-setup-functions.php:30)
+39. Checks if WIP files exist (creation-table-setup-functions.php:34)
+40. Reads first WIP file content (creation-table-setup-functions.php:37)
+41. Decodes JSON data (creation-table-setup-functions.php:38)
+42. Stores existing_wip data (creation-table-setup-functions.php:41)
+43. Checks if need_new_wip (creation-table-setup-functions.php:52)
+44. Compares WIP filename with template (creation-table-setup-functions.php:59)
+45. Unlinks old WIP if mismatch (creation-table-setup-functions.php:63)
+46. Creates new WIP if needed (creation-table-setup-functions.php:68)
+47. Calls sip_create_wip_file (creation-table-setup-functions.php:71)
 
-## Summary
+## sip_create_wip_file Execution
+47a. Validates template name provided (creation-table-setup-functions.php:273)
+47b. Constructs template file path (creation-table-setup-functions.php:282)
+47c. Checks template file exists (creation-table-setup-functions.php:284)
+47d. Gets WIP directory path (creation-table-setup-functions.php:292)
+47e. Copies template to WIP path (creation-table-setup-functions.php:294)
+47f. Returns success with WIP path (creation-table-setup-functions.php:302)
+48. Reads newly created WIP content (creation-table-setup-functions.php:75)
+49. Decodes new WIP JSON (creation-table-setup-functions.php:76)
+50. Updates referenced images (creation-table-setup-functions.php:101)
+51. Returns result array (creation-table-setup-functions.php:107)
+52. Checks result success (creation-table-setup-functions.php:141)
+53. Prepares response_data array (creation-table-setup-functions.php:143)
+54. Calls SiP_AJAX_Response::success (creation-table-setup-functions.php:149)
+55. Creates response array (class-ajax-response.php:53)
+56. Sets success to true (class-ajax-response.php:54)
+57. Sets plugin to sip-printify-manager (class-ajax-response.php:55)
+58. Sets action_type to template_action (class-ajax-response.php:56)
+59. Sets action to check_and_load_template_wip (class-ajax-response.php:57)
+60. Sets data array (class-ajax-response.php:59)
+61. Calls wp_send_json (class-ajax-response.php:68)
+62. Exits PHP execution (class-ajax-response.php:69)
+63. AJAX success callback receives response (ajax.js:98)
+64. Hides spinner if shown (ajax.js:101)
+65. Calls handleSuccessResponse (ajax.js:109)
+66. Validates response.success exists (ajax.js:163)
+67. Gets routePlugin from response.plugin (ajax.js:174)
+68. Gets routeActionType from response.action_type (ajax.js:175)
+69. Creates handler key sip-printify-manager:template_action (ajax.js:185)
+70. Checks for registered success handler (ajax.js:189)
+71. Calls success handler if exists (ajax.js:191)
+72. Resolves promise with response (ajax.js:112)
+73. handleSuccessResponse receives response (template-actions.js:341)
+74. Checks response.success is true (template-actions.js:345)
+75. Switches on check_and_load_template_wip (template-actions.js:363)
+76. Checks for creation_template_wip_data (template-actions.js:366)
+77. Calls setCreationTemplateWipData (template-actions.js:374)
+78. Triggers reloadCreationTable (template-actions.js:391)
+79. Updates image table status (template-actions.js:396)
+80. Updates product table highlights (template-actions.js:401)
+81. Highlights selected template (template-actions.js:406)
+82. Deselects all table rows (template-actions.js:414)
 
-The "Load Into Creation Table" action follows a complex cross-table execution path:
+## setCreationTemplateWipData Execution
+83. Sets window.creationTemplateWipData object (creation-table-setup-actions.js:1817)
+84. Gets localStorage sip-core data (creation-table-setup-actions.js:1822)
+85. Creates nested structure if needed (creation-table-setup-actions.js:1823-1824)
+86. Stores template_title in loaded-wip (creation-table-setup-actions.js:1827)
+87. Stores wipName in wipFilename (creation-table-setup-actions.js:1828)
+88. Stores templateFile path (creation-table-setup-actions.js:1829)
+89. Saves to localStorage (creation-table-setup-actions.js:1843)
 
-1. **UI Trigger**: User selects action in template table (dashboard-html.php)
-2. **JavaScript Handling**: Form submission handled by template-actions.js
-3. **AJAX Request**: Sent via SiP.Core.ajax with action_type 'creation_setup_action'
-4. **PHP Routing**: 
-   - Central handler routes to sip-printify-manager plugin
-   - Plugin routes to creation_setup_action handler
-   - Executes check_and_load_template_wip function
-5. **WIP File Management**:
-   - Checks for existing WIP file
-   - Creates new WIP by copying template if needed
-   - Loads WIP data and updates referenced images
-6. **Cross-Table Response**:
-   - PHP sends response with action_type 'template_action' (not 'creation_setup_action')
-   - This routes the response back to template-actions.js handler
-7. **UI Updates**:
-   - Updates window.creationTemplateWipData
-   - Stores data in localStorage
-   - Reloads creation table
-   - Updates image and product table highlights
-   - Highlights selected template
-   - Deselects all template rows
+## reloadCreationTable Execution
+90. Checks window.creationTemplateWipData exists (creation-table-setup-actions.js:1944)
+91. Hides no-template message (creation-table-setup-actions.js:1952)
+92. Shows creation-datatable div (creation-table-setup-actions.js:1953)
+93. Shows product-creation-container (creation-table-setup-actions.js:1956)
+94. Checks if DataTable exists (creation-table-setup-actions.js:1960)
+95. Destroys existing DataTable (creation-table-setup-actions.js:1966)
+96. Calls initializeCreationDataTable (creation-table-setup-actions.js:1972)
+97. Calls attachEventListeners (creation-table-setup-actions.js:1977)
+98. Calls trackCreationTableUi (creation-table-setup-actions.js:1981)
 
-## Key Files Involved
+## trackCreationTableUi Execution
+98a. Gets sip-core from localStorage (utilities.js:618)
+98b. Ensures sip-printify-manager object exists (utilities.js:619)
+98c. Preserves existing creations-table properties (utilities.js:620)
+98d. Captures creation_action dropdown value (utilities.js:621)
+98e. Saves updated state to localStorage (utilities.js:622)
 
-- **/views/dashboard-html.php** - UI dropdown
-- **/assets/js/modules/template-actions.js** - Template table actions
-- **/assets/js/core/ajax.js** (sip-plugins-core) - AJAX handling
-- **/includes/ajax-handler.php** (sip-plugins-core) - Central AJAX router
-- **/includes/printify-ajax-shell.php** - Plugin-specific router
-- **/includes/creation-table-setup-functions.php** - WIP file operations
-- **/includes/creation-table-functions.php** - Template loading functions
-- **/includes/class-ajax-response.php** (sip-plugins-core) - Response formatting
-- **/assets/js/modules/creation-table-setup-actions.js** - Creation table updates
+99. Returns true on success (creation-table-setup-actions.js:1984)
+
+## updateImageTableStatus Execution
+100. Gets image DataTable instance (image-actions.js:1563)
+101. Clears existing highlighting classes (image-actions.js:1571)
+102. Creates templateImageIds Set (image-actions.js:1575)
+103. Creates childProductImageMap (image-actions.js:1576)
+104. Collects template image IDs (image-actions.js:1599)
+105. Updates table rows with highlighting (image-actions.js:continuing)
+106. Rebuilds status filter dropdown (image-actions.js:continuing)
+
+## updateProductTableHighlights Execution
+107. Clears existing template classes (product-actions.js:1119)
+108. Highlights blueprint rows (product-actions.js:continuing)
+109. Highlights parent product rows (product-actions.js:continuing)
+110. Highlights child product rows (product-actions.js:continuing)
+111. Applies status-based CSS classes (product-actions.js:continuing)
+
+## highlightSelectedTemplate Execution
+112. Removes existing selected-template class (template-actions.js:322)
+113. Checks templateFilename exists (template-actions.js:324)
+114. Iterates through template table rows (template-actions.js:327)
+115. Finds matching template title (template-actions.js:continuing)
+116. Adds selected-template class (template-actions.js:continuing)
+
+## deselectAllTemplateRows Execution
+117. Calls deselectAllTemplateRows (template-actions.js:416)
+118. Checks templateTable exists (template-actions.js:422)
+119. Deselects all table rows (template-actions.js:423)
+
+## Load Into Creation Table Complete

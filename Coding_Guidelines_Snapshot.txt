@@ -24,52 +24,19 @@ When coding, only use the methods and standards in the sip plugin suite document
  
  Systematically follow through the whole code sequence in question from beginning to end without making any leaps in logic based on assumptions so that you understand the structure of the entire contextual framework before drilling into details speculatively.
 
-Format for tracing code
-
-From the beginning point of the code to be traced, create a tempt audit file and add a single line to the audit file for each logical step that the code follows in accordance with the instructions below.
-
-  CONSTRAINTS: {
-      assumptions_allowed: 0,
-      file_scope: ["/plugins/sip_*/],
+   BEFORE drawing conclusions from or modifying code:
+  REQUIRE verification = {
+      data_structure: INSPECT actual runtime data,        
+      css_classes: INSPECT actual DOM elements,
+      field_names: MATCH exact property names,
+      assumptions: COUNT must equal 0
   }
 
-  AUDIT_FORMAT: {
-      max_words_per_step: 10,
-      template: "N. [action_verb] [what] (file.ext:line)",
-      examples: [
-          "47. Calls handleSubmit() (template-actions.js:236)",
-          "48. Gets formData value (ajax.js:73)",
-          "49. Validates nonce exists (handler.php:89)"
-      ]
+  IF assumption_needed THEN {
+      STOP;
+      ASK user for verification;
+      WAIT for response;
   }
-
-  FOR each execution step DO {
-      IF can_read_exact_code THEN {
-          READ file at specific line;
-          RECORD "Step N: [exact_code_action] (filename:line_number)";
-          CONTINUE to next explicit code instruction;
-      }
-      ELSE IF cannot_find_next_step THEN {
-          RECORD "Step N: BLOCKED - Cannot trace beyond [current_file:line] without opening
-  [required_file]";
-          STOP;
-          REPORT: "Need to open [specific_file] to continue trace";
-      }
-      ELSE IF would_require_assumption THEN {
-          RECORD "Step N: BLOCKED - Would require assumption about [specific_detail]";
-          STOP;
-          ASK: "Please clarify: [specific question]";
-      }
-  }
-
-  FORBIDDEN_ACTIONS: {
-      - Writing steps without reading actual code
-      - Continuing past file boundaries without opening next file  
-      - Assuming function behavior without reading function body
-      - Guessing at WordPress core behavior
-  }
-
-The purpose of this exercise is to have a complete and accurate accounting of the entire code sequence with NO assumptions so that we can assess it for whether it adheres to all platform standards, identify elements of the code that are not in use or not compliant with standards and remove them and update the documentation so that it clearly and completely documents all standards and patterns in a well-structured, accessible and intuitive manner according to the principles and documentation framework outlined in the /plugins/.claude/index.md file 
 
  -- WORKING --
  Keep code simple, clean and straightforward. Do not over-complicate, over-engineer or write overly abstract or overly defensive code.
@@ -171,3 +138,58 @@ Never use write to file to make code updates.
 
  Code changes do not need to be recorded in a file.  Please simply provide a brief summary of changes suitable to be included in the source control commit message.
 
+
+ -----------
+
+ Incorporate this into guidelnes...
+
+
+ Please trace the logical sequence of events that the code follows incremental step by incremental logical step through all paths that extend from the user executing the Load Into Creation Table action in the template table in /plugins/sip-printify-manager/. Follow the logic making no leaps other than those explicitly described in the actual code all the way through to their conclusion when the events following the Load Into Creation Table action conclude. This is a complex multi-step process that spans nearly all the sip printify manager plugin files and all elements of the dashboard. The files that you must refer to will be in the /plugins/sip-printify-manager/ directory and may also be in the plugins/sip-plugins-core/ directory. I am asking you to follow the logic of the code uncompromisingly taking no leap that is not explicit in the actual code.
+
+For each step in the process please add a single concise line to the audit file located at /plugins/.claude/audits/creation-table-load-execution-audit.md citing the step taken, the file and line number.
+
+The purpose of this exercise is to have a complete and accurate accounting of the entire Load into Creation Table code sequence with NO assumptions so that we can assess it for whether it adheres to all platform standards, identify elements of the code that are not in use or not compliant with standards and remove them and update the documentation so that it clearly and completely documents all standards and patterns in a well-structured, accessible and intuitive manner according to the principles and documentation framework outlined in the /plugins/.claude/index.md file 
+
+   TASK: Trace "Load Into Creation Table" execution path
+
+  CONSTRAINTS: {
+      assumptions_allowed: 0,
+      file_scope: ["/plugins/sip-printify-manager/", "/plugins/sip-plugins-core/"],
+      output_file: "/plugins/.claude/audits/creation-table-load-execution-audit.md"
+  }
+
+  AUDIT_FORMAT: {
+      max_words_per_step: 10,
+      template: "N. [action_verb] [what] (file.ext:line)",
+      examples: [
+          "47. Calls handleSubmit() (template-actions.js:236)",
+          "48. Gets formData value (ajax.js:73)",
+          "49. Validates nonce exists (handler.php:89)"
+      ]
+  }
+
+  FOR each execution step DO {
+      IF can_read_exact_code THEN {
+          READ file at specific line;
+          RECORD "Step N: [exact_code_action] (filename:line_number)";
+          CONTINUE to next explicit code instruction;
+      }
+      ELSE IF cannot_find_next_step THEN {
+          RECORD "Step N: BLOCKED - Cannot trace beyond [current_file:line] without opening
+  [required_file]";
+          STOP;
+          REPORT: "Need to open [specific_file] to continue trace";
+      }
+      ELSE IF would_require_assumption THEN {
+          RECORD "Step N: BLOCKED - Would require assumption about [specific_detail]";
+          STOP;
+          ASK: "Please clarify: [specific question]";
+      }
+  }
+
+  FORBIDDEN_ACTIONS: {
+      - Writing steps without reading actual code
+      - Continuing past file boundaries without opening next file  
+      - Assuming function behavior without reading function body
+      - Guessing at WordPress core behavior
+  }

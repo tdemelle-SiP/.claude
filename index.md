@@ -54,12 +54,17 @@ New to SiP Plugin development? Follow this path to get up to speed quickly:
    - Create standardized admin UI
    - Add data management interfaces
 
-5. **Test and Debug** → Review [Testing & Debugging](./guidelines/sip-development-testing.md) and [Debug Logging](./guidelines/sip-development-debug-logging.md)
+5. **Document Your Code** → Follow [Documentation Standards](./guidelines/sip-development-documentation.md)
+   - Add JSDoc/PHPDoc to all functions
+   - Document interface contracts, not implementation
+   - Include parameter types and structures
+
+6. **Test and Debug** → Review [Testing & Debugging](./guidelines/sip-development-testing.md) and [Debug Logging](./guidelines/sip-development-debug-logging.md)
    - Set up debug logging
    - Implement testing workflows
    - Troubleshoot common issues
 
-6. **Release Your Plugin** → Use [Release Management](./guidelines/sip-development-release-mgmt.md)
+7. **Release Your Plugin** → Use [Release Management](./guidelines/sip-development-release-mgmt.md)
    - Follow versioning standards
    - Deploy using the automated system
 
@@ -181,6 +186,7 @@ Standards and best practices for SiP plugin development.
 | Guide | Description | Status |
 |-------|-------------|--------|
 | [CSS Development](./guidelines/sip-development-css.md) | CSS architecture, naming conventions, and best practices | ✅ Complete |
+| [Documentation Standards](./guidelines/sip-development-documentation.md) | JSDoc/PHPDoc standards and interface documentation | ✅ Complete |
 
 ### Plugin-Specific Architecture
 Detailed architecture guides for specific SiP plugins with complex systems.
@@ -323,6 +329,7 @@ Here's how you might use the documentation to build a plugin that manages produc
 5. **Event Handling**: Follow the module pattern with proper event attachment
 6. **UI Components**: Use the standardized SiP Core utilities
 7. **File Organization**: Maintain the established directory structure
+8. **Documentation**: All functions must have JSDoc/PHPDoc documenting interface contracts
 
 ### Development Environment
 - **Operating System**: Windows 11 with WSL2
