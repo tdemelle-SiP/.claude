@@ -465,6 +465,57 @@ if (file_put_contents($creation_template_wip['path'], json_encode($wip_data, JSO
 
 **Important**: Always use `$creation_template_wip['data']` directly instead of trying to read the file again with `file_get_contents()`.
 
+## Creation Table Hybrid Architecture
+
+The creation table implements a unique hybrid approach combining DataTables with custom row management to handle the complex parent-child-variant relationship structure.
+
+### Architectural Design
+
+The table operates on two distinct layers:
+
+1. **Custom Layer (Primary)**: Manages child product summary rows
+   - These represent the actual products that get uploaded/published
+   - Exist outside DataTables' data model (injected via rowGroup)
+   - Handle group selection, status display, and action triggers
+
+2. **DataTables Layer (Secondary)**: Manages variant rows
+   - These show the size/color combinations for each child product
+   - Participate in DataTables' selection and data model
+   - Provide detailed view but aren't the primary business objects
+
+### Why This Architecture
+
+This design was chosen because:
+- Child products are the primary unit of work (what users upload/publish)
+- Variants are secondary details that belong to child products
+- Summary rows need special behaviors DataTables can't provide:
+  - Custom checkboxes that select/deselect all variants
+  - Group expand/collapse functionality
+  - Status-based filtering at the child product level
+  - Positional requirements (staying above their variants)
+
+### Implications for Features
+
+**Status Filtering**:
+- Filters operate on child products, not variants
+- When filtering for "WIP", entire child product groups show/hide
+- Uses CSS classes instead of DataTables search API
+- Hidden rows are automatically deselected (standard UI pattern)
+
+**Selection Behavior**:
+- Summary row checkboxes control their variant rows
+- DataTables tracks variant selection
+- Header checkbox state must be manually calculated
+- Hidden rows are deselected when filter changes
+- Visible rows maintain their selection state
+
+**Row Counting**:
+- DataTables counts variants (not meaningful to users)
+- Custom code counts child products (what users care about)
+- Info display may show variant counts (acceptable trade-off)
+
+This complexity is intentional and necessary - it allows the table to present data in a way that matches the business logic while still leveraging DataTables for the heavy lifting of row rendering and basic interactions.
+
 ### File Path Construction
 
 #### Directory Paths
