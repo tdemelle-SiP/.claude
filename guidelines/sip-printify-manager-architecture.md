@@ -464,3 +464,43 @@ if (file_put_contents($creation_template_wip['path'], json_encode($wip_data, JSO
 ```
 
 **Important**: Always use `$creation_template_wip['data']` directly instead of trying to read the file again with `file_get_contents()`.
+
+### File Path Construction
+
+#### Directory Paths
+
+The SiP storage system returns directory paths WITHOUT trailing slashes:
+```php
+$wip_dir = sip_plugin_storage()->get_folder_path('sip-printify-manager', 'templates/wip');
+// Returns: /wp-content/uploads/sip-printify-manager/templates/wip
+```
+
+#### File Path Construction
+
+Always add a forward slash when constructing file paths:
+```php
+// CORRECT - Add slash between directory and filename
+$wip_path = $wip_dir . '/' . $basename . '_wip.json';
+$template_path = $templates_dir . '/' . $basename . '.json';
+
+// WRONG - Missing slash results in malformed path
+$wip_path = $wip_dir . $basename . '_wip.json';
+```
+
+#### Glob Patterns
+
+Always include the slash in glob patterns:
+```php
+// CORRECT - Slash before wildcard
+$wip_files = glob($wip_dir . '/*_wip.json');
+
+// WRONG - Missing slash causes glob to fail
+$wip_files = glob($wip_dir . '*_wip.json');
+```
+
+#### Basename Convention
+
+The `wip_basename` parameter contains only the template name without any file extensions:
+- Frontend sends: `"my-template"`
+- Backend constructs: `"my-template_wip.json"` for WIP files
+- Backend constructs: `"my-template.json"` for permanent template files
