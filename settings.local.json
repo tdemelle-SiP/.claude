@@ -18,7 +18,11 @@
       "Bash(mkdir:*)",
       "Bash(cat:*)",
       "Bash(rg:*)",
-      "WebFetch(domain:developer.wordpress.org)"
+      "WebFetch(domain:developer.wordpress.org)",
+      "Bash(git checkout:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)"
     ],
     "deny": []
   },
