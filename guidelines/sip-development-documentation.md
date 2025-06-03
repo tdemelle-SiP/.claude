@@ -259,4 +259,84 @@ Before committing code:
 4. Examples work as written
 5. No outdated information remains
 
+## Architectural Documentation Standards
+
+Beyond code-level documentation, the SiP Plugin Suite requires architectural documentation that explains system design and deviations from standard patterns.
+
+### Core Documentation Principle
+
+Documentation should consist of:
+1. **General Rules and Principles** - Standard patterns that apply broadly across the plugin suite
+2. **Documented Exceptions** - Clear identification of where and why code deviates from standards
+3. **Rationale** - Explanations for architectural decisions, especially non-standard approaches
+
+### When to Document Architectural Patterns
+
+Create or update architectural documentation when:
+- Implementing a pattern that deviates from SiP standards
+- Creating a hybrid or non-standard architecture
+- Making design decisions that future developers might question
+- Building systems with complex interactions between components
+
+### What Makes Good Architectural Documentation
+
+#### 1. Document the "Why" Not the "What"
+```markdown
+❌ Bad: "The Creation Table uses data-template='true' on rows"
+✅ Good: "Template variant rows use data-template='true' because the hybrid architecture requires distinguishing between DataTables-managed and custom-injected rows"
+```
+
+#### 2. Identify Standard vs. Exception
+```markdown
+**Standard Pattern**: DataTables provides `headerCheckbox: true` in the select configuration.
+
+**Creation Table Exception**: Uses custom `updateHeaderCheckboxState()` function because:
+- Must count both DataTables rows AND custom injected rows
+- Must exclude template variant rows from selection logic
+- Standard DataTables header checkbox only knows about its own rows
+```
+
+#### 3. Provide Context for Design Decisions
+```markdown
+### Why This Architecture
+
+This design was chosen because:
+- Child products are the primary unit of work (what users upload/publish)
+- Variants are secondary details that belong to child products
+- Summary rows need special behaviors DataTables can't provide
+```
+
+### Implementation Details vs. Architectural Patterns
+
+**Architectural Documentation Should Include:**
+- Design patterns and their rationale
+- Deviations from standard approaches
+- System interactions and dependencies
+- Data flow and state management approaches
+
+**Architectural Documentation Should NOT Include:**
+- Specific line numbers (they change)
+- Exact function names (unless they represent a pattern)
+- Implementation details that follow standard patterns
+- Bug fixes or minor adjustments
+
+### Example: Documenting the Creation Table
+
+The Creation Table documentation exemplifies good architectural documentation:
+
+1. **Explains the Hybrid Architecture** - Why it exists and what problems it solves
+2. **Documents Exceptions** - Lists specific deviations from DataTables standards
+3. **Provides Rationale** - Explains why each exception is necessary
+4. **Maintains Abstraction** - Focuses on patterns, not implementation details
+
+### Maintenance of Architectural Documentation
+
+Review and update architectural documentation when:
+- Discovering undocumented patterns during bug fixes
+- Implementing new features that follow non-standard approaches
+- Refactoring reveals assumptions that should be documented
+- Team members have questions about "why" something works a certain way
+
+By maintaining both code-level and architectural documentation, the SiP Plugin Suite ensures developers understand not just how to use the code, but why it was designed that way.
+
 By following these standards, the SiP Plugin Suite maintains high-quality, self-documenting code that serves as both implementation and reference.
