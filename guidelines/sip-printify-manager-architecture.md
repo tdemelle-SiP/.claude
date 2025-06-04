@@ -151,6 +151,8 @@ This design was chosen because:
 3. **Child Product Summary Rows** - Actual products being created
 4. **Child Product Variant Rows** - Size/color combinations for each child
 
+**Note**: The CSS previously included styles for `main-template-row` and `status-header-row` classes. These have been identified as obsolete and removed (January 2025). The creation table uses only the four row types listed above.
+
 ### Special Features
 
 #### Status Filtering
@@ -213,6 +215,27 @@ The Creation Table deviates from standard patterns due to its hybrid architectur
 - Main file: `creation-table-setup-actions.js`
 - Header checkbox: `updateHeaderCheckboxState()`
 - Row generation: `generateCreationTableHTML()`
+
+### CSS Organization (Updated January 2025)
+
+The creation table CSS in `tables.css` follows a hierarchical structure:
+
+1. **Column Width Variables** - All column widths defined as CSS variables for maintainability
+2. **Layout & Structure** - Table and header positioning
+3. **Row Styles (Hierarchical)**:
+   - General row styles (all rows)
+   - Table header row styles (thead, th)
+   - General summary row styles (currently empty)
+   - Specific template summary row styles
+   - Specific child product summary row styles
+   - General variant row styles
+   - Specific template variant row styles
+   - Specific child product variant row styles
+4. **Cell Styles** - General td and cell-specific styles
+5. **Print Area & Image Cells** - Complex checkbox and image assignment UI
+6. **Column Width Implementations** - Apply the width variables
+
+All styles include clear comments explaining their purpose without requiring selector parsing.
 
 ## Cross-Table Systems
 

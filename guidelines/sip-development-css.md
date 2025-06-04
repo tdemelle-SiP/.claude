@@ -313,6 +313,36 @@ element.setAttribute('data-status', statusId);
 }
 ```
 
+### Table Column Width Variables (Best Practice)
+
+For tables with multiple columns, define all column widths as CSS variables at the beginning of the table's CSS section:
+
+```css
+:root {
+    /* Table Column Widths - Clear, descriptive names */
+    --creation-table-visibility-column-width: 24px;
+    --creation-table-select-column-width: 24px;
+    --creation-table-title-column-width: 12%;
+    --creation-table-status-column-width: 8%;
+    --creation-table-print-area-column-width: 26%;
+    /* ... etc ... */
+}
+
+/* Implementation */
+#creation-table_wrapper th.select-column,
+#creation-table_wrapper td.select-column {
+    width: var(--creation-table-select-column-width) !important;
+    min-width: var(--creation-table-select-column-width) !important;
+    max-width: var(--creation-table-select-column-width) !important;
+}
+```
+
+This pattern:
+- Consolidates all width values in one location
+- Makes column width adjustments simple and predictable
+- Uses descriptive names that indicate table and column purpose
+- Maintains consistency across header and data cells
+
 ## Specificity Management
 
 ### Specificity Hierarchy (Low to High)
@@ -339,6 +369,11 @@ element.setAttribute('data-status', statusId);
     --table-header-bg: blue;
 }
 ```
+
+**Note on !important usage**: While generally avoided, !important is acceptable for:
+- Overriding third-party library styles (e.g., DataTables)
+- Column width implementations to ensure consistency
+- Critical layout properties that must not be overridden
 
 ### Specificity Guidelines
 - One class selector for base styles
@@ -766,6 +801,56 @@ SECTION NAME
 /* TODO: Refactor when migrating to CSS Grid */
 .sip-pm-legacy-layout {
     float: left;
+}
+```
+
+## Advanced Techniques
+
+### Box-Shadow for Background Colors
+
+When you need to override background colors with high specificity without using !important, use the box-shadow technique:
+
+```css
+/* Traditional approach - can be overridden */
+.template-summary-row {
+    background-color: var(--template);
+}
+
+/* Box-shadow approach - very high specificity */
+.template-summary-row {
+    box-shadow: inset 0 0 0 9999px var(--template);
+}
+```
+
+This technique is particularly useful for:
+- Dynamic row highlighting systems
+- Overriding third-party library backgrounds
+- Creating layered color effects
+
+### Hover Effects
+
+For hover effects that preserve existing colors, use overlays instead of replacing colors:
+
+```css
+/* Simple darkening with filter */
+.row:hover {
+    filter: brightness(0.95); /* 5% darker */
+}
+
+/* Overlay approach for more control */
+.row:hover td {
+    position: relative;
+}
+
+.row:hover td::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.05); /* 5% black overlay */
+    pointer-events: none;
 }
 ```
 
