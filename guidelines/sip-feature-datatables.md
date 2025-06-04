@@ -1177,6 +1177,81 @@ When a table isn't showing:
 
 Remember: When something isn't showing, first check if it's simply hidden. The simplest explanation is usually correct.
 
+## Working with DataTables Events
+
+### Selection Event Handling
+
+When you need to modify DataTables' selection behavior, work WITH the built-in events rather than replacing them:
+
+```javascript
+// Good: React to selection events
+$('#table-id').on('select.dt', function(e, dt, type, indexes) {
+    if (type === 'row') {
+        indexes.forEach(function(index) {
+            var row = dt.row(index);
+            var $node = $(row.node());
+            // Apply custom logic based on row state
+            if ($node.hasClass('filter-hidden')) {
+                row.deselect();
+            }
+        });
+    }
+});
+
+// Bad: Override click handlers and prevent default behavior
+$(document).on('click', '#table-id thead th.select-column input', function(e) {
+    e.stopPropagation(); // This prevents DataTables from working normally
+    // Custom implementation...
+});
+```
+
+### Common Event Patterns
+
+1. **select.dt / deselect.dt**: Fired when rows/cells/columns are selected/deselected
+2. **draw.dt**: Fired when table is redrawn
+3. **init.dt**: Fired when table initialization is complete
+4. **page.dt**: Fired when page changes
+5. **order.dt**: Fired when ordering changes
+
+### Best Practices
+
+1. **Enhance, Don't Replace**: Add functionality via events rather than replacing core behavior
+2. **Check State First**: Always verify the current state before applying changes
+3. **Use DataTables API**: Use the API methods rather than direct DOM manipulation
+4. **Handle Edge Cases**: Consider filtered rows, hidden rows, and custom row types
+
+## Performance Considerations
+
+### DOM-Based Filtering
+
+When implementing custom filtering that manipulates DOM elements directly (rather than using DataTables' search API):
+
+```javascript
+// Cache jQuery selections at the start
+var $allRows = $('.row-type');
+var $allVariants = $('.variant-row');
+
+// Use .filter() on cached collections instead of new selectors
+var $matchingRows = $allRows.filter('[data-id="' + id + '"]');
+
+// Batch operations to minimize reflows
+$allRows.removeClass('filter-hidden'); // Class changes first
+$matchingRows.show();                   // Then visibility changes
+```
+
+### Performance Monitoring
+
+For operations that might scale with data size, add timing to identify bottlenecks:
+
+```javascript
+var startTime = performance.now();
+// ... operation ...
+var duration = performance.now() - startTime;
+console.log(`Operation completed in ${duration.toFixed(2)}ms`);
+```
+
+If an operation is fast enough (< 100ms), avoid adding complexity like spinners or async processing.
+
 ## Related Guides
 - For CSS styling standards and DataTables-specific CSS architecture, see the [CSS Development Guide](./sip-development-css.md#datatables-styling-standards)
 - For dashboard integration examples, see the [Dashboards Guide](./sip-plugin-dashboards.md#step-5-initialize-datatables)

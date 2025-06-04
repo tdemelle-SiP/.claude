@@ -1,12 +1,21 @@
  Here is the message I will send at the beginning of a task that should lead to this documentation.
 
-Before you begin, please review the documentation for the plugin suite at /plugins/.claude/index.md and be sure to look at /plugins/.claude/Coding_Guidelines_Snapshot.txt.  Then please look over the relevant code and then respond in the chat with a summary of the issue and any questions you may have. Once we've discussed the correct approach, I'll ask you to make the necessary updates adhering to the documented guidelines and standards.
+----
+Before you begin, 
+Read the guidelines at /plugins/.claude/Coding_Guidelines_Snapshot.txt. These are behavioral requirements, not reference material.   The code you write must adhere to these behavioral requirements.
+
+Then please review the documentation for the plugin suite at /plugins/.claude/index.md and /plugins/.claude/guidelines/sip-printify-manager-architecture.md. After looking over the documentation, please look over the relevant code and then respond in the chat with a summary of the issue including WHY the problem exists and any questions you may have. state which guideline applies to this specific problem and how you'll follow it. Once we've discussed the correct approach, I'll ask you to make the necessary updates adhering to the documented guidelines and standards.
+
+Do not forget; you must code according to Coding_Guidelines_Snapshot.txt
+----
 
  Here is the message that I will send at the end of a task to ensure we are following through correctly
 
+----
  Great! Can you please look over the code that you just updated and make sure it adheres to the guidelines /plugins/.claude/Coding_Guidelines_Snapshot.txt?
 
 And can you please look over the documentation files to make sure that they are accurate and reflect the current functioning of the code? Start by reviewing /plugins/.claude/index.md to refresh yourself with the overall structure and the principles behind it.  Then Please make sure to check on related documentation in the /guidelines/ directory to ensure that relevant files reflect updated standards correctly where appropriate and don't retain any deprecated references.  If there were aspects of the code that were unclear to you as you worked, without straying into corner cases or one off issues, please update the documentation to reflect the patterns, principles and structures that were needed to correctly implement your solution.    When you're done, can you please give me a commit message to include when I submit the changes in source control?
+----
  
  -- PLANNING --
 
@@ -44,6 +53,8 @@ When coding, only use the methods and standards in the sip plugin suite document
  Do not take shortcuts to prioritize speed. Always prioritize being thorough, careful, doing the job right and working from definitive understanding instead of speculation.
  
 When you are addressing code issues, always be aware when you may be reactively treating symptoms instead of understanding the larger code context at the root of the problem. Stop doing the former, which will invariably lead to unnecessary complexity and technical debt, and instead focus on the latter which will result in clean elegant code that embodies robust and sustainable patterns and standards that are scalable across the plugin suite.
+
+Before writing any code, explain WHY the problem exists, then solve THAT problem. code from first principles, not from pattern matched hacks.
 
 When you are familiarizing yourself with code, read the code instead of searching for specific parts; understanding the full context that targetted searches may miss is critical.
 

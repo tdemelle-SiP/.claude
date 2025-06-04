@@ -162,7 +162,8 @@ This design was chosen because:
 
 #### Selection Behavior
 - Summary row checkboxes control their variant rows
-- Header checkbox is custom-implemented (DataTables' headerCheckbox disabled)
+- Header checkbox uses DataTables' standard `headerCheckbox: true` with custom event handling
+- Filter-hidden rows are automatically deselected via `select.dt` event handler
 - Template variant rows are never selectable (no checkboxes shown)
 
 #### Image Assignment
@@ -174,13 +175,15 @@ This design was chosen because:
 
 The Creation Table deviates from standard patterns due to its hybrid architecture:
 
-#### 1. Custom Header Checkbox Implementation
-**Standard Pattern**: DataTables provides `headerCheckbox: true`
+#### 1. Header Checkbox State Management
+**Standard Pattern**: DataTables manages header checkbox state automatically
 
-**Creation Table Exception**: Uses custom `updateHeaderCheckboxState()` because:
-- Must count both DataTables rows AND custom injected rows
-- Must exclude template variant rows from selection
-- Standard header checkbox only knows about DataTables rows
+**Creation Table Enhancement**: Adds custom `updateHeaderCheckboxState()` to handle:
+- Visual state updates that account for filter-hidden rows
+- Counting both DataTables rows AND custom injected summary rows
+- Excluding template variant rows from selection counts
+
+**Filter Integration**: Uses `select.dt` event handler to immediately deselect any filter-hidden rows when header checkbox is clicked, working WITH DataTables rather than replacing its functionality
 
 #### 2. Row Type Identification via Data Attributes
 **Standard Pattern**: CSS classes following BEM methodology
