@@ -69,6 +69,7 @@ sip-printify-manager/
 - Main plugin file: `sip-plugin-name.php`
 - AJAX handler shell: `{plugin-prefix}-ajax-shell.php` (e.g., `printify-ajax-shell.php`)
 - Function files: `{functionality}-functions.php` (e.g., `shop-functions.php`, `image-functions.php`)
+- Utility functions: `utility-functions.php` (for pan-table/cross-component functionality)
 - Classes: `SiP_ClassName` (e.g., `SiP_Product_Manager`)
 - Functions: `sip_function_name()` (e.g., `sip_handle_product_action()`)
 - Constants: `SIP_CONSTANT_NAME` (e.g., `SIP_PLUGIN_VERSION`)
@@ -133,6 +134,7 @@ require_once plugin_dir_path(__FILE__) . 'includes/plugin-ajax-shell.php';
 
 // Include functionality files
 $includes = [
+    'utility-functions.php',     // Pan-table utilities (if needed)
     'feature1-functions.php',
     'feature2-functions.php',
     // Add more as needed
@@ -368,6 +370,16 @@ function sip_your_plugin_route_action($action_type) {
 
 ## Step 5: Create Feature Functions
 
+### Utility Functions (Optional)
+For functionality shared across multiple components, you may create `includes/utility-functions.php`:
+
+Use utility functions when:
+- Functionality spans multiple tables or components
+- Managing shared constants or enums
+- Implementing cross-cutting concerns
+- Centralizing business logic used in multiple places
+
+### Feature-Specific Functions
 Create `includes/feature1-functions.php`:
 
 ```php

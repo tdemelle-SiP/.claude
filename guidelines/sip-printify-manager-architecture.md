@@ -36,10 +36,10 @@ Blueprint rows are created by DataTables' rowGroup feature and are NOT part of t
 When a template is loaded, related rows are highlighted:
 - Blueprint rows: `var(--template-dark)` (#dfc1a6)
 - Parent product rows: `var(--template)` (#e7c8ac)
-- Child product rows: Status-based colors
-  - Work in Progress: `var(--work-in-progress)` (#dcf3ff)
-  - Uploaded Unpublished: `var(--uploaded-unpublished)` (#bfdfc5)
-  - Uploaded Published: `var(--uploaded-published)` (#7bfd83)
+- Child product rows: Status-based colors using internal values
+  - `wip`: `var(--work-in-progress)` (#dcf3ff)
+  - `unpublished`: `var(--uploaded-unpublished)` (#bfdfc5)
+  - `published`: `var(--uploaded-published)` (#7bfd83)
 
 #### Implementation
 - Main file: `product-actions.js`
@@ -396,6 +396,124 @@ const normalizedStatus = status.toLowerCase()
     .replace(/\s+/g, '-')
     .replace('_', '-');
 ```
+
+## Product Status Management
+
+### Overview
+The SiP Printify Manager uses a centralized status management system to ensure consistency across all tables and components. All status handling is managed through the `SiP_Product_Status` class (PHP) and `SiP.PrintifyManager.utilities.productStatus` object (JavaScript).
+
+### Status Values
+
+The system defines five canonical product statuses:
+
+1. **Work in Progress** (`wip`) - Product created locally but not uploaded to Printify
+2. **Uploaded - Unpublished** (`unpublished`) - Product uploaded to Printify but not published to shop
+3. **Publish in Progress** (`publish_in_progress`) - Publish API called, awaiting completion
+4. **Uploaded - Published** (`published`) - Product published and available in shop
+5. **Template** (`template`) - Used for template rows and template-associated images
+
+### Implementation
+
+#### PHP (Backend)
+```php
+// Located in includes/utility-functions.php
+class SiP_Product_Status {
+    const WIP = 'wip';
+    const UNPUBLISHED = 'unpublished';
+    const PUBLISH_IN_PROGRESS = 'publish_in_progress';
+    const PUBLISHED = 'published';
+    const TEMPLATE = 'template';
+    
+    // Get display name for UI
+    public static function get_display_name($status)
+    
+    // Get CSS class
+    public static function get_css_class($status)
+    
+    // Normalize any status value
+    public static function normalize($status)
+    
+    // Get status from Printify API data
+    public static function get_status_from_api_product($product, $current_status)
+}
+```
+
+#### JavaScript (Frontend)
+```javascript
+// Located in assets/js/core/utilities.js
+SiP.PrintifyManager.utilities.productStatus = {
+    // Constants
+    WIP: 'wip',
+    UNPUBLISHED: 'unpublished',
+    PUBLISH_IN_PROGRESS: 'publish_in_progress',
+    PUBLISHED: 'published',
+    TEMPLATE: 'template',
+    
+    // Methods
+    getDisplayName(status),
+    getCssClass(status),
+    normalize(status),
+    getColorVariable(status)
+}
+```
+
+### Usage Examples
+
+#### Setting Status in PHP
+```php
+// For new products
+$product['status'] = SiP_Product_Status::WIP;
+
+// From API data
+$status = SiP_Product_Status::get_status_from_api_product($api_product, $current_status);
+
+// Normalizing unknown status
+$normalized = SiP_Product_Status::normalize($raw_status);
+```
+
+#### Using Status in JavaScript
+```javascript
+// Get display name
+var displayName = SiP.PrintifyManager.utilities.productStatus.getDisplayName(status);
+
+// Normalize status from DOM
+var status = $row.find('.col-status').text().trim();
+var normalized = SiP.PrintifyManager.utilities.productStatus.normalize(status);
+
+// Apply CSS class
+var cssClass = SiP.PrintifyManager.utilities.productStatus.getCssClass(status);
+$element.addClass(cssClass);
+```
+
+### CSS Classes
+
+Status-based CSS classes follow the pattern `status-{internal-value}`:
+- `.status-wip`
+- `.status-unpublished`
+- `.status-publish_in_progress`
+- `.status-published`
+- `.status-template`
+
+These classes are defined in `assets/css/modules/tables.css` and map to color variables.
+
+### Status Filter Dropdowns
+
+Filter dropdowns use the internal status values:
+- `''` (empty) - All statuses
+- `'wip'` - Work in Progress
+- `'unpublished'` - Uploaded - Unpublished
+- `'publish_in_progress'` - Publish in Progress
+- `'published'` - Uploaded - Published
+
+### Important Notes
+
+1. **No Backward Compatibility**: The system does not handle legacy status values. All code must use the new status constants.
+
+2. **Normalization at Entry Points**: Status values should be normalized when reading from external sources (database, API, DOM).
+
+3. **Display Names for UI Only**: Internal values are used everywhere except when displaying to users.
+
+4. **Consistent Color Mapping**: Each status maps to a specific CSS color variable defined in `variables.css`.
 
 ## Performance Considerations
 

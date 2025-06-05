@@ -195,6 +195,8 @@ Detailed architecture guides for specific SiP plugins with complex systems.
 |-------|-------------|--------|
 | [SiP Printify Manager Architecture](./guidelines/sip-printify-manager-architecture.md) | Complete architecture, data flows, and parent-child product relationships | ✅ Complete |
 
+**Important Note**: All SiP Printify Manager specific documentation (including implementation details, status management, table behaviors, etc.) should be maintained in the [SiP Printify Manager Architecture](./guidelines/sip-printify-manager-architecture.md) file, not in the general plugin development guides.
+
 
 ## Core Components and Utilities
 
