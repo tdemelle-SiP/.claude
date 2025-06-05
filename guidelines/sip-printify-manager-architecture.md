@@ -103,9 +103,10 @@ Manages image assets that can be integrated into products.
 #### Dynamic Row Highlighting
 When a template is loaded, referenced images are highlighted:
 - Template-associated: `var(--template)` (#e7c8ac)
-- Work in Progress: `var(--work-in-progress)` (#dcf3ff)
-- Uploaded Unpublished: `var(--uploaded-unpublished)` (#bfdfc5)
-- Uploaded Published: `var(--uploaded-published)` (#7bfd83)
+- Status-based colors using internal values:
+  - `wip`: `var(--work-in-progress)` (#dcf3ff)
+  - `unpublished`: `var(--uploaded-unpublished)` (#bfdfc5)
+  - `published`: `var(--uploaded-published)` (#7bfd83)
 
 #### Implementation
 - Main file: `image-actions.js`
@@ -390,11 +391,10 @@ String(id1) === String(id2)
 ```
 
 #### Status Normalization
-Use consistent status string formatting:
+Status normalization is now handled by the centralized status management system:
 ```javascript
-const normalizedStatus = status.toLowerCase()
-    .replace(/\s+/g, '-')
-    .replace('_', '-');
+// Use the utility function instead of manual string manipulation
+const normalizedStatus = SiP.PrintifyManager.utilities.productStatus.normalize(status);
 ```
 
 ## Product Status Management
@@ -402,118 +402,313 @@ const normalizedStatus = status.toLowerCase()
 ### Overview
 The SiP Printify Manager uses a centralized status management system to ensure consistency across all tables and components. All status handling is managed through the `SiP_Product_Status` class (PHP) and `SiP.PrintifyManager.utilities.productStatus` object (JavaScript).
 
-### Status Values
+**CRITICAL**: Any code not following these patterns must be updated. There is NO backward compatibility for old status formats.
 
-The system defines five canonical product statuses:
+### The Five Canonical Status Values
 
-1. **Work in Progress** (`wip`) - Product created locally but not uploaded to Printify
-2. **Uploaded - Unpublished** (`unpublished`) - Product uploaded to Printify but not published to shop
-3. **Publish in Progress** (`publish_in_progress`) - Publish API called, awaiting completion
-4. **Uploaded - Published** (`published`) - Product published and available in shop
-5. **Template** (`template`) - Used for template rows and template-associated images
+The system defines exactly five product statuses. These are the ONLY valid internal status values:
 
-### Implementation
+| Internal Value | Display Name | Description |
+|----------------|--------------|-------------|
+| `wip` | Work in Progress | Product created locally but not uploaded to Printify |
+| `unpublished` | Uploaded - Unpublished | Product uploaded to Printify but not published to shop |
+| `publish_in_progress` | Publish in Progress | Publish API called, awaiting completion |
+| `published` | Uploaded - Published | Product published and available in shop |
+| `template` | Template | Used for template rows and template-associated images |
 
-#### PHP (Backend)
+### CORRECT Patterns (MUST Use)
+
+#### PHP Status Handling
+
 ```php
-// Located in includes/utility-functions.php
-class SiP_Product_Status {
-    const WIP = 'wip';
-    const UNPUBLISHED = 'unpublished';
-    const PUBLISH_IN_PROGRESS = 'publish_in_progress';
-    const PUBLISHED = 'published';
-    const TEMPLATE = 'template';
-    
-    // Get display name for UI
-    public static function get_display_name($status)
-    
-    // Get CSS class
-    public static function get_css_class($status)
-    
-    // Normalize any status value
-    public static function normalize($status)
-    
-    // Get status from Printify API data
-    public static function get_status_from_api_product($product, $current_status)
-}
-```
-
-#### JavaScript (Frontend)
-```javascript
-// Located in assets/js/core/utilities.js
-SiP.PrintifyManager.utilities.productStatus = {
-    // Constants
-    WIP: 'wip',
-    UNPUBLISHED: 'unpublished',
-    PUBLISH_IN_PROGRESS: 'publish_in_progress',
-    PUBLISHED: 'published',
-    TEMPLATE: 'template',
-    
-    // Methods
-    getDisplayName(status),
-    getCssClass(status),
-    normalize(status),
-    getColorVariable(status)
-}
-```
-
-### Usage Examples
-
-#### Setting Status in PHP
-```php
-// For new products
+// ✅ CORRECT: Setting status using constants
 $product['status'] = SiP_Product_Status::WIP;
+$product['status'] = SiP_Product_Status::UNPUBLISHED;
+$product['status'] = SiP_Product_Status::PUBLISH_IN_PROGRESS;
+$product['status'] = SiP_Product_Status::PUBLISHED;
+$product['status'] = SiP_Product_Status::TEMPLATE;
 
-// From API data
-$status = SiP_Product_Status::get_status_from_api_product($api_product, $current_status);
+// ✅ CORRECT: Getting display name for UI
+$display_name = SiP_Product_Status::get_display_name($status);
+echo "<td class='status'>{$display_name}</td>";
 
-// Normalizing unknown status
+// ✅ CORRECT: Getting CSS class
+$css_class = SiP_Product_Status::get_css_class($status);
+echo "<tr class='{$css_class}'>";
+
+// ✅ CORRECT: Normalizing status from any source
 $normalized = SiP_Product_Status::normalize($raw_status);
+if ($normalized === SiP_Product_Status::WIP) {
+    // Handle work in progress
+}
+
+// ✅ CORRECT: Getting status from Printify API
+$status = SiP_Product_Status::get_status_from_api_product($api_product, $current_status);
 ```
 
-#### Using Status in JavaScript
+#### JavaScript Status Handling
+
 ```javascript
-// Get display name
+// ✅ CORRECT: Using status constants
+var status = SiP.PrintifyManager.utilities.productStatus.WIP;
+var status = SiP.PrintifyManager.utilities.productStatus.UNPUBLISHED;
+var status = SiP.PrintifyManager.utilities.productStatus.PUBLISH_IN_PROGRESS;
+var status = SiP.PrintifyManager.utilities.productStatus.PUBLISHED;
+var status = SiP.PrintifyManager.utilities.productStatus.TEMPLATE;
+
+// ✅ CORRECT: Getting display name for UI
 var displayName = SiP.PrintifyManager.utilities.productStatus.getDisplayName(status);
+$element.text(displayName);
 
-// Normalize status from DOM
-var status = $row.find('.col-status').text().trim();
-var normalized = SiP.PrintifyManager.utilities.productStatus.normalize(status);
-
-// Apply CSS class
+// ✅ CORRECT: Getting CSS class
 var cssClass = SiP.PrintifyManager.utilities.productStatus.getCssClass(status);
 $element.addClass(cssClass);
+
+// ✅ CORRECT: Normalizing status from any source
+var normalized = SiP.PrintifyManager.utilities.productStatus.normalize(rawStatus);
+if (normalized === SiP.PrintifyManager.utilities.productStatus.WIP) {
+    // Handle work in progress
+}
+
+// ✅ CORRECT: Status filtering with data attributes
+$row.attr('data-status', normalizedStatus);
+var filterStatus = $row.data('status');
+if (filterStatus === selectedFilter) {
+    $row.show();
+}
 ```
 
-### CSS Classes
+#### CSS Class Usage
 
-Status-based CSS classes follow the pattern `status-{internal-value}`:
-- `.status-wip`
-- `.status-unpublished`
-- `.status-publish_in_progress`
-- `.status-published`
-- `.status-template`
+```css
+/* ✅ CORRECT: Using standardized status classes */
+.status-wip { background-color: var(--work-in-progress); }
+.status-unpublished { background-color: var(--uploaded-unpublished); }
+.status-publish_in_progress { background-color: var(--publish-progress-color); }
+.status-published { background-color: var(--uploaded-published); }
+.status-template { background-color: var(--template); }
+```
 
-These classes are defined in `assets/css/modules/tables.css` and map to color variables.
+### INCORRECT Patterns (MUST Replace)
 
-### Status Filter Dropdowns
+#### PHP - Patterns to Remove
 
-Filter dropdowns use the internal status values:
-- `''` (empty) - All statuses
-- `'wip'` - Work in Progress
-- `'unpublished'` - Uploaded - Unpublished
-- `'publish_in_progress'` - Publish in Progress
-- `'published'` - Uploaded - Published
+```php
+// ❌ WRONG: Hardcoded display names
+$product['status'] = 'Work in Progress';
+$product['status'] = 'Work In Progress';  // Different casing
+$product['status'] = 'Uploaded - Unpublished';
+$product['status'] = 'Uploaded - Published';
 
-### Important Notes
+// ❌ WRONG: Direct string comparison with display names
+if ($status == 'Work in Progress') {
+if ($status === 'Uploaded - Unpublished') {
 
-1. **No Backward Compatibility**: The system does not handle legacy status values. All code must use the new status constants.
+// ❌ WRONG: Hardcoded status strings
+$status = 'wip';  // Should use constant
+$status = 'unpublished';  // Should use constant
 
-2. **Normalization at Entry Points**: Status values should be normalized when reading from external sources (database, API, DOM).
+// ❌ WRONG: Manual status mapping
+switch($status) {
+    case 'Work in Progress':
+        $internal = 'wip';
+        break;
+    case 'Uploaded - Unpublished':
+        $internal = 'unpublished';
+        break;
+}
 
-3. **Display Names for UI Only**: Internal values are used everywhere except when displaying to users.
+// ❌ WRONG: Using wrong CSS classes
+$class = 'status-work-in-progress';  // Should be status-wip
+$class = 'status-uploaded-unpublished';  // Should be status-unpublished
+```
 
-4. **Consistent Color Mapping**: Each status maps to a specific CSS color variable defined in `variables.css`.
+#### JavaScript - Patterns to Remove
+
+```javascript
+// ❌ WRONG: Hardcoded display names
+product.status = 'Work in Progress';
+product.status = 'Uploaded - Unpublished';
+product.status = 'Uploaded - Published';
+
+// ❌ WRONG: Direct string comparison with display names
+if (status === 'Work in Progress') {
+if (status === 'Uploaded - Unpublished') {
+
+// ❌ WRONG: Manual status mapping
+switch(status) {
+    case 'Work in Progress':
+        shortStatus = 'wip';
+        break;
+    case 'Uploaded - Unpublished':
+        shortStatus = 'unpublished';
+        break;
+}
+
+// ❌ WRONG: Using SiP.Core.utilities.normalizeForClass for statuses
+var statusClass = SiP.Core.utilities.normalizeForClass(status, 'status-');
+// This creates 'status-work-in-progress' instead of 'status-wip'
+
+// ❌ WRONG: Filtering by text content instead of data attributes
+var statusText = $row.find('.col-status').text().trim();
+if (statusText === 'Work in Progress') {
+
+// ❌ WRONG: Using wrong CSS classes
+$element.addClass('status-work-in-progress');
+$element.addClass('status-uploaded-unpublished');
+```
+
+### Migration Checklist
+
+When updating code to the new status system, check for:
+
+1. **PHP Files** (`*.php`):
+   - [ ] Replace all hardcoded status strings with `SiP_Product_Status::` constants
+   - [ ] Replace all display name comparisons with normalized comparisons
+   - [ ] Use `get_display_name()` for any UI output
+   - [ ] Use `get_css_class()` for any HTML class generation
+   - [ ] Remove any manual status mapping switch/if statements
+
+2. **JavaScript Files** (`*.js`):
+   - [ ] Replace all hardcoded status strings with `SiP.PrintifyManager.utilities.productStatus.` constants
+   - [ ] Replace display name comparisons with normalized comparisons
+   - [ ] Use `getDisplayName()` for any UI text
+   - [ ] Use `getCssClass()` for any DOM class manipulation
+   - [ ] Replace `normalizeForClass()` with proper status utilities
+   - [ ] Use data attributes for filtering, not text content
+
+3. **CSS Files** (`*.css`):
+   - [ ] Ensure only using the five standardized status classes
+   - [ ] Remove any legacy status classes like `status-work-in-progress`
+   - [ ] Check that status classes map to correct CSS variables
+
+4. **Database/Storage**:
+   - [ ] Store only internal values (`wip`, `unpublished`, etc.)
+   - [ ] Never store display names
+   - [ ] Normalize on retrieval if legacy data exists
+
+5. **AJAX Responses**:
+   - [ ] Return internal status values in data
+   - [ ] Let frontend handle display name conversion
+
+### Common Pitfalls
+
+1. **Text Content Filtering**: Never filter by `.text()` content. Always use data attributes.
+2. **Mixed Formats**: Don't mix internal values and display names in the same context.
+3. **Case Sensitivity**: Internal values are always lowercase. Display names have specific casing.
+4. **CSS Class Generation**: Never construct status CSS classes manually. Always use the utility functions.
+5. **Backward Compatibility**: There is none. Update all code to use the new system.
+
+### Key Implementation Files
+
+When auditing for status compliance, focus on these files:
+
+#### PHP Files
+- `includes/utility-functions.php` - Contains `SiP_Product_Status` class (source of truth)
+- `includes/product-functions.php` - Product save/update operations
+- `includes/creation-table-functions.php` - Creation table operations
+- `includes/template-functions.php` - Template operations
+- `includes/*-ajax-shell.php` - AJAX handlers returning status data
+
+#### JavaScript Files
+- `assets/js/core/utilities.js` - Contains `productStatus` object (source of truth)
+- `assets/js/modules/product-actions.js` - Product table operations
+- `assets/js/modules/creation-table-setup-actions.js` - Creation table rendering
+- `assets/js/modules/creation-table-actions.js` - Creation table interactions
+- `assets/js/modules/template-actions.js` - Template operations
+- `assets/js/modules/image-actions.js` - Image highlighting based on status
+
+#### Search Patterns for Non-Compliance
+
+Use these regex patterns to find code that needs updating:
+
+```bash
+# Find hardcoded display names
+grep -r "Work [Ii]n Progress\|Uploaded - \(Un\)\?[Pp]ublished" --include="*.php" --include="*.js"
+
+# Find wrong CSS classes
+grep -r "status-work-in-progress\|status-uploaded-\(un\)\?published" --include="*.css" --include="*.js" --include="*.php"
+
+# Find manual status mappings
+grep -r "case ['\"]\(Work\|Uploaded\)" --include="*.js" --include="*.php"
+
+# Find text-based filtering
+grep -r "\.text().*\(Work\|Progress\|Uploaded\|Published\)" --include="*.js"
+
+# Find normalizeForClass usage with status
+grep -r "normalizeForClass.*status" --include="*.js"
+```
+
+### Implementation Examples by Scenario
+
+#### Scenario 1: Creating a New Product
+```php
+// PHP
+$new_product = array(
+    'title' => $title,
+    'status' => SiP_Product_Status::WIP,  // ✅ CORRECT
+    // NOT: 'status' => 'Work in Progress'  // ❌ WRONG
+);
+```
+
+#### Scenario 2: Displaying Status in a Table
+```php
+// PHP
+$status_display = SiP_Product_Status::get_display_name($product['status']);
+$status_class = SiP_Product_Status::get_css_class($product['status']);
+echo "<td class='col-status {$status_class}'>{$status_display}</td>";
+```
+
+```javascript
+// JavaScript
+var displayName = SiP.PrintifyManager.utilities.productStatus.getDisplayName(rowData.status);
+var cssClass = SiP.PrintifyManager.utilities.productStatus.getCssClass(rowData.status);
+$row.find('.col-status').text(displayName).addClass(cssClass);
+```
+
+#### Scenario 3: Filtering by Status
+```javascript
+// JavaScript - Creation table row generation
+return `<tr class="child-product-summary-row ${statusClass}" 
+            data-child_product_id="${rowData.child_product_id}" 
+            data-status="${normalizedStatus}">`;  // ✅ CORRECT: data attribute
+
+// JavaScript - Filter implementation
+$('.child-product-summary-row').each(function() {
+    var normalizedStatus = $(this).data('status');  // ✅ CORRECT: read from data
+    // NOT: var status = $(this).find('.col-status').text();  // ❌ WRONG
+    if (normalizedStatus === filterValue) {
+        $(this).show();
+    }
+});
+```
+
+#### Scenario 4: Status Change Operations
+```php
+// PHP - Publishing a product
+function sip_publish_product($product_id) {
+    // Set to publish in progress
+    update_product_status($product_id, SiP_Product_Status::PUBLISH_IN_PROGRESS);
+    
+    // After API call succeeds
+    update_product_status($product_id, SiP_Product_Status::PUBLISHED);
+}
+```
+
+#### Scenario 5: Handling Legacy Data
+```php
+// PHP - When retrieving from database
+$product = get_product_from_db($id);
+$product['status'] = SiP_Product_Status::normalize($product['status']);
+```
+
+```javascript
+// JavaScript - When receiving AJAX data
+ajax.handleAjaxAction().then(function(response) {
+    var normalizedStatus = SiP.PrintifyManager.utilities.productStatus.normalize(response.data.status);
+    // Use normalizedStatus for all operations
+});
+```
 
 ## Performance Considerations
 
