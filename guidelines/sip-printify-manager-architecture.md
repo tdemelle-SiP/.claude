@@ -166,10 +166,41 @@ This design was chosen because:
 - Filter-hidden rows are automatically deselected via `select.dt` event handler
 - Template variant rows are never selectable (no checkboxes shown)
 
-#### Image Assignment
-- Complex checkbox hierarchy for print area selection
-- Column-based selection for image positions
-- Indeterminate states for partial selection
+#### Image Assignment & Checkbox Logic
+The image cell checkboxes serve two distinct purposes based on row type:
+
+**Template Rows (Template Summary & Template Variants):**
+- Have checkboxes that ARE selected by header checkbox clicks
+- Purpose: Target locations for "Add to New Product" action from image table
+- Creates new child products by replacing template images at selected positions
+- Fully implemented functionality for bulk product creation
+
+**Child Product Rows (Summary & Variants):**
+- Have checkboxes that are NOT selected by header checkbox clicks
+- Purpose: Target locations for replacing existing images (future functionality)
+- Will allow selective image replacement in existing products
+- Not yet fully implemented
+
+**Header Checkbox Behavior:**
+- Clicking header checkbox selects/deselects ONLY template variant row checkboxes
+- Template summary checkboxes update automatically based on their variant states
+- Header state (checked/indeterminate/unchecked) reflects ONLY template checkbox states
+- Child product checkboxes can be individually selected but don't affect header state
+- Enables bulk selection for new product creation while preserving individual control for image replacement
+
+**Summary Row Checkbox Behavior:**
+Both template and child product summary rows follow the same pattern:
+- Summary checkbox reflects the state of its variant rows (checked/unchecked/indeterminate)
+- Clicking summary checkbox selects/deselects all its variant checkboxes in that column
+- Updates are bidirectional: variant changes update summary, summary changes update variants
+- Template summary changes trigger header checkbox updates
+- Child product summary changes do NOT affect header state
+
+**Implementation Pattern:**
+- `updateTemplateSummaryImageCheckboxStates()` - Updates template summary based on variants
+- `updateChildProductImageCheckboxStates()` - Updates child summaries based on variants
+- Both functions follow identical logic for consistency
+- Called whenever variant checkboxes change or header checkbox is clicked
 
 ### Exceptions to Standard SiP Patterns
 
@@ -213,6 +244,15 @@ The Creation Table deviates from standard patterns due to its hybrid architectur
 - DataTables manages variant row selection
 - Custom code manages summary row checkbox states
 - Custom code synchronizes between the two
+
+#### 6. Image Cell HTML Structure Variations
+**Standard Pattern**: Consistent HTML structure across all row types
+
+**Creation Table Exception**: Different structures for different row types:
+- **Template Summary Row**: Image checkboxes have `data-image-index` directly on checkbox element
+- **Child Product Summary Row**: Image cells use `div.image-cell[data-image-index]` containing checkbox
+- **Variant Rows**: Image cells use `div.image-cell[data-image-index]` containing checkbox
+- Selectors must account for these structural differences when targeting checkboxes
 
 ### Implementation
 - Main file: `creation-table-setup-actions.js`
