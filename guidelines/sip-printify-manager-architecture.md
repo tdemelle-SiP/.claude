@@ -301,7 +301,7 @@ All WIP operations flow through `sip_check_and_load_template_wip()`
 Frontend:
 ```javascript
 window.creationTemplateWipData = {
-    path: 'template_name_wip.json',
+    path: 'template_name_wip.json',  // The WIP filename
     data: { /* template data */ }
 }
 ```
@@ -309,7 +309,16 @@ window.creationTemplateWipData = {
 Backend:
 ```php
 $creation_template_wip = sip_load_creation_template_wip_for_table();
-$wip_data = $creation_template_wip['data'];
+// Returns:
+// [
+//     'path' => 'template_name_wip.json',       // The WIP filename (used by frontend)
+//     'full_path' => '/full/path/to/file.json', // Complete path for file operations
+//     'data' => [ /* template data */ ]         // The template content
+// ]
+
+// File operations use the full_path field:
+file_put_contents($creation_template_wip['full_path'], json_encode($data));
+copy($creation_template_wip['full_path'], $destination);
 ```
 
 ## Common Patterns and Standards
@@ -323,24 +332,14 @@ Template identifiers are processed once when loaded, then passed consistently wi
 - Regular templates: `{basename}.json` in `/templates/`
 - WIP templates: `{basename}_wip.json` in `/templates/wip/`
 
-### File Path Construction
+### File Path Standards
 
-#### Directory Paths
-SiP storage returns paths WITHOUT trailing slashes:
-```php
-$wip_dir = sip_plugin_storage()->get_folder_path('sip-printify-manager', 'templates/wip');
-// Returns: /wp-content/uploads/sip-printify-manager/templates/wip
-```
+The WIP data structure provides two fields:
 
-#### Path Construction
-Always add slash between directory and filename:
-```php
-// CORRECT
-$wip_path = $wip_dir . '/' . $basename . '_wip.json';
+- **`path`**: Contains the WIP filename (e.g., `template_name_wip.json`) - used by frontend JavaScript
+- **`full_path`**: Contains the complete file path - used for all PHP file operations
 
-// WRONG
-$wip_path = $wip_dir . $basename . '_wip.json';
-```
+No path construction is needed anywhere in the code. The data structure provides everything required.
 
 ### Data Type Handling
 

@@ -141,11 +141,11 @@ Never use write to file to make code updates.
  -- REVIEWING --
  If you have implemented changes to the code, carefully review your changes and any code that may be affected by those changes to ensure that all code adheres to the prevailing sip plugin suite coding standard, and that there is no legacy code or remnants of deprecated code.
 
+   Would a seasoned senior enterprise developer approve of this clean, simple solution that makes the right thing automatic and the wrong thing difficult if not impossible?
+
  Upon completion, review the sip plugin suite documentation in the .claude folder and ensure that it is up to date, clear and complete and that it reflects both any changes or additions to code standards and addresses any issues that may have arisen in implementation from documentation clarity or organization.
 
- > Please add this feature to the documentation. Please make sure that you aredding it correctly according to the        
-  pattern used to document other sip plugins core features and that it is correctly referenced and linked in all        
-  expected and useful contexts.
+If you are adding or supplementing documentation, please make sure that you are adding it correctly according to the pattern used to document other sip plugins, core features or development tools and methods and that it is correctly referenced and linked in all expected and useful contexts.
 
  Code changes do not need to be recorded in a file.  Please simply provide a brief summary of changes suitable to be included in the source control commit message.
 
