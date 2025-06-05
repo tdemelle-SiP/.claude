@@ -806,26 +806,48 @@ SECTION NAME
 
 ## Advanced Techniques
 
-### Box-Shadow for Background Colors
+### Background Colors: When to Use What
 
-When you need to override background colors with high specificity without using !important, use the box-shadow technique:
+#### Use `background-color` for:
+- Form elements (`<select>`, `<input>`, `<textarea>`)
+- Buttons and interactive controls
+- Simple background styling where specificity isn't an issue
+- Any element where you need the background to be transparent-capable
 
 ```css
-/* Traditional approach - can be overridden */
-.template-summary-row {
-    background-color: var(--template);
+/* Form elements should use background-color */
+.sip-filter.status-wip {
+    background-color: var(--work-in-progress);
 }
 
-/* Box-shadow approach - very high specificity */
-.template-summary-row {
-    box-shadow: inset 0 0 0 9999px var(--template);
+/* Buttons and controls */
+.sip-button-primary {
+    background-color: var(--primary-color);
 }
 ```
 
-This technique is particularly useful for:
+#### Use `box-shadow` technique for:
+- Table cells and rows that need high-specificity coloring
+- Overriding third-party library backgrounds (like DataTables)
 - Dynamic row highlighting systems
-- Overriding third-party library backgrounds
-- Creating layered color effects
+- When you need to layer colors without !important
+
+```css
+/* Table row highlighting - needs high specificity */
+.template-summary-row {
+    box-shadow: inset 0 0 0 9999px var(--template);
+}
+
+/* Overriding DataTables row colors */
+table.dataTable tr.selected {
+    box-shadow: inset 0 0 0 9999px var(--selected-color);
+}
+```
+
+**Important Notes:**
+- Box-shadow doesn't work reliably on form elements due to browser rendering
+- Box-shadow cannot be made transparent (use background-color if transparency is needed)
+- The box-shadow technique creates a pseudo-background that sits above the actual background
 
 ### Hover Effects
 

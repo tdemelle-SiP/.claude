@@ -2,11 +2,11 @@
 
 ----
 Before you begin, 
-Read the guidelines at /plugins/.claude/Coding_Guidelines_Snapshot.txt. These are behavioral requirements, not reference material.   The code you write must adhere to these behavioral requirements.
+It is absolutely critical that you read the guidelines at /plugins/.claude/Coding_Guidelines_Snapshot.txt. These are behavioral requirements, not reference material.   The code you write must adhere to these behavioral requirements.
 
 Then please review the documentation for the plugin suite at /plugins/.claude/index.md and /plugins/.claude/guidelines/sip-printify-manager-architecture.md. After looking over the documentation, please look over the relevant code and then respond in the chat with a summary of the issue including WHY the problem exists and any questions you may have. state which guideline applies to this specific problem and how you'll follow it. Once we've discussed the correct approach, I'll ask you to make the necessary updates adhering to the documented guidelines and standards.
 
-Do not forget; you must code according to Coding_Guidelines_Snapshot.txt
+Do not forget; you must code according to Coding_Guidelines_Snapshot.txt  Do not forget; No Task Agent Delegation.
 ----
 
  Here is the message that I will send at the end of a task to ensure we are following through correctly
@@ -48,6 +48,18 @@ When coding, only use the methods and standards in the sip plugin suite document
   }
 
  -- WORKING --
+
+Critical non-negotiable directive: No Task Agent Delegation
+
+  When working with AI assistants on this codebase, the AI must handle all coding tasks directly without delegating to secondary agents or tools. This ensures:
+
+  - Full conversation context is preserved
+  - Project-specific requirements and nuances are maintained
+  - Coding style and guidelines are consistently applied
+  - Direct accountability for all code changes       
+
+  Use file reading, editing, and searching tools directly rather than invoking any "Task" agents or similar delegation mechanisms.
+
  Keep code simple, clean and straightforward. Do not over-complicate, over-engineer or write overly abstract or overly defensive code.
 
  Do not take shortcuts to prioritize speed. Always prioritize being thorough, careful, doing the job right and working from definitive understanding instead of speculation.
@@ -55,6 +67,59 @@ When coding, only use the methods and standards in the sip plugin suite document
 When you are addressing code issues, always be aware when you may be reactively treating symptoms instead of understanding the larger code context at the root of the problem. Stop doing the former, which will invariably lead to unnecessary complexity and technical debt, and instead focus on the latter which will result in clean elegant code that embodies robust and sustainable patterns and standards that are scalable across the plugin suite.
 
 Before writing any code, explain WHY the problem exists, then solve THAT problem. code from first principles, not from pattern matched hacks.
+
+Implementation Checkpoint Requirements
+
+  Before writing ANY code, you MUST complete
+  this analysis:
+
+  1. Root Cause Analysis (Required)
+
+  Write out:
+  - WHY does this problem exist? (Not what the       
+  error is, but why it occurs)
+  - What is the root cause? (The structural
+  issue, not the symptom)
+  - Which guideline section applies? (Reference      
+  specific line numbers)
+
+  2. Anti-Pattern Check (Required)
+
+  If your solution involves ANY of these, STOP       
+  and reconsider:
+  - setTimeout / setInterval (timing
+  workarounds)
+  - try-catch blocks (for errors that shouldn't      
+  exist)
+  - Defensive checks (if exists, if defined,
+  hasOwnProperty)
+  - Event handler workarounds
+  - State management to track framework behavior     
+
+  These are symptom treatments. Return to root       
+  cause analysis.
+
+  3. Solution Validation (Required)
+
+  Before implementing, state:
+  - "I am about to use [specific
+  pattern/approach]"
+  - "This is/isn't symptom treatment because
+  [specific reason]"
+  - "This addresses the root cause by
+  [explanation]"
+
+  4. Common Patterns Reference
+
+  - Symptom: setTimeout, defensive checks,
+  workarounds
+  - Root Cause: Configuration-based solutions,       
+  proper event handling, correct API usage
+
+  If you cannot clearly explain why your
+  solution addresses the root cause rather than      
+  the symptom, do not proceed with
+  implementation.
 
 When you are familiarizing yourself with code, read the code instead of searching for specific parts; understanding the full context that targetted searches may miss is critical.
 
