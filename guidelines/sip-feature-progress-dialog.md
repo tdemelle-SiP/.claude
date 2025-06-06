@@ -316,6 +316,11 @@ SiP.PrintifyManager.productActions = (function($, ajax, utilities) {
 | `close()` | Close dialog immediately |
 | `startStep(stepName)` | Start a named step |
 | `completeStep(stepName)` | Complete a named step |
+| `setBatchItems(items)` | Display list of items being processed in batch |
+| `updateBatchItem(index, updates)` | Update status of a specific batch item |
+| `showBatchItems()` | Show the batch items display area |
+| `hideBatchItems()` | Hide the batch items display area |
+| `clearBatchItems()` | Clear all batch items |
 
 ## Best Practices
 
@@ -345,6 +350,93 @@ The following variables are available for use in message templates:
 2. **Don't forget to handle errors** - Always catch and display errors
 3. **Don't block the UI** - Use async/await or promises
 4. **Don't skip progress updates** - Users need feedback
+
+## Batch Item Display
+
+When processing multiple items and you want to show the user which specific items are being processed:
+
+### Basic Usage
+
+```javascript
+// In your processBatchFn
+processBatchFn: async (batch, batchIndex, dialog) => {
+    // Show the items in this batch
+    dialog.setBatchItems(batch.map(item => item.name));
+    
+    // Process each item
+    for (let i = 0; i < batch.length; i++) {
+        // Update item status as processing
+        dialog.updateBatchItem(i, { status: 'processing' });
+        
+        try {
+            await processItem(batch[i]);
+            // Update item status as complete
+            dialog.updateBatchItem(i, { status: 'complete' });
+        } catch (error) {
+            // Update item status as error
+            dialog.updateBatchItem(i, { status: 'error' });
+        }
+    }
+}
+```
+
+### Available Status Values
+
+| Status | Icon | Color | Description |
+|--------|------|-------|-------------|
+| `pending` | ○ | Gray | Item waiting to be processed |
+| `processing` | ⟳ | Blue (animated) | Item currently being processed |
+| `uploading` | ⟳ | Blue (animated) | Item being uploaded |
+| `complete` | ✓ | Green | Item successfully processed |
+| `success` | ✓ | Green | Alternative to complete |
+| `error` | ✗ | Red | Item failed to process |
+| `failed` | ✗ | Red | Alternative to error |
+| `warning` | ⚠ | Yellow | Item processed with warnings |
+
+### Full Example with File Upload
+
+```javascript
+SiP.Core.progressDialog.processBatch({
+    items: files,
+    batchSize: 5,
+    
+    dialogOptions: {
+        title: 'Uploading Files',
+        initialMessage: `Uploading ${files.length} files...`
+    },
+    
+    processBatchFn: async (batch, batchIndex, dialog) => {
+        // Display files in this batch
+        dialog.setBatchItems(batch.map(file => ({
+            name: file.name,
+            status: 'pending'
+        })));
+        dialog.showBatchItems();
+        
+        // Process files concurrently
+        const promises = batch.map(async (file, index) => {
+            dialog.updateBatchItem(index, { status: 'uploading' });
+            
+            try {
+                const result = await uploadFile(file);
+                dialog.updateBatchItem(index, { 
+                    status: 'success',
+                    name: `✓ ${file.name}` 
+                });
+                return { success: true, file };
+            } catch (error) {
+                dialog.updateBatchItem(index, { 
+                    status: 'error',
+                    name: `✗ ${file.name}: ${error.message}` 
+                });
+                throw error;
+            }
+        });
+        
+        await Promise.all(promises);
+    }
+});
+```
 
 ## Advanced Patterns
 
