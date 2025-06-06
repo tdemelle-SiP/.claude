@@ -1,5 +1,7 @@
 # Progress Dialog (Batch Operations)
 
+*Last Updated: January 2025 - Added processBatchFn support, batch item display methods, removed retry logic*
+
 This guide explains how to implement batch processing operations using the SiP Core progress dialog. Use this when processing multiple items to provide visual feedback and prevent timeouts.
 
 ## When to Use Progress Dialog
@@ -322,15 +324,56 @@ SiP.PrintifyManager.productActions = (function($, ajax, utilities) {
 | `hideBatchItems()` | Hide the batch items display area |
 | `clearBatchItems()` | Clear all batch items |
 
+## ProcessBatchFn vs ProcessItemFn
+
+The progress dialog supports two processing approaches:
+
+### ProcessItemFn (Sequential Processing)
+Processes items one at a time. Good for operations that must be sequential:
+
+```javascript
+processItemFn: async function(item, dialog) {
+    // Process a single item
+    const result = await processSingleItem(item);
+    return { success: true };
+}
+```
+
+### ProcessBatchFn (Batch Processing)
+Processes multiple items at once. More efficient for operations that can be parallelized:
+
+```javascript
+processBatchFn: async (batch, batchIndex, dialog) => {
+    // Process entire batch at once
+    // batch: array of items in this batch
+    // batchIndex: 0-based index of current batch
+    // dialog: the progress dialog instance
+    
+    // Example: upload multiple files in one request
+    const formData = new FormData();
+    batch.forEach(file => formData.append('files[]', file));
+    
+    const response = await uploadBatch(formData);
+    return { success: true, results: response };
+}
+```
+
+**When to use ProcessBatchFn:**
+- File uploads (send multiple files in one request)
+- Database operations (batch inserts/updates)
+- API calls that support batch operations
+- Any operation where processing multiple items together is more efficient
+
 ## Best Practices
 
 1. **Always provide progress feedback** - Update the dialog regularly
 2. **Handle cancellation** - Check `isCancelled()` in loops
 3. **Show meaningful status messages** - Tell users what's happening
 4. **Dynamic status updates** - Change status text as operations progress (e.g., "3 items selected" → "Processing 3 items" → "3 items processed")
-5. **Batch operations** - Process multiple items in a single request when possible
-6. **Error handling** - Continue processing other items after errors
+5. **Batch operations** - Process multiple items in a single request when possible using `processBatchFn`
+6. **Error handling** - Continue processing other items after errors (no retry logic)
 7. **Use processBatch for simple cases** - It handles all the boilerplate
+8. **Visual feedback for batch items** - Use setBatchItems() and updateBatchItem() to show individual item status
 
 ## Template Variables
 
@@ -350,6 +393,7 @@ The following variables are available for use in message templates:
 2. **Don't forget to handle errors** - Always catch and display errors
 3. **Don't block the UI** - Use async/await or promises
 4. **Don't skip progress updates** - Users need feedback
+5. **Don't implement retry logic** - The progress dialog no longer supports automatic retries. Handle errors gracefully and let users retry the entire operation if needed
 
 ## Batch Item Display
 
@@ -395,45 +439,111 @@ processBatchFn: async (batch, batchIndex, dialog) => {
 
 ### Full Example with File Upload
 
+This example from the SiP Printify Manager shows a complete multi-step batch file upload with validation:
+
 ```javascript
 SiP.Core.progressDialog.processBatch({
     items: files,
     batchSize: 5,
     
     dialogOptions: {
-        title: 'Uploading Files',
-        initialMessage: `Uploading ${files.length} files...`
+        title: 'Uploading Images',
+        initialMessage: `Uploading ${files.length} images to your library...`,
+        waitForUserOnStart: false,
+        waitForUserOnComplete: true
+    },
+    
+    steps: {
+        weights: {
+            validate: 10,   // 10% for validation
+            upload: 70,     // 70% for upload
+            process: 20     // 20% for processing results
+        }
     },
     
     processBatchFn: async (batch, batchIndex, dialog) => {
-        // Display files in this batch
-        dialog.setBatchItems(batch.map(file => ({
-            name: file.name,
-            status: 'pending'
-        })));
-        dialog.showBatchItems();
+        const batchNumber = batchIndex + 1;
+        const totalBatches = Math.ceil(files.length / 5);
         
-        // Process files concurrently
-        const promises = batch.map(async (file, index) => {
-            dialog.updateBatchItem(index, { status: 'uploading' });
+        // Show batch files with initial pending status
+        dialog.setBatchItems(batch.map(f => f.name));
+        dialog.showBatchItems();
+        dialog.updateStatus(`Processing batch ${batchNumber} of ${totalBatches}`);
+        
+        // STEP 1: Validate all files
+        dialog.startStep('validate');
+        dialog.updateStatus(`Validating ${batch.length} images...`);
+        
+        const validationPromises = batch.map(async (file, index) => {
+            dialog.updateBatchItem(index, { status: 'processing' });
+            const dimensions = await checkImageDimensions(file);
             
-            try {
-                const result = await uploadFile(file);
-                dialog.updateBatchItem(index, { 
-                    status: 'success',
-                    name: `✓ ${file.name}` 
-                });
-                return { success: true, file };
-            } catch (error) {
-                dialog.updateBatchItem(index, { 
-                    status: 'error',
-                    name: `✗ ${file.name}: ${error.message}` 
-                });
-                throw error;
+            if (dimensions && (dimensions.width > 1024 || dimensions.height > 1024)) {
+                dialog.log(`⚠️ ${file.name}: Large image detected (${dimensions.width}x${dimensions.height}px)`, 'warning');
+                dialog.updateBatchItem(index, { status: 'warning' });
+            } else {
+                dialog.updateBatchItem(index, { status: 'success' });
             }
+            return { file, dimensions, index };
         });
         
-        await Promise.all(promises);
+        await Promise.all(validationPromises);
+        dialog.completeStep('validate');
+        
+        // STEP 2: Upload all files in one request
+        dialog.startStep('upload');
+        dialog.updateStatus(`Uploading ${batch.length} images...`);
+        
+        // Update all items to uploading status
+        batch.forEach((file, index) => {
+            dialog.updateBatchItem(index, { status: 'uploading' });
+        });
+        
+        // Create form data with all files
+        const formData = new FormData();
+        formData.append('action', 'add_local_images_batch');
+        batch.forEach(file => {
+            formData.append('files[]', file);
+        });
+        
+        try {
+            const response = await fetch(ajaxurl, {
+                method: 'POST',
+                body: formData
+            });
+            
+            if (!response.ok) throw new Error('Upload failed');
+            
+            // Update all items to success
+            batch.forEach((file, index) => {
+                dialog.updateBatchItem(index, { status: 'success' });
+                dialog.log(`✓ ${file.name} uploaded`, 'success');
+            });
+            
+            dialog.completeStep('upload');
+        } catch (error) {
+            // Update all items to error on failure
+            batch.forEach((file, index) => {
+                dialog.updateBatchItem(index, { status: 'error' });
+                dialog.log(`✗ ${file.name} failed: ${error.message}`, 'error');
+            });
+            throw error;
+        }
+        
+        // STEP 3: Process results
+        dialog.startStep('process');
+        dialog.updateStatus(`Processing ${batch.length} results...`);
+        // ... process the response data
+        dialog.completeStep('process');
+        
+        return { success: true };
+    },
+    
+    onAllComplete: function(successCount, failureCount, errors) {
+        // Refresh the image table once at the end
+        if (successCount > 0) {
+            refreshImageTable();
+        }
     }
 });
 ```
@@ -560,10 +670,12 @@ SiP.Core.progressDialog.processBatch({
 
 - The progress dialog buttons use fixed text: "Continue" and "Cancel" (cannot be customized)
 - The `processItemFn` receives exactly two parameters: `(item, dialog)`
+- The `processBatchFn` receives exactly three parameters: `(batch, batchIndex, dialog)`
 - The `onAllComplete` callback context (`this`) is the dialog instance
 - When `deferCompletion: true`, `onAllComplete` receives a 4th parameter: the completion function
 - Use `dialog.showError()` to display errors within the dialog
-- Throw an exception from `processItemFn` to stop all processing
+- Throw an exception from `processItemFn` or `processBatchFn` to stop all processing
+- Retry logic has been removed - errors fail immediately without automatic retries
 
 ## Related Guides
 - For testing batch operations, refer to the [Testing Guide](./sip-development-testing.md)

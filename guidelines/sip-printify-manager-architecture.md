@@ -95,10 +95,31 @@ Manages image assets that can be integrated into products.
 
 ### Special Features
 
+#### Image Upload System (Updated January 2025)
+
+The image upload system now uses efficient batch processing:
+
+**Frontend Upload Process:**
+1. **File Validation**: Pre-upload checks for duplicates, file types, and size limits
+2. **Batch Processing**: Files uploaded in batches of 5 using `processBatchFn`
+3. **Progress Feedback**: Real-time status for each file with visual indicators
+4. **Performance Tracking**: Detailed timing metrics for optimization
+
+**Backend Processing:**
+- `sip_add_local_images_batch()`: Processes multiple files in one request
+- Single database update after all files processed
+- Automatic thumbnail generation (256x256)
+- Unique filename handling with counters
+
+**Key Files:**
+- Frontend: `image-actions.js` - `processApprovedFiles()` function
+- Backend: `image-functions.php` - `sip_add_local_images_batch()` function
+
 #### Image Integration
 - Select images for product print areas
 - Drag-and-drop upload interface
 - PhotoSwipe lightbox integration
+- Pre-upload validation dialog with detailed reporting
 
 #### Dynamic Row Highlighting
 When a template is loaded, referenced images are highlighted:
@@ -108,10 +129,32 @@ When a template is loaded, referenced images are highlighted:
   - `unpublished`: `var(--uploaded-unpublished)` (#bfdfc5)
   - `published`: `var(--uploaded-published)` (#7bfd83)
 
+#### Upload Validation Features
+
+**Pre-Upload Analysis:**
+- Duplicate detection (existing files and within batch)
+- File type validation (JPEG, PNG, GIF, WebP, SVG)
+- File size limits (10MB max)
+- Large image warnings (dimensions > 1024px)
+
+**Validation Dialog:**
+- Summary of files to upload, duplicates, and invalid files
+- Option to proceed with valid files only
+- "Save Log" feature for detailed upload reports
+- "View Log" button after completion for troubleshooting
+
+**Log Features:**
+- Detailed upload log with timestamps
+- Performance metrics and throughput statistics
+- Export to text file for support purposes
+- CodeMirror viewer for in-app log viewing
+
 #### Implementation
 - Main file: `image-actions.js`
-- Highlighting function: `updateImageTableHighlights()`
-- Upload handler: `handleImageDrop()`, `handleImageAdd()`
+- Highlighting function: `updateImageTableStatus()`
+- Upload handlers: `handleImageDrop()`, `handleImageAdd()`
+- Batch processor: `processApprovedFiles()`
+- Validation: `analyzeFilesForUpload()`
 
 ## Product Creation Table
 
