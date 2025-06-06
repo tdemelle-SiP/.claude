@@ -319,6 +319,7 @@ SiP.PrintifyManager.productActions = (function($, ajax, utilities) {
 | `startStep(stepName)` | Start a named step |
 | `completeStep(stepName)` | Complete a named step |
 | `setBatchItems(items)` | Display list of items being processed in batch |
+| `addBatchItems(items)` | Add items to the top of the existing batch list (cumulative display) |
 | `updateBatchItem(index, updates)` | Update status of a specific batch item |
 | `showBatchItems()` | Show the batch items display area |
 | `hideBatchItems()` | Hide the batch items display area |
