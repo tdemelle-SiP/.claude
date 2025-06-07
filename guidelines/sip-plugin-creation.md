@@ -474,7 +474,7 @@ This principle guides how functionality is distributed across modules:
 
 - **Product Table Actions**: If a "Create Template" button exists in the product table, the `createTemplate()` function belongs in `product-actions.js`, not `template-actions.js`
 - **Template Table Actions**: Actions executed from the template table interface go in `template-actions.js`
-- **Cross-Table Actions**: The Product Creation Table initialization is in `template-actions.js` because it's triggered from the template table's "Create New Products" action
+- **Cross-Table Actions**: The Product Creation Table initialization is in `template-actions.js` because it's triggered from the template table's "Load Into Creation Table" action
 
 Example:
 ```javascript

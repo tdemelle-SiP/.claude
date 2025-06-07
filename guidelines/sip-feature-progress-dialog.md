@@ -375,6 +375,7 @@ processBatchFn: async (batch, batchIndex, dialog) => {
 6. **Error handling** - Continue processing other items after errors (no retry logic)
 7. **Use processBatch for simple cases** - It handles all the boilerplate
 8. **Visual feedback for batch items** - Use setBatchItems() and updateBatchItem() to show individual item status
+9. **Skip UI updates during batch processing** - Do NOT update tables, refresh displays, or modify dashboard elements while the progress dialog is active. The overlay prevents user interaction, making updates wasteful and slow. Defer all UI updates until after batch completion in the `onAllComplete` callback.
 
 ## Template Variables
 
@@ -388,6 +389,56 @@ The following variables are available for use in message templates:
 | `{item}` | Item name (singular) | "Uploading {item}" → "Uploading product" |
 | `{name}` | Current item's name | "Processing {name}" → "Processing Blue Widget" |
 
+## UI Updates During Batch Processing
+
+### The Problem
+When a progress dialog is active with its overlay, users cannot interact with the dashboard. Updating tables, refreshing displays, or modifying UI elements during batch processing is:
+- **Wasteful** - CPU cycles spent on invisible updates
+- **Slow** - Each update adds unnecessary processing time
+- **Problematic** - Can cause hundreds of unnecessary reloads for large batches
+
+### The Solution
+Detect when a progress dialog is active and skip all UI updates until batch completion:
+
+```javascript
+// In AJAX success handlers, check for active progress dialog
+case 'upload_child_product':
+    // Check if progress dialog is active
+    const isProgressDialogActive = $('.ui-dialog:visible').length > 0 || 
+                                  $('#progress-dialog:visible').length > 0;
+    
+    // Update data but skip UI refresh during batch
+    if (response.data.updated_data) {
+        window.dataStore = response.data.updated_data;
+        
+        // Skip table reload during batch processing
+        if (!isProgressDialogActive) {
+            reloadDataTable();
+        }
+    }
+    
+    // Skip toast notifications during batch
+    if (response.message && !isProgressDialogActive) {
+        SiP.Core.utilities.toast.show(response.message, 3000);
+    }
+    break;
+```
+
+Then update everything once in the `onAllComplete` callback:
+
+```javascript
+onAllComplete: function(successCount, failureCount, errors) {
+    // Now that batch is complete, update all UI elements once
+    reloadDataTable();
+    updateStatusIndicators();
+    refreshDashboardWidgets();
+    
+    // Show summary notification
+    const message = `Processed ${successCount} items successfully`;
+    SiP.Core.utilities.toast.show(message, 5000);
+}
+```
+
 ## Common Pitfalls
 
 1. **Don't process too many items at once** - Use reasonable batch sizes
@@ -395,6 +446,7 @@ The following variables are available for use in message templates:
 3. **Don't block the UI** - Use async/await or promises
 4. **Don't skip progress updates** - Users need feedback
 5. **Don't implement retry logic** - The progress dialog no longer supports automatic retries. Handle errors gracefully and let users retry the entire operation if needed
+6. **Don't update UI during batch processing** - Wait until `onAllComplete` to refresh tables and displays
 
 ## Batch Item Display
 
