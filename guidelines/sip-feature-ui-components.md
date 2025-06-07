@@ -17,6 +17,7 @@ This guide documents the UI components and browser storage patterns used in SiP 
 - [Session Lifecycle](#session-lifecycle)
 - [Standard Headers](#standard-headers)
 - [Utility Functions](#utility-functions)
+- [Conditional UI Visibility](#conditional-ui-visibility)
 - [Best Practices](#best-practices)
 
 ## Component Design Principles
@@ -919,6 +920,55 @@ const html = `<div>${SiP.Core.utilities.escapeHtml(userData.content)}</div>`;
 $('#title').text(userData.title);
 ```
 
+## Conditional UI Visibility
+
+### State-Based UI Controls
+
+When UI controls should only be visible when data is available to manipulate:
+
+```javascript
+/**
+ * Controls visibility of UI elements based on data availability
+ * @param {boolean} show - Whether to show or hide the controls
+ */
+function toggleUIControls(show) {
+    if (show) {
+        $('.control-row-1').show();
+        $('.control-row-2').show();
+        $('.control-row-footer').show();
+    } else {
+        $('.control-row-1').hide();
+        $('.control-row-2').hide();
+        $('.control-row-footer').hide();
+    }
+}
+
+// Usage examples
+// On data load
+if (dataLoaded) {
+    toggleUIControls(true);
+}
+
+// On data clear/unload
+toggleUIControls(false);
+
+// On initialization
+toggleUIControls(hasDataInMemory());
+```
+
+### Common Patterns
+
+1. **Table Controls** - Hide pagination, search, and actions when no data
+2. **Form Controls** - Hide submit buttons when no form context
+3. **Action Buttons** - Hide actions that require selection when nothing selected
+
+### Implementation Guidelines
+
+- Toggle visibility at the container level, not individual controls
+- Update visibility on state changes (load, unload, clear)
+- Check initial state on page load
+- Expose toggle functions in module utils for cross-module access
+
 ## Best Practices
 
 1. **Namespace Storage**: Always use the `sip-core` namespace
@@ -930,3 +980,4 @@ $('#title').text(userData.title);
 7. **Cross-Browser**: Test localStorage availability before use
 8. **Component Stacking**: Use the standardized z-index system (see [CSS Development](sip-development-css.md#z-index-management))
 9. **Consistent Class Names**: Use `normalizeForClass()` for all dynamic CSS class generation
+10. **Conditional Visibility**: Hide UI controls when no data is available to manipulate
