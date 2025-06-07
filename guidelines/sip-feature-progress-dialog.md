@@ -398,27 +398,44 @@ When a progress dialog is active with its overlay, users cannot interact with th
 - **Problematic** - Can cause hundreds of unnecessary reloads for large batches
 
 ### The Solution
-Detect when a progress dialog is active and skip all UI updates until batch completion:
+Use a module-level flag to track batch processing state and skip all UI updates until batch completion:
 
 ```javascript
-// In AJAX success handlers, check for active progress dialog
-case 'upload_child_product':
-    // Check if progress dialog is active
-    const isProgressDialogActive = $('.ui-dialog:visible').length > 0 || 
-                                  $('#progress-dialog:visible').length > 0;
+// At module level, declare batch processing flag
+let isBatchProcessing = false;
+
+// When starting batch processing
+isBatchProcessing = true;
+
+SiP.Core.progressDialog.processBatch({
+    // ... configuration
     
+    onAllComplete: function() {
+        // Clear flag when batch completes
+        isBatchProcessing = false;
+        // Perform all UI updates here
+    },
+    
+    onCancel: function() {
+        // Clear flag if cancelled
+        isBatchProcessing = false;
+    }
+});
+
+// In AJAX success handlers, check the batch processing flag
+case 'upload_child_product':
     // Update data but skip UI refresh during batch
     if (response.data.updated_data) {
         window.dataStore = response.data.updated_data;
         
         // Skip table reload during batch processing
-        if (!isProgressDialogActive) {
+        if (!isBatchProcessing) {
             reloadDataTable();
         }
     }
     
     // Skip toast notifications during batch
-    if (response.message && !isProgressDialogActive) {
+    if (response.message && !isBatchProcessing) {
         SiP.Core.utilities.toast.show(response.message, 3000);
     }
     break;
