@@ -199,6 +199,34 @@ This design was chosen because:
 
 ### Special Features
 
+#### Template Title Display
+- The creation table header includes a subtitle element (`#selected-template-subtitle`) that displays the currently loaded template's title
+- Template title is stored in `window.creationTemplateWipData.data.template_title`
+- The subtitle is updated in two places:
+  - `handleTemplateLoadSuccess()` - When a template is initially loaded
+  - `reloadCreationTable()` - When the creation table is refreshed
+- The template title comes from the `template_title` field in the template JSON file
+
+#### Pagination (Added January 2025)
+- The creation table now supports pagination for better performance with large templates
+- Page size options: 25, 50, 100, or All child products
+- Default page size: 50 child products
+- User's page size selection is saved to localStorage as part of UI state management
+- Navigation controls appear when pagination is active and multiple pages exist
+- Only the current page of child products and their variants are loaded into DataTables
+- Summary rows are generated only for the visible child products
+- This significantly improves performance when working with templates containing hundreds of child products
+
+**Pagination Implementation Details:**
+- Uses localStorage key: `sip-core > sip-printify-manager > creations-table > pageSize`
+- Custom implementation bypasses DataTables' built-in pagination because:
+  - DataTables pagination operates on individual rows, not grouped child products
+  - The creation table's hybrid architecture requires filtering at the child product level
+  - Summary rows are injected via rowGroup and aren't part of the DataTable data
+- Pagination controls are manually inserted above the table and managed separately
+- The DataTables info widget is disabled to prevent confusion about row counts
+- Page navigation maintains all selection states and visibility preferences
+
 #### Status Filtering
 - Operates on child products, not variants
 - Uses CSS classes (`.filter-hidden`) instead of DataTables search API
@@ -297,6 +325,17 @@ The Creation Table deviates from standard patterns due to its hybrid architectur
 - **Child Product Summary Row**: Image cells use `div.image-cell[data-image-index]` containing checkbox
 - **Variant Rows**: Image cells use `div.image-cell[data-image-index]` containing checkbox
 - Selectors must account for these structural differences when targeting checkboxes
+
+#### 7. Custom Pagination Implementation
+**Standard Pattern**: DataTables built-in pagination with standard controls
+
+**Creation Table Exception**: Custom pagination implementation because:
+- DataTables pagination only works with rows in its data model
+- Child product summary rows are injected via rowGroup and not part of the data
+- Pagination must operate at the child product level, not the variant row level
+- Controls are manually inserted and managed outside DataTables
+- The info widget is disabled (`info: false`) to prevent confusion
+- localStorage uses `creations-table` key to match UI Components documentation pattern
 
 ### Implementation
 - Main file: `creation-table-setup-actions.js`

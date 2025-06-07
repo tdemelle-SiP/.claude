@@ -2,6 +2,23 @@
 
 This guide documents the UI components and browser storage patterns used in SiP plugins.
 
+## Table of Contents
+
+- [Component Design Principles](#component-design-principles)
+- [UI State Management with Local Storage](#ui-state-management-with-local-storage)
+- [Toast Notifications](#toast-notifications)
+- [Spinner and Overlay](#spinner-and-overlay)
+- [Modals and Dialogs](#modals-and-dialogs)
+- [Progress Indicators](#progress-indicators)
+- [Buttons and Controls](#buttons-and-controls)
+- [Form Elements](#form-elements)
+- [Checkbox Selection Patterns](#checkbox-selection-patterns)
+- [Responsive Tables](#responsive-tables)
+- [Session Lifecycle](#session-lifecycle)
+- [Standard Headers](#standard-headers)
+- [Utility Functions](#utility-functions)
+- [Best Practices](#best-practices)
+
 ## Component Design Principles
 
 1. **Consistency**: Components should have a consistent look and feel across all SiP plugins
@@ -168,28 +185,162 @@ SiP.Core.utilities.toast.show('<strong>Success:</strong> Files uploaded', 3000);
 - **Error Style**: Red background for errors (third parameter)
 - **HTML Content**: Supports basic HTML formatting
 
-## Spinner
+## Spinner and Overlay
 
-Display loading indicators during async operations.
+The SiP Core provides a standardized spinner/overlay system for indicating loading states across all plugins.
+
+### Overview
+
+The spinner system consists of two components:
+- **Overlay**: A semi-transparent backdrop that covers the entire dashboard
+- **Spinner**: An animated loading indicator (spinner.webp) centered on screen
 
 ### Basic Usage
+
 ```javascript
-// Show spinner with message
-const spinner = SiP.Core.utilities.spinner.show('Loading products...');
+// Show spinner (also shows overlay)
+SiP.Core.utilities.spinner.show();
 
-// Hide spinner
-SiP.Core.utilities.spinner.hide(spinner);
+// Hide spinner (also hides overlay)
+SiP.Core.utilities.spinner.hide();
+```
 
-// Auto-hide after operation
-async function loadData() {
-    const spinner = SiP.Core.utilities.spinner.show('Loading...');
+### Manual Operations
+
+For operations that require manual spinner control:
+
+```javascript
+// Example: Table reload with loading state
+function reloadTable() {
+    // Show spinner immediately
+    SiP.Core.utilities.spinner.show();
+    
     try {
-        await fetchData();
+        // Perform heavy operations
+        destroyTable();
+        fetchData();
+        rebuildTable();
+        
+        // Hide spinner on success
+        SiP.Core.utilities.spinner.hide();
+    } catch (error) {
+        // Always hide spinner on error
+        SiP.Core.utilities.spinner.hide();
+        SiP.Core.utilities.toast.show('Error: ' + error.message, 5000, true);
+    }
+}
+
+// Example: Multi-step operation
+async function performBatchOperation() {
+    SiP.Core.utilities.spinner.show();
+    
+    try {
+        await step1();
+        await step2();
+        await step3();
     } finally {
-        SiP.Core.utilities.spinner.hide(spinner);
+        // Ensure spinner is hidden even if operation fails
+        SiP.Core.utilities.spinner.hide();
     }
 }
 ```
+
+### AJAX Integration
+
+The spinner is automatically shown/hidden when using SiP Core AJAX:
+
+```javascript
+// Spinner shows/hides automatically
+SiP.Core.ajax.handleAjaxAction('plugin-name', 'action', formData)
+    .then(response => {
+        // Spinner already hidden
+    });
+
+// Disable automatic spinner for custom handling
+SiP.Core.ajax.handleAjaxAction('plugin-name', 'action', formData, { showSpinner: false })
+    .then(response => {
+        // Handle manually
+    });
+```
+
+For complete AJAX documentation, see [AJAX Implementation Guide](sip-plugin-ajax.md#manual-spinner-control).
+
+### HTML Structure
+
+The overlay and spinner elements are automatically created by SiP Core:
+
+```html
+<!-- Added to page by SiP Core -->
+<div id="overlay">
+    <img id="spinner" src="/wp-content/plugins/sip-plugins-core/assets/images/spinner.webp" alt="Loading...">
+</div>
+```
+
+### Best Practices
+
+**DO:**
+- ✅ Show spinner immediately when user initiates action
+- ✅ Always hide spinner in both success and error cases
+- ✅ Use try/finally blocks to ensure spinner is hidden
+- ✅ Let AJAX handle spinner automatically when possible
+- ✅ Test spinner visibility with `SiP.Core.utilities.spinner.isVisible()`
+
+**DON'T:**
+- ❌ Manipulate #overlay or #spinner elements directly
+- ❌ Forget to hide spinner in error handlers
+- ❌ Show multiple spinners simultaneously
+- ❌ Use custom loading indicators when standard spinner suffices
+
+### Common Patterns
+
+#### Immediate Feedback Pattern
+```javascript
+// Show spinner immediately on user action
+$('#button').on('click', function() {
+    SiP.Core.utilities.spinner.show();
+    
+    // Use setTimeout to ensure UI updates before heavy processing
+    setTimeout(function() {
+        performHeavyOperation();
+    }, 10);
+});
+```
+
+#### Conditional Spinner Pattern
+```javascript
+// Check if already showing
+if (!SiP.Core.utilities.spinner.isVisible()) {
+    SiP.Core.utilities.spinner.show();
+}
+
+// Perform operations...
+
+// Safe to call hide multiple times
+SiP.Core.utilities.spinner.hide();
+```
+
+#### Error Recovery Pattern
+```javascript
+function riskyOperation() {
+    SiP.Core.utilities.spinner.show();
+    
+    return someAsyncOperation()
+        .then(result => {
+            SiP.Core.utilities.spinner.hide();
+            return result;
+        })
+        .catch(error => {
+            SiP.Core.utilities.spinner.hide();
+            SiP.Core.utilities.toast.show('Operation failed', 5000, true);
+            throw error; // Re-throw if needed
+        });
+}
+```
+
+### Related Documentation
+- [AJAX Implementation](sip-plugin-ajax.md) - Automatic spinner handling
+- [Progress Dialog](sip-feature-progress-dialog.md) - For operations with progress tracking
+- [Toast Notifications](#toast-notifications) - User feedback messages
 
 ## Modals and Dialogs
 

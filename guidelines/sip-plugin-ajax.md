@@ -46,6 +46,8 @@ SiP.Core.ajax.registerSuccessHandler(
 );
 
 // 4. Manual spinner control (when needed for multi-step operations)
+// See [Spinner Documentation](sip-feature-ui-components.md#spinner-and-overlay) for complete details
+
 // Show spinner manually
 SiP.Core.utilities.spinner.show();
 
@@ -422,3 +424,65 @@ Before considering your AJAX implementation complete:
 - [ ] Tested success and error cases
 - [ ] No console errors
 - [ ] Spinner behavior correct
+
+## Manual Spinner Control
+
+While the SiP Core AJAX system automatically handles spinner display, some operations require manual control:
+
+### When to Use Manual Control
+
+1. **Multi-step operations** where AJAX is just one part
+2. **Heavy JavaScript processing** before/after AJAX
+3. **Batch operations** with multiple AJAX calls
+4. **Custom timing** requirements
+
+### Implementation Pattern
+
+```javascript
+// Pattern 1: Show immediately on user action
+$('#heavy-operation-button').on('click', function() {
+    // Show spinner immediately for user feedback
+    SiP.Core.utilities.spinner.show();
+    
+    // Perform operation without automatic spinner
+    SiP.Core.ajax.handleAjaxAction('plugin', 'action', formData, { showSpinner: false })
+        .then(response => {
+            // Process response
+            return processHeavyData(response);
+        })
+        .then(result => {
+            // Update UI
+            updateInterface(result);
+        })
+        .finally(() => {
+            // Always hide spinner
+            SiP.Core.utilities.spinner.hide();
+        });
+});
+
+// Pattern 2: Sequential operations
+async function batchOperation() {
+    SiP.Core.utilities.spinner.show();
+    
+    try {
+        // Multiple AJAX calls without individual spinners
+        for (const item of items) {
+            const formData = SiP.Core.utilities.createFormData('plugin', 'action', item.action);
+            await SiP.Core.ajax.handleAjaxAction('plugin', 'action', formData, { showSpinner: false });
+        }
+        
+        SiP.Core.utilities.toast.show('Batch operation complete', 3000);
+    } catch (error) {
+        SiP.Core.utilities.toast.show('Error: ' + error.message, 5000, true);
+    } finally {
+        SiP.Core.utilities.spinner.hide();
+    }
+}
+```
+
+### Key Points
+
+- Always hide spinner in `finally` or both success/error handlers
+- Use `{ showSpinner: false }` to disable automatic spinner
+- Show spinner before heavy operations for immediate feedback
+- See [Spinner Documentation](sip-feature-ui-components.md#spinner-and-overlay) for complete API reference

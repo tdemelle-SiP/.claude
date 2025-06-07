@@ -211,9 +211,9 @@ The SiP Plugins Core provides these key components (detailed in implementation g
 - Error handling patterns included
 
 ### UI Utilities
-- Spinner management: `SiP.Core.utilities.spinner`
-- Toast notifications: `SiP.Core.utilities.toast`
-- Progress dialog: `SiP.Core.progressDialog`
+- **Spinner/Overlay**: `SiP.Core.utilities.spinner` - [Full Documentation](./guidelines/sip-feature-ui-components.md#spinner-and-overlay)
+- **Toast Notifications**: `SiP.Core.utilities.toast` - [Documentation](./guidelines/sip-feature-ui-components.md#toast-notifications)
+- **Progress Dialog**: `SiP.Core.progressDialog` - [Full Guide](./guidelines/sip-feature-progress-dialog.md)
 
 ### Plugin Framework
 - Registration: `SiP_Plugin_Framework::init_plugin()`
