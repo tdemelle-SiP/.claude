@@ -188,7 +188,18 @@ SiP.Core.progressDialog.processBatch({
         
         waitForUserOnStart: true,
         waitForUserOnComplete: true,
-        deferCompletion: true
+        deferCompletion: true,
+        
+        // Add custom completion button
+        completionButtons: [{
+            text: 'Reload Products',
+            class: 'ui-button-primary',
+            handler: function(dialog) {
+                dialog.close();
+                // Start the reload operation with its own dialog
+                SiP.PrintifyManager.productActions.handleReloadShopProductsButton();
+            }
+        }]
     },
     
     steps: {
@@ -218,25 +229,6 @@ SiP.Core.progressDialog.processBatch({
     },
     
     onAllComplete: async function(successCount, failureCount, errors, completeDialog) {
-        const dialog = this;
-        
-        // Add custom button for follow-up operation
-        if (dialog.element) {
-            const $buttonContainer = dialog.element.find('.ui-dialog-buttonpane');
-            
-            const $reloadButton = $('<button>')
-                .addClass('ui-button ui-widget ui-state-default ui-corner-all ui-button-text-only')
-                .html('<span class="ui-button-text">Reload Products</span>')
-                .on('click', function() {
-                    dialog.close();
-                    // Start the reload operation with its own dialog
-                    SiP.PrintifyManager.productActions.handleReloadShopProductsButton();
-                });
-            
-            // Insert before the close button
-            $buttonContainer.find('button').first().before($reloadButton);
-        }
-        
         // Complete the dialog to show completion messages
         if (completeDialog) {
             completeDialog();
@@ -253,46 +245,79 @@ SiP.Core.progressDialog.processBatch({
 4. **Avoid mixing progress modes** - Don't try to combine batch processing with manual progress updates
 5. **Maintain clear boundaries** - Each dialog handles one type of operation
 
-### Handling Sequential Operations
+### Custom Completion Buttons
 
-When you need to perform follow-up operations after batch processing, provide user control through action buttons:
+The progress dialog now supports adding custom buttons to the completion screen through the `completionButtons` option:
 
 ```javascript
-onAllComplete: async function(successCount, failureCount, errors, completeDialog) {
-    const dialog = this;
-    
-    // Add custom action button for follow-up operation
-    if (dialog.element) {
-        const $buttonContainer = dialog.element.find('.ui-dialog-buttonpane');
-        
-        const $actionButton = $('<button>')
-            .addClass('ui-button ui-widget ui-state-default ui-corner-all ui-button-text-only')
-            .html('<span class="ui-button-text">Perform Next Action</span>')
-            .on('click', function() {
+dialogOptions: {
+    completionButtons: [
+        {
+            text: 'Reload Products',           // Button text
+            class: 'ui-button-primary',        // CSS classes for styling
+            handler: function(dialog) {        // Click handler (receives dialog instance)
                 dialog.close();
-                // Start the next operation with its own dialog
-                performNextOperation();
-            });
-        
-        // Insert before the close button
-        $buttonContainer.find('button').first().before($actionButton);
-    }
-    
-    // Update completion message to guide user
-    dialog.updateStatus(`${successCount} items processed successfully!`);
-    dialog.updateSecondaryStatus('Click "Perform Next Action" to continue');
-    
-    // Complete the dialog
-    if (completeDialog) {
-        completeDialog();
-    }
+                // Perform your action
+                performFollowUpAction();
+            }
+        }
+    ]
 }
+```
+
+**Button Configuration:**
+- `text` (required): The text to display on the button
+- `class` (optional): CSS classes to apply for styling
+- `handler` (required): Function called when button is clicked, receives the dialog instance
+
+**Standard Buttons:**
+The dialog always includes "Close" and "View Log" buttons. Custom buttons appear before these standard buttons.
+
+### Handling Sequential Operations
+
+When you need to perform follow-up operations after batch processing, use the `completionButtons` option:
+
+```javascript
+SiP.Core.progressDialog.processBatch({
+    items: selectedItems,
+    batchSize: 5,
+    
+    dialogOptions: {
+        title: 'Processing Items',
+        completionMessage: '{successCount} items processed successfully!',
+        secondaryCompletionMessage: 'Choose an action below',
+        
+        // Add custom completion buttons
+        completionButtons: [
+            {
+                text: 'Process More',
+                class: 'ui-button-primary',
+                handler: function(dialog) {
+                    dialog.close();
+                    startNextBatch();
+                }
+            },
+            {
+                text: 'Export Results',
+                handler: function(dialog) {
+                    dialog.close();
+                    exportProcessedData();
+                }
+            }
+        ]
+    },
+    
+    processItemFn: async (item, dialog) => {
+        // Process each item
+        return await processItem(item);
+    }
+});
 ```
 
 This approach:
 - Gives users control over when to proceed
-- Keeps each operation in its own dialog with appropriate progress tracking
-- Avoids complexity of mixing different progress modes
+- Keeps the UI clean with properly integrated buttons
+- Maintains consistency with jQuery UI dialog patterns
 - Creates a clear, reusable pattern for multi-stage workflows
 
 ## Real-World Example: Bulk Product Update
@@ -391,6 +416,7 @@ SiP.PrintifyManager.productActions = (function($, ajax, utilities) {
 | width | number | 500 | Dialog width in pixels |
 | closeOnEscape | boolean | false | Allow ESC key to close |
 | steps | object | null | Multi-step configuration |
+| completionButtons | array | [] | Custom buttons for completion screen (see below) |
 
 ## Methods Reference
 
