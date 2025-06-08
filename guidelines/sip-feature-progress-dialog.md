@@ -173,40 +173,73 @@ SiP.Core.progressDialog.processBatch({
     batchSize: 1,
     
     dialogOptions: {
-        title: 'Printify Product Upload',
+        title: 'Product Upload & Sync',
         initialMessage: hasUnsavedChanges 
             ? 'Press Continue to Save Changes and Upload Selected Products'
             : `${selectedProducts.length} items selected for processing`,
         waitForUserOnStart: true,
-        waitForUserOnComplete: true
+        waitForUserOnComplete: true,
+        deferCompletion: true  // Important for multi-stage operations
+    },
+    
+    // Define steps for multi-phase operation
+    steps: {
+        weights: {
+            prepare: 5,
+            upload: 35,
+            updateStatus: 10,
+            syncProducts: 50  // Second phase for product sync
+        }
     },
     
     processItemFn: async (productId, dialog) => {
-        // Dynamic status update when starting
-        if (!processStarted) {
-            dialog.updateStatus(`Processing ${selectedProducts.length} items`);
-            processStarted = true;
-        }
+        // Process individual item with step tracking
+        dialog.startStep('prepare');
+        const productData = await prepareProduct(productId);
+        dialog.completeStep('prepare');
         
-        // Process individual item
-        dialog.updateStatus(`Uploading product "${productTitle}"...`);
+        dialog.startStep('upload');
+        dialog.updateStatus(`Uploading product "${productData.title}"...`);
         const result = await uploadProduct(productId);
+        dialog.completeStep('upload');
+        
+        dialog.startStep('updateStatus');
+        await updateProductStatus(productId);
+        dialog.completeStep('updateStatus');
+        
         return result;
     },
     
-    onAllComplete: async function(successCount, failureCount) {
+    onAllComplete: async function(successCount, failureCount, errors, completeDialog) {
         const dialog = this; // 'this' is the dialog instance
-        const totalItems = successCount + failureCount;
         
-        // Update status to show completion
-        dialog.updateStatus(`${totalItems} items processed`);
+        // Start the sync phase
+        dialog.startStep('syncProducts');
+        
+        // Provide clear transition messaging
+        dialog.updateStatus('Upload complete! Synchronizing your product catalog with Printify...');
         
         // Continue with reload operation in same dialog
-        dialog.updateStatus('Product upload complete, reloading product table...');
-        await SiP.PrintifyManager.productActions.fetchShopProductsInChunks(null, dialog);
+        await SiP.PrintifyManager.productActions.fetchShopProductsInChunks(null, dialog, true);
+        
+        // Complete the sync phase
+        dialog.completeStep('syncProducts');
+        
+        // Now complete the entire dialog
+        if (completeDialog) {
+            completeDialog();
+        }
     }
 });
 ```
+
+### Key Points for Multi-Stage Operations:
+
+1. **Use `deferCompletion: true`** - This prevents the dialog from auto-completing after processItemFn finishes
+2. **Define steps with weights** - Allocate percentage of progress bar to each phase
+3. **Track step progress** - Use `startStep()` and `completeStep()` for accurate progress
+4. **Clear transition messaging** - Update status between major phases
+5. **Pass `completeDialog` callback** - Call this when all operations are truly complete
 
 ## Real-World Example: Bulk Product Update
 
