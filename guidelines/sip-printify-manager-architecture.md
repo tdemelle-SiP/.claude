@@ -429,6 +429,19 @@ function updateProductTableHighlights(templateData) {
 }
 ```
 
+#### Cross-Table Filter Interactions
+**Important**: When resetting filters in any table, use table-specific selectors to avoid unintended effects:
+
+```javascript
+// ✅ CORRECT: Target filters within specific table wrapper
+$('#product-table_wrapper .sip-filter').val('');
+
+// ❌ WRONG: Affects all tables' filters
+$('.sip-filter').val('');
+```
+
+This prevents cascading effects where one table's operations trigger reloads in other tables.
+
 ### WIP File Lifecycle Management
 
 Work-In-Progress files manage the state of the product creation table:

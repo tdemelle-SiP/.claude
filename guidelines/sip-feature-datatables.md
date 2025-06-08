@@ -469,6 +469,21 @@ imageTable = new DataTable("#image-table", {
 });
 ```
 
+### Filter Selector Scoping
+
+**Important**: When manipulating filter dropdowns, always use table-specific selectors to avoid affecting other tables:
+
+```javascript
+// ✅ CORRECT: Target filters within specific table
+$('#image-table_wrapper .sip-filter').val('');
+$('#product-table_wrapper .sip-filter').val('');
+
+// ❌ WRONG: Affects all tables
+$('.sip-filter').val('');
+```
+
+This prevents unintended side effects where operations in one table trigger actions in others.
+
 ## Templates Table
 
 The templates table is the simplest implementation with basic selection and search.
