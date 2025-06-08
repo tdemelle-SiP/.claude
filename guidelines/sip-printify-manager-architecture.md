@@ -227,10 +227,36 @@ This design was chosen because:
 - The DataTables info widget is disabled to prevent confusion about row counts
 - Page navigation maintains all selection states and visibility preferences
 
-#### Status Filtering
+#### Status Filtering and Data State Management (Updated January 2025)
+
+**Filtering System:**
 - Operates on child products, not variants
-- Uses CSS classes (`.filter-hidden`) instead of DataTables search API
-- Hidden rows are automatically deselected
+- Filter is applied to the source data BEFORE pagination
+- When filter changes, the table reloads with filtered dataset
+- Maintains all available status options in dropdown regardless of current filter
+- Resets to page 1 when filter changes
+
+**Data State Tracking:**
+The creation table tracks and displays four distinct data states:
+1. **Total Products** - All child products in the loaded template
+2. **Filtered Products** - Products matching the current status filter
+3. **Products on Page** - Based on pagination settings (25, 50, 100, or all)
+4. **Selected Products** - Those with checkboxes checked
+
+**Display Format:**
+- Without filter: "Showing 1-50 of 536 child products"
+- With filter: "Showing 1-50 of 180 filtered products from 536 total child products"
+- With selections: Appends ". 15 child products selected"
+
+**Row Numbering:**
+- Numbers are applied only to visible rows
+- Renumbered from 1 after filtering
+- Continues across pages (e.g., page 2 with size 50 shows 51-100)
+
+**Implementation Details:**
+- Filter-hidden rows are automatically deselected
+- Uses `isTableReloading` flag to prevent infinite reload loops
+- Filter dropdown populated from source data, not DOM rows
 
 #### Selection Behavior
 - Summary row checkboxes control their variant rows
