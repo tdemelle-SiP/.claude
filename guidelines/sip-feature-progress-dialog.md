@@ -860,5 +860,145 @@ SiP.Core.progressDialog.processBatch({
 - Throw an exception from `processItemFn` or `processBatchFn` to stop all processing
 - Retry logic has been removed - errors fail immediately without automatic retries
 
+## Technical Implementation Details
+
+### Internal Architecture
+
+The progress dialog system consists of several key components:
+
+1. **Dialog Controller Object**
+   - Created by `create()` function and returned to caller
+   - Manages all dialog state and operations
+   - Provides public API methods for dialog control
+   - Scope management: Controller variable is declared at function start to ensure availability to all event handlers
+
+2. **State Management**
+   ```javascript
+   // Internal state variables
+   currentState: 'start' | 'progress' | 'complete'
+   totalProgress: 0-100 (overall percentage)
+   stepProgress: { stepName: 0-1 } (per-step progress)
+   stepAllocations: { stepName: percentage } (step weights)
+   currentBatch: 0-based batch index
+   batchCount: total number of batches
+   ```
+
+3. **Progress Calculation**
+   - Step weights are divided by batch count for multi-batch operations
+   - Each step progresses from 0% to 100% within its allocation
+   - `startStep()` advances to 20% immediately for visual feedback
+   - `completeStep()` advances to 100% of the step's allocation
+   - Progress never decreases (enforced by `Math.max()` checks)
+
+### Console Logging Format
+
+The progress dialog uses a streamlined logging format for developer debugging:
+
+```
+♦🔁 Progress meter update | [progress] 1/100 Item Name - Action +X% | Batch Upload X% Complete
+```
+
+Components:
+- `1/100`: Current item / total items
+- `Item Name`: Name of the current item being processed
+- `Action`: Human-readable step name (Preparing, Uploading, etc.)
+- `+X%`: Incremental progress for this update
+- `Batch Upload X% Complete`: Overall progress percentage
+
+### Step Weight Distribution
+
+When processing multiple batches with step weights:
+
+```javascript
+// Original weights
+steps: { weights: { upload: 70, process: 30 } }
+
+// With 10 batches, each batch gets:
+// upload: 7% (70 ÷ 10)
+// process: 3% (30 ÷ 10)
+
+// Total progress calculation:
+// Batch 1: 0-10%, Batch 2: 10-20%, etc.
+```
+
+### Error Handling Patterns
+
+1. **Individual Item Errors**
+   ```javascript
+   processItemFn: async (item, dialog) => {
+       try {
+           return await processItem(item);
+       } catch (error) {
+           dialog.showError(`Failed: ${error.message}`);
+           // Return error to continue processing other items
+           return { success: false, error: error.message };
+       }
+   }
+   ```
+
+2. **Batch-Level Errors**
+   ```javascript
+   processBatchFn: async (batch, batchIndex, dialog) => {
+       try {
+           return await processBatch(batch);
+       } catch (error) {
+           // Throwing stops all processing
+           throw new Error(`Batch ${batchIndex} failed: ${error.message}`);
+       }
+   }
+   ```
+
+### Button Handler Scope
+
+Custom completion buttons receive the dialog controller in their handler:
+
+```javascript
+handler: function(dialog) {
+    // 'this' refers to the button element
+    // 'dialog' is the controller instance
+    dialog.close();  // Access all dialog methods
+}
+```
+
+### Batch Processing Flag Pattern
+
+To prevent UI updates during batch processing:
+
+```javascript
+// Module-level flag
+let isBatchProcessing = false;
+
+// In success handlers
+if (!isBatchProcessing) {
+    reloadDataTable();  // Skip during batch
+}
+
+// Set/clear in batch operations
+isBatchProcessing = true;
+processBatch({...}).then(() => {
+    isBatchProcessing = false;
+});
+```
+
+## Common Developer Pitfalls
+
+1. **Controller Scope Issues**
+   - Problem: "controller is not defined" errors in button handlers
+   - Solution: Controller variable must be declared before event binding
+
+2. **Progress Calculation Confusion**
+   - Problem: Tiny percentages (0.02%) with many single-item batches
+   - Solution: Use larger batch sizes or skip step weights for simple operations
+
+3. **UI Update Performance**
+   - Problem: Updating tables during batch processing wastes resources
+   - Solution: Use batch processing flag to defer updates until completion
+
+4. **Memory Leaks**
+   - Problem: Not cleaning up event handlers or intervals
+   - Solution: Dialog automatically cleans up on close via jQuery UI
+
 ## Related Guides
 - For testing batch operations, refer to the [Testing Guide](./sip-development-testing.md)
+- For AJAX integration patterns, see the [AJAX Guide](./sip-plugin-ajax.md)
+- For UI component standards, see the [UI Components Guide](./sip-feature-ui-components.md)
