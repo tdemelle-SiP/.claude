@@ -421,6 +421,58 @@ function updateProgress(current, total) {
 <button class="button button-primary" disabled>Processing...</button>
 ```
 
+### WordPress Dashicons
+WordPress provides a comprehensive icon font called Dashicons that should be used for consistent admin UI elements.
+
+```html
+<!-- Icon button with text -->
+<button class="button">
+    <span class="dashicons dashicons-editor-help"></span> Help
+</button>
+
+<!-- Icon-only button -->
+<button class="button" title="Settings">
+    <span class="dashicons dashicons-admin-generic"></span>
+</button>
+
+<!-- Navigation icons commonly used -->
+<span class="dashicons dashicons-controls-skipback"></span>   <!-- First/Skip to start -->
+<span class="dashicons dashicons-arrow-left-alt2"></span>     <!-- Previous/Back -->
+<span class="dashicons dashicons-arrow-right-alt2"></span>    <!-- Next/Forward -->
+<span class="dashicons dashicons-controls-skipforward"></span> <!-- Last/Skip to end -->
+
+<!-- Other common icons -->
+<span class="dashicons dashicons-plus-alt"></span>            <!-- Add/Plus -->
+<span class="dashicons dashicons-dismiss"></span>             <!-- Close/Remove -->
+<span class="dashicons dashicons-yes"></span>                 <!-- Success/Check -->
+<span class="dashicons dashicons-warning"></span>             <!-- Warning -->
+<span class="dashicons dashicons-info"></span>                <!-- Information -->
+```
+
+**Icon Styling:**
+```css
+/* Standard icon size */
+.dashicons {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+    vertical-align: middle;
+}
+
+/* Larger icons */
+.dashicons-large {
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+}
+```
+
+**Best Practices:**
+- Use dashicons for consistency with WordPress admin UI
+- Always include `title` attributes on icon-only buttons for accessibility
+- Ensure icons have sufficient contrast against their background
+- Test icon visibility at different zoom levels
+
 ### Action Dropdown Pattern
 ```html
 <select id="bulk-action" class="action-dropdown">

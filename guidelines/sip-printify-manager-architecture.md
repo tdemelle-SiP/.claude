@@ -213,6 +213,11 @@ This design was chosen because:
 - Default page size: 50 child products
 - User's page size selection is saved to localStorage as part of UI state management
 - Navigation controls appear when pagination is active and multiple pages exist
+  - First page icon (dashicons-controls-skipback)
+  - Previous page icon (dashicons-arrow-left-alt2)
+  - Page X of Y display
+  - Next page icon (dashicons-arrow-right-alt2)
+  - Last page icon (dashicons-controls-skipforward)
 - Only the current page of child products and their variants are loaded into DataTables
 - Summary rows are generated only for the visible child products
 - This significantly improves performance when working with templates containing hundreds of child products
