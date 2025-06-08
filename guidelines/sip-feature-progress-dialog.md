@@ -162,33 +162,40 @@ dialog.completeStep('finalize');
 dialog.complete(successCount, errorCount);
 ```
 
-## Real-World Example: Upload with Sequential Operations
+## Real-World Example: Upload with User-Controlled Follow-up
 
-Here's an example showing dynamic status updates and dialog reuse from the SiP Printify Manager:
+Here's an example from the SiP Printify Manager showing how to handle sequential operations:
 
 ```javascript
-// Upload products then reload the product table in the same dialog
+// Upload products with option to reload catalog after completion
 SiP.Core.progressDialog.processBatch({
     items: selectedProducts,
     batchSize: 1,
     
     dialogOptions: {
-        title: 'Product Upload & Sync',
-        initialMessage: hasUnsavedChanges 
+        title: 'Product Upload to Printify',
+        item: 'product',
+        initialMessage: `${selectedProducts.length} {item}s selected for processing`,
+        secondaryInitialMessage: hasUnsavedChanges 
             ? 'Press Continue to Save Changes and Upload Selected Products'
-            : `${selectedProducts.length} items selected for processing`,
+            : '',
+        
+        progressMessage: 'Uploading {stepCount} of {count} {item}s',
+        secondaryProgressMessage: 'Uploading {item} "{name}" to Printify...',
+        
+        completionMessage: '{successCount} {item}s uploaded successfully!',
+        secondaryCompletionMessage: 'Click "Reload Products" below to synchronize your catalog with Printify',
+        
         waitForUserOnStart: true,
         waitForUserOnComplete: true,
-        deferCompletion: true  // Important for multi-stage operations
+        deferCompletion: true
     },
     
-    // Define steps for multi-phase operation
     steps: {
         weights: {
-            prepare: 5,
-            upload: 35,
-            updateStatus: 10,
-            syncProducts: 50  // Second phase for product sync
+            prepare: 10,
+            upload: 70,
+            updateStatus: 20
         }
     },
     
@@ -211,21 +218,26 @@ SiP.Core.progressDialog.processBatch({
     },
     
     onAllComplete: async function(successCount, failureCount, errors, completeDialog) {
-        const dialog = this; // 'this' is the dialog instance
+        const dialog = this;
         
-        // Start the sync phase
-        dialog.startStep('syncProducts');
+        // Add custom button for follow-up operation
+        if (dialog.element) {
+            const $buttonContainer = dialog.element.find('.ui-dialog-buttonpane');
+            
+            const $reloadButton = $('<button>')
+                .addClass('ui-button ui-widget ui-state-default ui-corner-all ui-button-text-only')
+                .html('<span class="ui-button-text">Reload Products</span>')
+                .on('click', function() {
+                    dialog.close();
+                    // Start the reload operation with its own dialog
+                    SiP.PrintifyManager.productActions.handleReloadShopProductsButton();
+                });
+            
+            // Insert before the close button
+            $buttonContainer.find('button').first().before($reloadButton);
+        }
         
-        // Provide clear transition messaging
-        dialog.updateStatus('Upload complete! Synchronizing your product catalog with Printify...');
-        
-        // Continue with reload operation in same dialog
-        await SiP.PrintifyManager.productActions.fetchShopProductsInChunks(null, dialog, true);
-        
-        // Complete the sync phase
-        dialog.completeStep('syncProducts');
-        
-        // Now complete the entire dialog
+        // Complete the dialog to show completion messages
         if (completeDialog) {
             completeDialog();
         }
@@ -233,13 +245,55 @@ SiP.Core.progressDialog.processBatch({
 });
 ```
 
-### Key Points for Multi-Stage Operations:
+### Key Points for User-Controlled Sequential Operations:
 
-1. **Use `deferCompletion: true`** - This prevents the dialog from auto-completing after processItemFn finishes
-2. **Define steps with weights** - Allocate percentage of progress bar to each phase
-3. **Track step progress** - Use `startStep()` and `completeStep()` for accurate progress
-4. **Clear transition messaging** - Update status between major phases
-5. **Pass `completeDialog` callback** - Call this when all operations are truly complete
+1. **Keep operations separate** - Each operation uses its own dialog with appropriate progress tracking
+2. **Use completion messages** - Guide users to available follow-up actions
+3. **Add action buttons** - Let users initiate the next operation when ready
+4. **Avoid mixing progress modes** - Don't try to combine batch processing with manual progress updates
+5. **Maintain clear boundaries** - Each dialog handles one type of operation
+
+### Handling Sequential Operations
+
+When you need to perform follow-up operations after batch processing, provide user control through action buttons:
+
+```javascript
+onAllComplete: async function(successCount, failureCount, errors, completeDialog) {
+    const dialog = this;
+    
+    // Add custom action button for follow-up operation
+    if (dialog.element) {
+        const $buttonContainer = dialog.element.find('.ui-dialog-buttonpane');
+        
+        const $actionButton = $('<button>')
+            .addClass('ui-button ui-widget ui-state-default ui-corner-all ui-button-text-only')
+            .html('<span class="ui-button-text">Perform Next Action</span>')
+            .on('click', function() {
+                dialog.close();
+                // Start the next operation with its own dialog
+                performNextOperation();
+            });
+        
+        // Insert before the close button
+        $buttonContainer.find('button').first().before($actionButton);
+    }
+    
+    // Update completion message to guide user
+    dialog.updateStatus(`${successCount} items processed successfully!`);
+    dialog.updateSecondaryStatus('Click "Perform Next Action" to continue');
+    
+    // Complete the dialog
+    if (completeDialog) {
+        completeDialog();
+    }
+}
+```
+
+This approach:
+- Gives users control over when to proceed
+- Keeps each operation in its own dialog with appropriate progress tracking
+- Avoids complexity of mixing different progress modes
+- Creates a clear, reusable pattern for multi-stage workflows
 
 ## Real-World Example: Bulk Product Update
 
