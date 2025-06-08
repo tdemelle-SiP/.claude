@@ -899,11 +899,17 @@ The progress dialog uses a streamlined logging format for developer debugging:
 ```
 
 Components:
-- `1/100`: Current item / total items
+- `1/100`: Current item / total items (or batch number when processing batches)
 - `Item Name`: Name of the current item being processed
 - `Action`: Human-readable step name (Preparing, Uploading, etc.)
 - `+X%`: Incremental progress for this update
 - `Batch Upload X% Complete`: Overall progress percentage
+
+For batch completion logging:
+```
+[progress] 2/5 Batch Completed +20.0% | Batch Upload 40.0% Complete
+```
+Where `2/5` represents batch 2 of 5 total batches.
 
 ### Step Weight Distribution
 
@@ -960,6 +966,23 @@ handler: function(dialog) {
 }
 ```
 
+### Enhanced Controller Architecture
+
+The progress dialog uses a two-controller pattern for batch processing:
+
+1. **Base Controller** - Created by `create()` function
+   - Provides core dialog functionality
+   - Has access to closure variables for state management
+   - Used for simple progress tracking
+
+2. **Enhanced Controller** - Created by `enhanceForBatchProcessing()`
+   - Extends base controller with batch-specific methods
+   - Preserves all base methods via spread operator
+   - Adds: `initBatchProcessing()`, `startBatch()`, `completeBatch()`, etc.
+   - **Important**: Enhanced methods cannot access base controller's closure variables
+
+This separation allows flexibility - use base controller for simple operations, enhance for batch processing. The enhanced controller is a new object that doesn't share the base controller's closure scope.
+
 ### Batch Processing Flag Pattern
 
 To prevent UI updates during batch processing:
@@ -986,15 +1009,20 @@ processBatch({...}).then(() => {
    - Problem: "controller is not defined" errors in button handlers
    - Solution: Controller variable must be declared before event binding
 
-2. **Progress Calculation Confusion**
+2. **Enhanced Controller Closure Access**
+   - Problem: Enhanced controller methods trying to access base controller's closure variables
+   - Solution: Use public API methods like `getProgress()` instead of direct variable access
+   - Example: The `completeBatch()` method cannot access `currentItemName`, `totalCount`, etc.
+
+3. **Progress Calculation Confusion**
    - Problem: Tiny percentages (0.02%) with many single-item batches
    - Solution: Use larger batch sizes or skip step weights for simple operations
 
-3. **UI Update Performance**
+4. **UI Update Performance**
    - Problem: Updating tables during batch processing wastes resources
    - Solution: Use batch processing flag to defer updates until completion
 
-4. **Memory Leaks**
+5. **Memory Leaks**
    - Problem: Not cleaning up event handlers or intervals
    - Solution: Dialog automatically cleans up on close via jQuery UI
 
