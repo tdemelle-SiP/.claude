@@ -24,7 +24,9 @@
       "Bash(git commit:*)",
       "Bash(git push:*)",
       "Bash(true)",
-      "Bash(wp option get:*)"
+      "Bash(wp option get:*)",
+      "Bash(gh auth:*)",
+      "Bash(git remote set-url:*)"
     ],
     "deny": []
   },
