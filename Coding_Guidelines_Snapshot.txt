@@ -96,7 +96,8 @@ Implementation Checkpoint Requirements
   - Defensive checks (if exists, if defined,
   hasOwnProperty)
   - Event handler workarounds
-  - State management to track framework behavior     
+  - State management to track framework behavior
+  - inline css styles not being used legitimately for dynamic values.
 
   These are symptom treatments. Return to root       
   cause analysis.
