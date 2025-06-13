@@ -20,6 +20,16 @@ Keep it to 1-2 sentences per component.
 
 The SiP Printify Manager browser extension bridges WordPress and Printify, enabling functionality not available through Printify's public API. It provides a floating widget interface for real-time operations and data synchronization between the two platforms.
 
+### 1.1 Core Principles
+
+**Push-Driven Communication**: The extension uses a push-driven architecture where:
+- The extension announces its presence when ready (not polled by WordPress)
+- State changes are pushed from extension to WordPress as they occur
+- No periodic status checks or ping/pong patterns
+- Event-driven updates ensure real-time synchronization
+
+This approach reduces unnecessary message traffic and provides more responsive user experience.
+
 ## 2. Architecture Rationale
 
 ### 2.1 Why This Architecture?
@@ -182,7 +192,12 @@ browser-extension/
         },
         {
             "matches": ["*://*/wp-admin/*"],
-            "js": ["core-scripts/widget-relay.js"]
+            "js": [
+                "core-scripts/widget-debug.js",
+                "core-scripts/widget-error.js",
+                "core-scripts/widget-relay.js",
+                "action-scripts/widget-tabs-actions.js"
+            ]
         }
     ]
 }
@@ -500,7 +515,157 @@ Ship without `config.json` or with `configured: false`. Users configure through:
 
 ## 9. WordPress Integration
 
-### 9.1 Sending Commands
+### 9.1 Extension Detection and Installation Flow
+
+#### Chrome Content Script Injection Behavior
+
+**Critical Chrome Limitation**: When a Chrome extension is installed, its content scripts are NOT automatically injected into already-open tabs. This is a well-documented Chrome behavior that requires either:
+1. Manual page reload by the user
+2. Programmatic injection by the extension
+
+#### Understanding Content Scripts vs Widget UI
+
+**Content Scripts** are JavaScript files that run in the context of web pages:
+- `widget-relay.js` - Message bridge between WordPress and extension
+- `widget-tabs-actions.js` - Creates the floating widget UI
+- `widget-debug.js` & `widget-error.js` - Utility functions
+
+**Key Distinction**: 
+- `widget-relay.js` does NOT create any UI - it only handles messages
+- `widget-tabs-actions.js` is responsible for creating the floating widget interface
+- Both are content scripts but serve different purposes
+
+#### Installation Flow - Detailed
+
+```
+USER INSTALLS EXTENSION:
+1. User clicks "Install Extension" button in WordPress
+2. Installation wizard guides user through Chrome extension installation
+3. Extension installed in Chrome
+
+PROGRAMMATIC INJECTION (Immediate activation):
+4. Background script (widget-router.js) detects installation via chrome.runtime.onInstalled
+5. Background script queries for all WordPress admin tabs
+6. For each WordPress tab, programmatically injects ALL content scripts:
+   - widget-debug.js (utilities)
+   - widget-error.js (error handling)
+   - widget-relay.js (message bridge)
+   - widget-tabs-actions.js (widget UI creator)
+7. Content scripts now active without page reload!
+
+EXTENSION ANNOUNCES ITSELF:
+8. widget-relay.js executes and sends SIP_EXTENSION_READY to WordPress
+9. WordPress receives announcement and:
+   - Sets extensionState.isInstalled = true
+   - Hides "Install Extension" button
+   - May send SIP_SHOW_WIDGET message
+10. widget-tabs-actions.js creates/shows the floating widget
+
+RESULT: Extension fully functional without page reload
+```
+
+#### Why This Flow?
+
+1. **Programmatic Injection**: Solves Chrome's limitation by injecting scripts immediately
+2. **Push-Driven Detection**: Extension announces when ready, no polling needed
+3. **Separation of Concerns**: 
+   - Message relay separate from UI creation
+   - Each script has a single responsibility
+4. **Immediate Functionality**: User doesn't need to reload page manually
+
+#### Implementation Details
+
+**Extension Side - Programmatic Injection** (widget-router.js):
+```javascript
+chrome.runtime.onInstalled.addListener(async (details) => {
+    if (details.reason === 'install' || details.reason === 'update') {
+        // Find all WordPress admin tabs
+        const tabs = await chrome.tabs.query({ url: '*://*/wp-admin/*' });
+        
+        for (const tab of tabs) {
+            try {
+                // Inject content scripts in order
+                await chrome.scripting.executeScript({
+                    target: { tabId: tab.id },
+                    files: [
+                        'core-scripts/widget-debug.js',
+                        'core-scripts/widget-error.js',
+                        'core-scripts/widget-relay.js',
+                        'action-scripts/widget-tabs-actions.js'
+                    ]
+                });
+                
+                // Inject CSS
+                await chrome.scripting.insertCSS({
+                    target: { tabId: tab.id },
+                    files: ['core-scripts/widget-styles.css']
+                });
+            } catch (error) {
+                debug.log('Could not inject into tab:', tab.id, error);
+            }
+        }
+    }
+});
+```
+
+**Extension Side - Announcement** (widget-relay.js):
+```javascript
+// Small delay ensures WordPress listeners are ready
+// NOTE: This setTimeout is a legitimate use - see Coding Guidelines "Legitimate setTimeout Usage"
+// It's an industry-standard pattern for content script announcements, not a timing workaround
+setTimeout(() => {
+    window.postMessage({
+        type: 'SIP_EXTENSION_READY',
+        source: 'sip-printify-extension',
+        version: chrome.runtime.getManifest().version,
+        capabilities: {
+            mockupFetching: true,
+            apiInterception: true,
+            navigation: true
+        }
+    }, window.location.origin);
+}, 100);
+```
+
+**WordPress Side - Detection** (browser-extension-manager.js):
+```javascript
+// Set up listener early in page lifecycle
+document.addEventListener('DOMContentLoaded', function() {
+    window.addEventListener('message', function(event) {
+        if (event.data && event.data.type === 'SIP_EXTENSION_READY' && 
+            event.data.source === 'sip-printify-extension') {
+            // Extension detected - update UI
+            extensionState.isInstalled = true;
+            extensionState.version = event.data.version;
+            extensionState.isConnected = true;
+            extensionState.capabilities = event.data.capabilities;
+            updateButtonState();
+        }
+    });
+});
+```
+
+#### Message Flow Directions
+
+**WordPress → Extension**:
+- WordPress uses `window.postMessage()` (only option for web pages)
+- `widget-relay.js` receives and forwards to background via `chrome.runtime.sendMessage()`
+- Relay is REQUIRED because background scripts can't receive postMessages
+
+**Extension → WordPress**:
+- Content scripts use `window.postMessage()` directly
+- No relay needed - direct communication
+- `widget-relay.js` announces presence, not relaying
+
+#### Key Benefits
+
+1. **No Manual Reload**: Programmatic injection eliminates reload requirement
+2. **Immediate Feedback**: UI updates as soon as extension is detected
+3. **Clean Architecture**: Each component has clear responsibility
+4. **Reliable Detection**: Push model with proper timing ensures detection
+5. **Better UX**: No disruptive page reloads
+
+### 9.2 Sending Commands
 
 From WordPress plugin:
 ```javascript

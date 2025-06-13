@@ -21,10 +21,10 @@ Do not forget; you must code according to Coding_Guidelines_Snapshot.txt  Do not
  Great! Can you please look over the code that you just updated and make sure it adheres to the guidelines /mnt/c/Users/tdeme/Local
   Sites/faux-stained-glass-panes/app/public/wp-content/plugins/.claude/Coding_Guidelines_Snapshot.txt?
 
-And can you please look over the documentation files to make sure that they are accurate and reflect the current functioning of the code?   The documentation is not just for end users, but for developers.  Please review the documentation from the perspective of a developer and ensure that if faced with understanding and working with the established standards, a developer could confidently refer to the documentation and come away with a complete clear understanding of how to work with the principles and patterns of the codebase.
+And can you please look over the documentation files to make sure that they are accurate and reflect the current functioning of the code?   Please review the documentation from the perspective of a developer and ensure that if faced with understanding and working with the established standards, a developer could confidently refer to the documentation and come away with a complete clear understanding of how to work with the principles and patterns of the codebase.
    
 Start by reviewing /mnt/c/Users/tdeme/Local
-  Sites/faux-stained-glass-panes/app/public/wp-content/plugins/.claude/index.md to refresh yourself with the overall structure and the principles behind it.  Then Please make sure to check on related documentation in the /guidelines/ directory to ensure that relevant files reflect updated standards correctly where appropriate and don't retain any deprecated references.  If there were aspects of the code that were unclear to you as you worked, without straying into corner cases or one off issues, please update the documentation to reflect the patterns, principles and structures that were needed to correctly implement your solution.    When you're done, can you please give me a commit message to include when I submit the changes in source control?
+  Sites/faux-stained-glass-panes/app/public/wp-content/plugins/.claude/index.md to refresh yourself with the overall structure and the principles behind it.  Then Please make sure to check on related documentation in the /guidelines/ directory to ensure that relevant files reflect updated standards correctly where appropriate and don't retain any deprecated references.  If there were aspects of the code that were unclear to you as you worked, carefully adhering to the documentation guidelines, please update the documentation to reflect the patterns, principles and structures that were needed to correctly implement your solution.    When you're done, can you please give me a commit message to include when I submit the changes in source control?
 ----
  
  -- PLANNING --
@@ -98,7 +98,7 @@ Implementation Checkpoint Requirements
   If your solution involves ANY of these, STOP       
   and reconsider:
   - setTimeout / setInterval (timing
-  workarounds)
+  workarounds) - See "Legitimate setTimeout Usage" below
   - try-catch blocks (for errors that shouldn't      
   exist)
   - Defensive checks (if exists, if defined,
@@ -212,6 +212,103 @@ Never use write to file to make code updates.
 
   The goal is code that CAN'T fail because it's structurally correct, not code that's defended      
   against failure.
+
+-- LEGITIMATE setTimeout USAGE --
+  When setTimeout IS Appropriate (Industry Standard Patterns)
+
+  setTimeout is NOT always a symptom. There are legitimate, industry-standard uses where it's the 
+  correct solution:
+
+  1. Browser Extension Content Script Announcement
+  CORRECT USE:
+  // Content scripts announcing to host page
+  setTimeout(() => {
+      window.postMessage({ type: 'EXTENSION_READY' }, '*');
+  }, 100);
+  
+  WHY IT'S CORRECT:
+  - Known browser behavior: content scripts inject asynchronously
+  - Industry standard: Used by major extensions (Grammarly, 1Password, AdBlock)
+  - Not masking an error: The timing variance is inherent to the platform
+  - Simple and reliable: More complex solutions add unnecessary state management
+
+  2. Yielding to Browser Event Loop
+  CORRECT USE:
+  // After DOM manipulation, let browser recalculate
+  element.style.display = 'block';
+  setTimeout(() => {
+      element.classList.add('animate-in');
+  }, 0);
+  
+  WHY IT'S CORRECT:
+  - Forces style recalculation between property changes
+  - Allows browser to process pending UI updates
+  - Standard pattern for CSS transitions/animations
+
+  3. Debouncing User Input
+  CORRECT USE:
+  let timeoutId;
+  searchInput.addEventListener('input', (e) => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+          performSearch(e.target.value);
+      }, 300);
+  });
+  
+  WHY IT'S CORRECT:
+  - Intentional delay to improve performance
+  - Prevents excessive API calls
+  - Standard UX pattern
+
+  INCORRECT setTimeout Usage (Symptom Treatment)
+
+  1. Waiting for Elements to Exist
+  WRONG:
+  setTimeout(() => {
+      const button = document.getElementById('submit-button');
+      button.addEventListener('click', handler);
+  }, 1000);
+  
+  CORRECT:
+  // Use proper lifecycle hooks or MutationObserver
+  document.addEventListener('DOMContentLoaded', () => {
+      const button = document.getElementById('submit-button');
+      button.addEventListener('click', handler);
+  });
+
+  2. Waiting for Variables to Initialize
+  WRONG:
+  setTimeout(() => {
+      if (window.myApp) {
+          window.myApp.init();
+      }
+  }, 500);
+  
+  CORRECT:
+  // Fix initialization order or use proper events
+  window.addEventListener('myAppReady', () => {
+      window.myApp.init();
+  });
+
+  3. Fixing Race Conditions
+  WRONG:
+  saveData();
+  setTimeout(() => {
+      loadData(); // Hope save is done...
+  }, 200);
+  
+  CORRECT:
+  // Use promises or callbacks
+  saveData().then(() => {
+      loadData();
+  });
+
+  Key Distinction:
+  - LEGITIMATE: When delay is intentional for platform/UX reasons
+  - SYMPTOM: When delay is hoping something else happens first
+
+  Ask yourself: "Am I using setTimeout because I WANT a delay, or because I'm HOPING something 
+  will be ready?" If it's hope, fix the root cause.
 
  
  -- REVIEWING --
