@@ -822,3 +822,31 @@ Key implementation details:
 2. Handlers are loaded in the background context and receive router context
 3. widget-relay.js handles WordPress postMessage relay in content script context
 4. All Chrome API execution happens directly in the router, no separate executor needed
+
+# SiP Printify Manager Browser Extension - TODO
+
+## Low Priority Enhancements
+
+### 1. History View Feature
+- Implement history view for mockup captures and other actions
+- Referenced in widget-tabs-actions.js:801
+
+### 2. Auto-Sync Feature  
+- The `autoSync` field in config.json is reserved for future use
+- Would enable automatic synchronization of data between WordPress and Printify
+
+### 3. Inventory Monitoring
+- Example feature mentioned in documentation
+- Would detect and report inventory changes on Printify pages
+
+## Completed Items
+- ✅ Central router architecture implemented
+- ✅ All handlers converted to singular naming
+- ✅ Service worker compatibility ensured
+- ✅ Push-driven communication model implemented
+- ✅ Widget visibility restricted to appropriate pages
+- ✅ Proper error handling with standardized responses
+- ✅ Configuration system with pre-configured and user-configured modes
+- ✅ Installation flow with automatic page reload
+- ✅ All deprecated code removed (widget-main.js, plural handler names)
+- ✅ Documentation fully updated to reflect current implementation
