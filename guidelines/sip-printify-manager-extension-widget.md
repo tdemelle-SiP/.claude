@@ -15,237 +15,122 @@
 
 The SiP Printify Manager browser extension bridges WordPress and Printify, enabling functionality not available through Printify's public API. It provides a floating widget interface for real-time operations and data synchronization between the two platforms.
 
-### Quick Architecture
+## 2. Message Flow Architecture
+
+### 2.1 The Central Router Pattern
+
+**ALL messages in the extension flow through widget-router.js - NO EXCEPTIONS**
+
+The router is the single message hub that:
+- Receives ALL incoming messages (postMessage from WordPress, chrome.runtime messages from action scripts)
+- Routes to appropriate handlers based on message type
+- Forwards Chrome API commands to widget-main.js
+- Returns responses to the originator
+
+### 2.2 Message Flow Diagram
 
 ```
-WordPress Admin ←→ Extension Widget ←→ Printify.com
-     ↓                    ↓                ↓
-WordPress DB      Chrome Storage    Printify API
+INCOMING MESSAGES:
+┌─────────────────┐     postMessage      ┌─────────────────┐
+│   WordPress     │ ──────────────────> │                 │
+│   Plugin Code   │                      │                 │
+└─────────────────┘                      │                 │
+                                         │                 │
+┌─────────────────┐  chrome.runtime      │  widget-router  │
+│ printify-tab-   │ ──────────────────> │      .js        │
+│ actions.js      │    sendMessage       │                 │
+└─────────────────┘                      │                 │
+                                         │                 │
+┌─────────────────┐  chrome.runtime      │                 │
+│ widget-tabs-    │ ──────────────────> │                 │
+│ actions.js      │    sendMessage       └────────┬────────┘
+└─────────────────┘                               │
+                                                  │ Routes based on
+                                                  │ 'type' field
+                                                  ▼
+                        ┌─────────────────────────┴─────────────────────────┐
+                        │                                                   │
+                        ▼                                                   ▼
+            ┌───────────────────────┐                          ┌───────────────────────┐
+            │  widget-handlers.js   │                          │ printify-data-        │
+            │                       │                          │ handlers.js           │
+            │  Handles:             │                          │                       │
+            │  - Widget operations  │                          │ Handles:              │
+            │  - Navigation         │                          │ - Mockup fetching     │
+            │  - Status updates     │                          │ - Data processing     │
+            └───────────┬───────────┘                          └───────────┬───────────┘
+                        │                                                   │
+                        │ If needs Chrome APIs                              │
+                        │                                                   │
+                        └─────────────────────┬─────────────────────────────┘
+                                              │
+                                              ▼
+                                    ┌─────────────────────┐
+                                    │  widget-main.js     │
+                                    │                     │
+                                    │  ONLY:              │
+                                    │  - Executes Chrome  │
+                                    │    API commands     │
+                                    │  - Returns results  │
+                                    └─────────────────────┘
+                                              
+STATE UPDATES:
+┌─────────────────┐                 ┌─────────────────────┐
+│    Handlers     │ ─────────────> │  Chrome Storage     │
+│  Update State   │                 │     (State)         │
+└─────────────────┘                 └──────────┬──────────┘
+                                               │
+                                               │ onChange events
+                                               ▼
+                                    ┌─────────────────────┐
+                                    │ widget-tabs-        │
+                                    │ actions.js          │
+                                    │ Updates widget UI   │
+                                    └─────────────────────┘
 ```
 
-## 2. System Architecture
+### 2.3 Message Formats
 
-### 2.1 Communication Channels
+#### Incoming Messages to Router
 
-The extension uses three distinct communication channels optimized for their specific purposes:
-
-#### Command Channel (postMessage)
-- **Purpose**: Trigger operations from WordPress admin
-- **Direction**: WordPress → Extension
-- **Example**: `window.postMessage({ type: 'SIP_FETCH_MOCKUP', productId: '123' }, '*')`
-
-#### Data Channel (REST API)
-- **Purpose**: Store operation results in WordPress
-- **Direction**: Extension → WordPress
-- **Authentication**: Custom header `X-SiP-API-Key: [32-character-key]`
-- **Endpoints**:
-  - `POST /wp-json/sip-printify/v1/mockup-data`
-  - `POST /wp-json/sip-printify/v1/extension-status`
-  - `GET /wp-json/sip-printify/v1/plugin-status`
-  - `POST /wp-json/sip-printify/v1/extension-key`
-
-#### State Channel (Chrome Storage)
-- **Purpose**: Synchronize UI state across all tabs
-- **Direction**: Bidirectional (all tabs)
-- **Storage**: `chrome.storage.local` with 5MB limit
-- **Sync Time**: Visual updates within 100ms of state change
-
-### 2.2 Components
-
-```
-browser-extension/
-├── core-scripts/                    # Infrastructure
-│   ├── widget-main.js              # Background service worker
-│   ├── widget-ui.js                # Widget interface
-│   ├── widget-message-router.js    # Message routing
-│   ├── widget-debug.js             # Debug utilities
-│   └── widget-styles.css           # Widget styling
-├── action-scripts/                  # User actions
-│   ├── widget-actions.js           # Widget UI actions
-│   ├── printify-tab-actions.js    # Printify page actions
-│   └── api-interceptor.js         # API discovery monitor
-├── handler-scripts/                 # Request processing
-│   ├── widget-handlers.js          # Widget requests
-│   └── printify-data-handlers.js  # Printify data processing
-└── assets/                         # Static resources
-```
-
-### 2.3 Data Flow
-
-#### Operation Flow
-```
-1. WordPress Admin → postMessage → Extension Widget
-2. Widget → chrome.runtime.sendMessage → Background Script
-3. Background → chrome.tabs.sendMessage → Printify Tab
-4. Printify Tab → Executes Operation → Returns Data
-5. Background → fetch() → WordPress REST API
-6. WordPress → Stores in MySQL → Updates Display
-```
-
-#### State Synchronization
-```
-Any Tab → chrome.storage.local.set() → All Tabs Receive onChange Event
-```
-
-## 3. Widget Specifications
-<!-- Widget UI, behavior, and visual requirements ONLY -->
-
-### 3.1 Widget UI Structure (Top to Bottom)
-
-#### 1. Header
-- Title: "SiP Printify Manager"
-- Minimize/Maximize toggle button
-- Close button (if appropriate for context)
-
-#### 2. Connection Status
-- **Visual Indicator**: Green/red dot based on configuration and plugin status
-- **Connection Requirements**: WordPress URL + valid API key
-- **Status Messages**:
-  - "Extension Ready" (on WordPress when connected)
-  - "Connected to WordPress" (on Printify when connected)  
-  - "Not Connected" (when missing configuration)
-  - "Plugin not active" (when WordPress plugin is deactivated)
-- **Actions**: "Check Again" button appears when plugin is deactivated
-
-#### 3. Progress Dialog Area
-- Progress bar with percentage display
-- Progress text for status messages
-- Ready state indicator
-- Operation-specific progress tracking
-
-#### 4. Action Buttons
-- **Tab Switch Button**: Navigate between WordPress/Printify
-- **History Button**: Show operation history
-- **API Interceptor Toggle**: Enable/disable API discovery
-  - Visual pip indicator when active
-  - Animated border (Scanning.gif) during capture
-  - Count of new APIs discovered
-
-### 3.2 Widget Behavior
-
-#### Persistence
-- Widget position stored in Chrome Storage (persists across sessions)
-- UI state (expanded/collapsed) persists per session
-- Operation history retained based on storage thresholds
-
-#### Synchronization
-- Widget instances on different tabs stay in sync via Chrome Storage
-- State updates debounced to prevent excessive storage writes
-- Visual updates occur within 100ms of state change
-
-#### Non-Intrusive
-- Widget has z-index of 999999 to stay on top
-- Drag boundaries prevent widget from leaving viewport
-- Click-through to page elements when widget is collapsed
-
-#### Responsive
-- Minimum viewport: 320px width
-- Widget scales down on mobile devices
-- Touch-friendly drag handles for mobile
-
-#### Vertical Space Conservation
-- Expanded widget must fit within typical viewport heights
-- Minimize padding/margins (5-10px max for sections)
-- Target max height: ~400px expanded
-
-### 3.3 Widget Implementation Details
-
-#### Drag Behavior & Window Scaling
-```javascript
-function constrainToViewport(x, y) {
-    const widget = document.querySelector('.sip-widget');
-    const rect = widget.getBoundingClientRect();
-    const maxX = window.innerWidth - rect.width;
-    const maxY = window.innerHeight - rect.height;
-    
-    return {
-        x: Math.max(0, Math.min(x, maxX)),
-        y: Math.max(0, Math.min(y, maxY))
-    };
-}
-
-window.addEventListener('resize', debounce(() => {
-    const currentPos = getWidgetPosition();
-    const validPos = constrainToViewport(currentPos.x, currentPos.y);
-    
-    if (validPos.x !== currentPos.x || validPos.y !== currentPos.y) {
-        updateWidgetPosition(validPos);
-    }
-}, 100));
-```
-
-#### SPA Navigation Handling
-```javascript
-// Monitor for Printify SPA route changes
-let lastUrl = location.href;
-new MutationObserver(() => {
-    const url = location.href;
-    if (url !== lastUrl) {
-        lastUrl = url;
-        handleRouteChange(url);
-    }
-}).observe(document, { subtree: true, childList: true });
-```
-
-## 4. Implementation Standards
-<!-- Code patterns, message formats, error handling ONLY -->
-
-### 4.1 Module Pattern
-
-All modules use the IIFE pattern with SiPWidget namespace:
-
-```javascript
-var SiPWidget = SiPWidget || {};
-SiPWidget.ModuleName = (function() {
-    'use strict';
-    
-    const debug = window.widgetDebug || { log: () => {}, error: () => {}, warn: () => {} };
-    
-    // Private members
-    let privateVar = null;
-    
-    // Private functions
-    function privateFunction() {}
-    
-    // Public API
-    return {
-        init: function() {
-            debug.log('🟢 Module initializing');
-        },
-        publicMethod: function() {}
-    };
-})();
-```
-
-### 4.2 Message Formats
-
-#### Chrome Runtime Messages
+From WordPress (postMessage):
 ```javascript
 {
-    action: 'operation_name',
-    data: {
-        // Operation-specific data
-    }
-}
-```
-
-#### postMessage Format
-```javascript
-{
-    type: 'SIP_MESSAGE_TYPE',
+    type: 'SIP_FETCH_MOCKUP',
     source: 'sip-printify-manager',
-    requestId: 'unique-id', // For response matching
-    // Message-specific fields
+    productId: '123456',
+    requestId: 'unique-id'  // For response matching
 }
 ```
 
-#### REST API Response
+From Action Scripts (chrome.runtime.sendMessage):
+```javascript
+{
+    type: 'widget' | 'printify',  // Determines which handler
+    action: 'specificAction',     // The operation to perform
+    data: {                       // Operation-specific data
+        // ...
+    }
+}
+```
+
+#### Handler to widget-main.js Commands
+```javascript
+{
+    command: 'CREATE_TAB' | 'QUERY_TABS' | 'FETCH_URL' | etc.,
+    params: {
+        // Command-specific parameters
+    }
+}
+```
+
+#### Response Format
 ```javascript
 // Success
 {
     success: true,
     data: object,
-    message: string
+    message: string  // Optional
 }
 
 // Error
@@ -257,291 +142,287 @@ SiPWidget.ModuleName = (function() {
 }
 ```
 
-### 4.3 Error Handling Pattern
+**Note**: Error response formatting is centralized in `widget-error.js`. Content scripts use `SiPWidget.Error` methods, while `widget-main.js` uses the `ErrorResponse` helper object.
 
-Every operation follows this standardized pattern:
+## 3. Component Responsibilities
 
+### 3.1 File Structure
+```
+browser-extension/
+├── core-scripts/
+│   ├── widget-main.js          # Chrome API command executor
+│   ├── widget-router.js        # Central message router
+│   ├── widget-debug.js         # Debug utilities
+│   ├── widget-error.js         # Error response formatting
+│   └── widget-styles.css       # Widget styling
+├── action-scripts/
+│   ├── widget-tabs-actions.js  # Widget UI creation and button handling
+│   ├── printify-tab-actions.js # Printify page monitoring and scraping
+│   └── printify-api-interceptor.js # API discovery monitor
+├── handler-scripts/
+│   ├── widget-data-handlers.js # Widget operation logic
+│   ├── printify-data-handlers.js # Printify data processing
+│   └── printify-api-interceptor-handler.js # API discovery processing
+└── assets/                     # Images and static files
+```
+
+**Naming Convention**: Complex features should have matching action/handler pairs:
+- `printify-api-interceptor.js` → `printify-api-interceptor-handler.js`
+- This makes it clear which handler processes which action script's events
+
+### 3.2 Core Scripts
+
+#### widget-router.js
+- Listens for postMessage from WordPress
+- Listens for chrome.runtime.sendMessage from all scripts
+- Routes messages to handlers based on 'type' field
+- Forwards Chrome API commands from handlers to widget-main.js
+- Returns responses to message originators
+
+#### widget-main.js  
+- Executes Chrome API commands ONLY
+- No business logic or message routing
+- Commands: CREATE_TAB, QUERY_TABS, SEND_TAB_MESSAGE, FETCH_URL, etc.
+- Returns command results to router
+
+### 3.3 Action Scripts
+
+#### widget-tabs-actions.js
+- Creates and manages the floating widget UI
+- Handles widget button clicks (navigation, status checks, etc.)
+- Updates widget display based on Chrome storage changes
+- Sends user-initiated actions to router
+- Does NOT handle Printify page-specific actions
+
+#### printify-tab-actions.js
+- Monitors Printify pages for DOM changes
+- Scrapes mockup data when requested
+- Detects inventory changes (future)
+- Sends detected events to router
+- Does NOT handle widget UI
+
+#### printify-api-interceptor.js
+- Intercepts Printify API calls
+- Captures API patterns and responses
+- Sends captured data to router for processing
+
+### 3.4 Handler Scripts
+
+#### widget-data-handlers.js
+Processes widget-related operations:
+- Navigation between tabs
+- Widget state management
+- Configuration updates
+
+#### printify-data-handlers.js
+Processes Printify data operations:
+- Mockup data fetching coordination
+- Data validation and formatting
+- WordPress API communication coordination
+
+#### printify-api-interceptor-handler.js
+Processes captured API data:
+- Analyzes API patterns
+- Stores discovered endpoints
+- Manages API knowledge base
+
+## 4. Chrome Extension Constraints
+
+### 4.1 API Access Limitations
+
+**Background Script (widget-main.js)**
+- Full Chrome API access
+
+**Content Scripts (everything else)**
+- Limited Chrome API access
+- Can use: chrome.storage, chrome.runtime.sendMessage
+- CANNOT use: chrome.tabs, chrome.windows, cross-origin fetch
+- Must request privileged operations from widget-main.js
+
+This is WHY the architecture requires widget-main.js as a command executor.
+
+### 4.2 Message Passing Constraints
+
+- postMessage can only be received by scripts injected into the page
+- chrome.runtime.sendMessage is for internal extension communication
+- The router must be a content script to receive both types
+
+## 5. Common Operations
+
+### 5.1 Mockup Fetching Flow
+
+1. WordPress plugin: `window.postMessage({ type: 'SIP_FETCH_MOCKUP', productId: '123' })`
+2. widget-router.js receives and routes to printify-data-handlers.js
+3. Handler requests tab info: sends command to widget-main.js
+4. Handler requests scraping: router sends message to printify-tab-actions.js
+5. printify-tab-actions.js scrapes and returns data
+6. Handler formats data and requests WordPress API call
+7. widget-main.js executes API call and returns result
+8. Handler updates Chrome storage with status
+9. widget-tabs-actions.js updates UI from storage change
+
+### 5.2 Adding New Features
+
+To add a new feature (e.g., inventory monitoring):
+
+1. **Add action detection** in appropriate action script
+2. **Define message format**: `{ type: 'printify', action: 'inventoryChanged', data: {...} }`
+3. **Add handler logic** in appropriate handler file
+4. **Define any new commands** for widget-main.js
+5. **Update Chrome storage schema** for new state
+6. **Update widget UI** to display new information
+
+## 6. Implementation Standards
+
+### 6.1 Module Pattern
+
+All content scripts use IIFE pattern with SiPWidget namespace:
 ```javascript
-async function executeOperation(operation) {
-    try {
-        // Update state: pending
-        await updateOperationState(operation.id, 'pending');
-        
-        // Execute with timeout
-        const result = await withTimeout(
-            performOperation(operation),
-            30000 // 30 second timeout
-        );
-        
-        // Update state: complete
-        await updateOperationState(operation.id, 'complete', result);
-        
-    } catch (error) {
-        // Update state: error
-        await updateOperationState(operation.id, 'error', null, error);
-        
-        // Determine if retryable
-        if (isRetryable(error)) {
-            await scheduleRetry(operation);
-        }
+var SiPWidget = SiPWidget || {};
+SiPWidget.ModuleName = (function() {
+    'use strict';
+    
+    const debug = window.widgetDebug || { log: () => {}, error: () => {}, warn: () => {} };
+    
+    // Private members
+    
+    // Public API
+    return {
+        init: function() {},
+        publicMethod: function() {}
+    };
+})();
+```
+
+### 6.2 Message Handling Pattern
+
+Every handler follows this pattern:
+```javascript
+function handle(request, sender, sendResponse) {
+    debug.log('Processing:', request.action);
+    
+    switch (request.action) {
+        case 'specificAction':
+            handleSpecificAction(request.data)
+                .then(result => sendResponse(result))
+                .catch(error => sendResponse(SiPWidget.Error.fromException(error)));
+            return true; // Keep channel open
+            
+        default:
+            sendResponse(SiPWidget.Error.create(
+                'Unknown action: ' + request.action,
+                SiPWidget.Error.CODES.UNKNOWN_ACTION
+            ));
     }
 }
 ```
 
-### 4.4 Debug Framework
+### 6.3 Chrome API Command Pattern
 
-All modules use `window.widgetDebug`:
+Commands to widget-main.js:
 ```javascript
-const debug = window.widgetDebug || { log: () => {}, error: () => {}, warn: () => {} };
-debug.log('🟢 Module initialized');
-debug.error('❌ Operation failed:', error);
-debug.warn('⚠️ Potential issue detected');
+const result = await chrome.runtime.sendMessage({
+    type: 'CHROME_API_COMMAND',
+    command: 'CREATE_TAB',
+    params: {
+        url: 'https://example.com',
+        active: true
+    }
+});
 ```
 
-## 5. API Reference
-<!-- Message types, endpoints, schemas ONLY -->
+## 7. Storage Management
 
-### 5.1 Chrome Messages
+### 7.1 State Storage
 
-#### Widget Control
-- `action: 'updateWidgetState'` - Update widget UI state
-- `action: 'navigateToTab'` - Switch between WordPress/Printify tabs
-- `action: 'toggleApiInterceptor'` - Enable/disable API monitoring
-
-#### Data Operations
-- `action: 'fetchMockupsForProduct'` - Scrape mockup data
-- `action: 'syncMockupData'` - Send data to WordPress
-- `action: 'updateOperationStatus'` - Update operation progress
-
-### 5.2 REST Endpoints
-
-#### POST /wp-json/sip-printify/v1/mockup-data
-Store scraped mockup data.
-
-**Request:**
-```json
-{
-    "productId": "123456",
-    "mockupData": {
-        "images": [...],
-        "metadata": {...}
-    },
-    "timestamp": "2025-01-21T10:30:00Z"
-}
-```
-
-**Response:**
-```json
-{
-    "success": true,
-    "message": "Mockup data stored successfully",
-    "stored_count": 5
-}
-```
-
-### 5.3 Storage Schema
-
-#### sipWidgetState
+All UI state stored in Chrome storage for cross-tab sync:
 ```javascript
-{
-    isExpanded: boolean,
-    position: { x: number, y: number },
-    isConnected: boolean,
-    apiInterceptorEnabled: boolean,
-    currentOperation: {
-        id: string,
-        type: string,
-        status: 'pending' | 'in_progress' | 'complete' | 'error',
-        progress: number,
-        startTime: number,
-        message?: string,
-        data?: object
-    },
-    operationHistory: [{
-        id: string,
-        type: string,
-        status: 'complete' | 'error',
-        timestamp: number,
-        duration: number,
-        message: string,
-        errorDetails?: string
-    }]
-}
+chrome.storage.local.set({
+    sipWidgetState: {
+        isExpanded: boolean,
+        position: { x, y },
+        currentOperation: { /* ... */ },
+        // Feature-specific state
+    }
+});
 ```
 
-### 5.4 Chrome Assets
+### 7.2 Storage Limits
 
-When adding images that need `chrome.runtime.getURL()`, they MUST be declared in manifest.json:
+- Chrome storage has 5MB limit
+- Monitor usage and prune old operation history
+- Use efficient data structures
 
+## 8. WordPress Integration
+
+### 8.1 Sending Commands
+
+From WordPress plugin:
+```javascript
+window.postMessage({
+    type: 'SIP_COMMAND_NAME',
+    source: 'sip-printify-manager',
+    requestId: generateUniqueId(),
+    // Command-specific data
+}, '*');
+```
+
+### 8.2 REST API Endpoints
+
+Extension calls these WordPress endpoints:
+- `POST /wp-json/sip-printify/v1/mockup-data`
+- `POST /wp-json/sip-printify/v1/extension-status`
+- `GET /wp-json/sip-printify/v1/plugin-status`
+
+Authentication via header: `X-SiP-API-Key: [32-character-key]`
+
+## 9. Development Guidelines
+
+### 9.1 Adding New Operations
+
+1. Start with the trigger (user action or page event)
+2. Define the message format
+3. Add routing logic if new handler type
+4. Implement handler logic
+5. Define Chrome API commands if needed
+6. Update storage schema if needed
+7. Update UI components if needed
+
+### 9.2 Debugging
+
+- Enable debug mode: `chrome.storage.local.set({sip_printify_debug: true})`
+- Check router for message flow
+- Verify message formats match documentation
+- Check Chrome DevTools for both page and extension contexts
+
+### 9.3 Testing Checklist
+
+- [ ] Messages route correctly through widget-router.js
+- [ ] Handlers process actions and return proper responses
+- [ ] Chrome API commands execute in widget-main.js
+- [ ] State updates propagate via Chrome storage
+- [ ] Widget UI reflects state changes
+- [ ] Error cases return standardized error responses
+
+## Appendices
+
+### A. Chrome Assets
+
+Images requiring chrome.runtime.getURL must be in manifest.json:
 ```json
 "web_accessible_resources": [{
-    "resources": [
-        "assets/images/Scanning.gif",
-        "core-scripts/widget-styles.css"
-    ],
+    "resources": ["assets/images/Scanning.gif"],
     "matches": ["<all_urls>"]
 }]
 ```
 
-## 6. Storage Management
+### B. Migration Notes
 
-### 6.1 Usage Monitoring
+When implementing this architecture on existing code:
+1. First implement the router without breaking existing flows
+2. Gradually move message handling from widget-main.js to handlers
+3. Update action scripts to use new message format
+4. Remove old direct message patterns
+5. Clean up any bypass routes
 
-```javascript
-async function checkStorageUsage() {
-    const usage = await chrome.storage.local.getBytesInUse();
-    const limit = chrome.storage.local.QUOTA_BYTES; // 5,242,880 bytes
-    const percentUsed = (usage / limit) * 100;
-    
-    if (percentUsed > 50) {
-        await pruneOperationHistory();
-    }
-    
-    return { usage, limit, percentUsed };
-}
-```
-
-### 6.2 History Pruning
-
-```javascript
-async function pruneOperationHistory() {
-    const state = await chrome.storage.local.get('sipWidgetState');
-    const operations = state.sipWidgetState?.operationHistory || [];
-    
-    while (operations.length > 10) {
-        const currentSize = JSON.stringify(operations).length;
-        const targetSize = 100000; // ~100KB for operation history
-        
-        if (currentSize <= targetSize) break;
-        
-        operations.shift(); // Remove oldest
-    }
-    
-    await chrome.storage.local.set({
-        sipWidgetState: { ...state.sipWidgetState, operationHistory: operations }
-    });
-}
-```
-
-## 7. Security & Performance
-
-### 7.1 Security Requirements
-
-1. **API Key Protection**
-   - Never store API keys in content scripts
-   - Pass through background script only
-   - Use secure message channels
-
-2. **Data Validation**
-   - Validate all incoming messages
-   - Sanitize data before storage
-   - Check origin for postMessage
-
-3. **Operation Authorization**
-   - Verify operations are user-initiated
-   - Implement rate limiting if needed
-   - Log suspicious activity
-
-### 7.2 Performance Considerations
-
-1. **State Updates**
-   - Debounce rapid state updates
-   - Use Chrome Storage efficiently (5MB limit)
-   - Clean up completed operations after success
-
-2. **Resource Usage**
-   - No polling or regular checks
-   - Everything is event-driven
-   - Efficient resource usage with no background timers
-
-3. **Message Handling**
-   - Minimize message payload size
-   - Use batch operations where possible
-   - Implement proper timeout handling
-
-## 8. Code Deviations
-
-Current implementation deviations from standards. Remove rows as issues are fixed.
-
-| Component | Standard | Current Implementation | Priority | Location | Fix Approach |
-|-----------|----------|------------------------|----------|----------|--------------|
-| Debug Framework | `window.widgetDebug` | Mix of `console.log` and `debug.log` | High | widget-main.js:25-28, widget-ui.js:various | Find/replace all console.* with debug.* |
-| Message Router | All Chrome messages via router | Some direct `window.postMessage` | Medium | widget-ui.js:793-798 | Route through SiPWidget.MessageRouter |
-| Configuration | Centralized config module | Direct access in content scripts | Medium | widget-ui.js:76-80 | Create SiPWidget.Config module |
-| Error Format | Standard error object | Various formats | Medium | Multiple handlers | Use standard format from section 4.3 |
-| Input Validation | All handlers validate | Some missing validation | Low | Various handlers | Add validation at handler entry points |
-
-## Appendices
-
-### A. Development Phases
-
-1. **Phase 1: Foundation** ✓ Complete
-   - Widget interface
-   - Tab pairing
-   - Basic mockup fetching
-
-2. **Phase 2: API Discovery** (In Progress)
-   - API interception
-   - Pattern recognition
-   - Endpoint documentation
-
-3. **Phase 3: Lifecycle Tracking** (Planned)
-   - Product state monitoring
-   - Publish process tracking
-   - Status synchronization
-
-### B. Chrome Extension Constraints
-
-Background scripts have full Chrome API access:
-- `chrome.tabs.*`
-- `chrome.windows.*`
-- `chrome.runtime.*`
-
-Content scripts have limited access:
-- `chrome.storage.*`
-- `chrome.runtime.sendMessage()`
-- No `chrome.tabs.*` access
-
-### C. Testing Checklist
-
-#### Basic Functionality
-- [ ] Widget appears on both WordPress and Printify pages
-- [ ] Widget can be dragged and position persists
-- [ ] Widget can be expanded/collapsed with state persisting
-
-#### Connection Status
-- [ ] Shows correct status messages
-- [ ] Check Again button works when plugin deactivated
-- [ ] API key validation works
-
-#### Navigation
-- [ ] Tab switch button shows correct text
-- [ ] Navigation works in both directions
-
-#### Data Operations
-- [ ] Mockup fetching completes successfully
-- [ ] Progress updates display correctly
-- [ ] Errors are properly displayed
-
-### D. Common Patterns
-
-```javascript
-// Starting an operation
-chrome.storage.local.set({ 
-    sipWidgetState: { 
-        ...currentState, 
-        currentOperation: operation 
-    } 
-});
-
-// Updating progress
-chrome.storage.local.set({ 
-    'sipWidgetState.currentOperation.progress': percentComplete 
-});
-
-// Handling errors
-catch (error) {
-    await updateOperationState(operation.id, 'error', null, error);
-    showUserNotification(error.message);
-}
-```
+The key is maintaining functionality while transitioning to the central router pattern.

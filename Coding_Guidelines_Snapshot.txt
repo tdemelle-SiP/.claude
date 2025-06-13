@@ -1,6 +1,9 @@
  Here is the message I will send at the beginning of a task that should lead to this documentation.
 
 ----
+
+Please help me continue  to bring the sip prntifiy manager extension into compliance with the sip-printify-manager-extension-widget.md documentation.
+
 Before you begin, 
 It is absolutely critical that you read the guidelines at /plugins/.claude/Coding_Guidelines_Snapshot.txt. These are behavioral requirements, not reference material.   The code you write must adhere to these behavioral requirements.
 
