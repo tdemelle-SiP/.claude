@@ -5,9 +5,12 @@
 Please help me continue  to bring the sip prntifiy manager extension into compliance with the sip-printify-manager-extension-widget.md documentation.
 
 Before you begin, 
-It is absolutely critical that you read the guidelines at /plugins/.claude/Coding_Guidelines_Snapshot.txt. These are behavioral requirements, not reference material.   The code you write must adhere to these behavioral requirements.
+It is absolutely critical that you read the guidelines at /mnt/c/Users/tdeme/Local
+  Sites/faux-stained-glass-panes/app/public/wp-content/plugins/.claude/Coding_Guidelines_Snapshot.txt. These are behavioral requirements, not reference material.   The code you write must adhere to these behavioral requirements.
 
-Then please review the documentation for the plugin suite at /plugins/.claude/index.md and /plugins/.claude/guidelines/sip-printify-manager-architecture.md. After looking over the documentation, please look over the relevant code and then respond in the chat with a summary of the issue including WHY the problem exists and any questions you may have. state which guideline applies to this specific problem and how you'll follow it. Once we've discussed the correct approach, I'll ask you to make the necessary updates adhering to the documented guidelines and standards.
+Then please review the documentation for the plugin suite at /mnt/c/Users/tdeme/Local
+  Sites/faux-stained-glass-panes/app/public/wp-content/plugins/.claude/index.md and /mnt/c/Users/tdeme/Local
+  Sites/faux-stained-glass-panes/app/public/wp-content/plugins/.claude/guidelines/sip-printify-manager-architecture.md. After looking over the documentation, please look over the relevant code and then respond in the chat with a summary of the issue including WHY the problem exists and any questions you may have. state which guideline applies to this specific problem and how you'll follow it. Once we've discussed the correct approach, I'll ask you to make the necessary updates adhering to the documented guidelines and standards.
 
 Do not forget; you must code according to Coding_Guidelines_Snapshot.txt  Do not forget; No Task Agent Delegation.
 ----
@@ -15,11 +18,13 @@ Do not forget; you must code according to Coding_Guidelines_Snapshot.txt  Do not
  Here is the message that I will send at the end of a task to ensure we are following through correctly
 
 ----
- Great! Can you please look over the code that you just updated and make sure it adheres to the guidelines /plugins/.claude/Coding_Guidelines_Snapshot.txt?
+ Great! Can you please look over the code that you just updated and make sure it adheres to the guidelines /mnt/c/Users/tdeme/Local
+  Sites/faux-stained-glass-panes/app/public/wp-content/plugins/.claude/Coding_Guidelines_Snapshot.txt?
 
 And can you please look over the documentation files to make sure that they are accurate and reflect the current functioning of the code?   The documentation is not just for end users, but for developers.  Please review the documentation from the perspective of a developer and ensure that if faced with understanding and working with the established standards, a developer could confidently refer to the documentation and come away with a complete clear understanding of how to work with the principles and patterns of the codebase.
    
-Start by reviewing /plugins/.claude/index.md to refresh yourself with the overall structure and the principles behind it.  Then Please make sure to check on related documentation in the /guidelines/ directory to ensure that relevant files reflect updated standards correctly where appropriate and don't retain any deprecated references.  If there were aspects of the code that were unclear to you as you worked, without straying into corner cases or one off issues, please update the documentation to reflect the patterns, principles and structures that were needed to correctly implement your solution.    When you're done, can you please give me a commit message to include when I submit the changes in source control?
+Start by reviewing /mnt/c/Users/tdeme/Local
+  Sites/faux-stained-glass-panes/app/public/wp-content/plugins/.claude/index.md to refresh yourself with the overall structure and the principles behind it.  Then Please make sure to check on related documentation in the /guidelines/ directory to ensure that relevant files reflect updated standards correctly where appropriate and don't retain any deprecated references.  If there were aspects of the code that were unclear to you as you worked, without straying into corner cases or one off issues, please update the documentation to reflect the patterns, principles and structures that were needed to correctly implement your solution.    When you're done, can you please give me a commit message to include when I submit the changes in source control?
 ----
  
  -- PLANNING --

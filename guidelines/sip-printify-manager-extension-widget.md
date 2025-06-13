@@ -4,90 +4,85 @@
 **Last Updated:** January 21, 2025
 
 <!-- DOCUMENTATION RULES:
-1. NO JUSTIFICATIONS - Document WHAT, not WHY
-2. NO HISTORY - Current state only, not how we got here
+1. ARCHITECTURAL WHY - Document WHY each component exists (constraints/requirements that necessitate it)
+2. NO HISTORY - Current state only, not how we got here  
 3. NO DUPLICATION - Each fact appears exactly once
 4. EXAMPLES OVER EXPLANATIONS - Show, don't tell
 5. UPDATE THE RIGHT SECTION - Check if info already exists before adding
+
+ARCHITECTURAL WHY GUIDELINE:
+For each component, briefly explain the constraint or requirement that makes it necessary.
+Focus on: Chrome API limitations, message passing rules, code organization needs.
+Keep it to 1-2 sentences per component.
 -->
 
 ## 1. Overview
 
 The SiP Printify Manager browser extension bridges WordPress and Printify, enabling functionality not available through Printify's public API. It provides a floating widget interface for real-time operations and data synchronization between the two platforms.
 
-## 2. Message Flow Architecture
+## 2. Architecture Rationale
 
-### 2.1 The Central Router Pattern
+### 2.1 Why This Architecture?
+
+**Central Router Pattern**: All messages flow through widget-router.js because Chrome extensions don't allow content scripts to intercept runtime messages from other content scripts - they go directly to the background script.
+
+**Separate Action/Handler Scripts**: Content scripts (actions) have limited Chrome API access, while background scripts (handlers) have full access. This separation enforces proper security boundaries.
+
+**Handler Context Pattern**: Instead of message passing between router and handlers, handlers receive a router context object. This eliminates an unnecessary message hop and provides direct access to Chrome APIs.
+
+### 2.2 The Central Router Pattern
 
 **ALL messages in the extension flow through widget-router.js - NO EXCEPTIONS**
 
-The router is the single message hub that:
-- Receives ALL incoming messages (postMessage from WordPress, chrome.runtime messages from action scripts)
+The router is the background script and the single message hub that:
+- Receives ALL incoming messages (chrome.runtime messages from content scripts and relayed postMessages)
 - Routes to appropriate handlers based on message type
-- Forwards Chrome API commands to widget-main.js
+- Executes Chrome API commands directly (no separate widget-main.js)
 - Returns responses to the originator
 
 ### 2.2 Message Flow Diagram
+```mermaid
+graph TB
+    subgraph "Content Scripts"
+        WP[WordPress Plugin Code]
+        WR[widget-relay.js]
+        PTA[printify-tab-actions.js]
+        WTA[widget-tabs-actions.js]
+    end
+    
+    subgraph "Background Script"
+        Router[widget-router.js<br/>- Receives all messages<br/>- Routes to handlers<br/>- Executes Chrome APIs]
+        
+        subgraph "Handlers"
+            WH[widget-data-handler.js<br/>- Widget operations<br/>- Navigation<br/>- Status updates]
+            PH[printify-data-handler.js<br/>- Mockup fetching<br/>- Data processing]
+            WPH[wordpress-handler.js<br/>- WordPress routing]
+        end
+    end
+    
+    WP -->|postMessage| WR
+    WR -->|chrome.runtime<br/>sendMessage| Router
+    PTA -->|chrome.runtime<br/>sendMessage| Router
+    WTA -->|chrome.runtime<br/>sendMessage| Router
+    
+    Router -->|type: 'widget'| WH
+    Router -->|type: 'printify'| PH
+    Router -->|type: 'wordpress'| WPH
+    
+    WH -.->|Direct access to<br/>router context| Router
+    PH -.->|Direct access to<br/>router context| Router
+    WPH -.->|Direct access to<br/>router context| Router
+    
+    subgraph "State Management"
+        Storage[Chrome Storage]
+    end
+    
+    WH --> Storage
+    PH --> Storage
+    Storage -->|onChange events| WTA
+```
 
-```
-INCOMING MESSAGES:
-┌─────────────────┐     postMessage      ┌─────────────────┐
-│   WordPress     │ ──────────────────> │                 │
-│   Plugin Code   │                      │                 │
-└─────────────────┘                      │                 │
-                                         │                 │
-┌─────────────────┐  chrome.runtime      │  widget-router  │
-│ printify-tab-   │ ──────────────────> │      .js        │
-│ actions.js      │    sendMessage       │                 │
-└─────────────────┘                      │                 │
-                                         │                 │
-┌─────────────────┐  chrome.runtime      │                 │
-│ widget-tabs-    │ ──────────────────> │                 │
-│ actions.js      │    sendMessage       └────────┬────────┘
-└─────────────────┘                               │
-                                                  │ Routes based on
-                                                  │ 'type' field
-                                                  ▼
-                        ┌─────────────────────────┴─────────────────────────┐
-                        │                                                   │
-                        ▼                                                   ▼
-            ┌───────────────────────┐                          ┌───────────────────────┐
-            │  widget-handlers.js   │                          │ printify-data-        │
-            │                       │                          │ handlers.js           │
-            │  Handles:             │                          │                       │
-            │  - Widget operations  │                          │ Handles:              │
-            │  - Navigation         │                          │ - Mockup fetching     │
-            │  - Status updates     │                          │ - Data processing     │
-            └───────────┬───────────┘                          └───────────┬───────────┘
-                        │                                                   │
-                        │ If needs Chrome APIs                              │
-                        │                                                   │
-                        └─────────────────────┬─────────────────────────────┘
-                                              │
-                                              ▼
-                                    ┌─────────────────────┐
-                                    │  widget-main.js     │
-                                    │                     │
-                                    │  ONLY:              │
-                                    │  - Executes Chrome  │
-                                    │    API commands     │
-                                    │  - Returns results  │
-                                    └─────────────────────┘
-                                              
-STATE UPDATES:
-┌─────────────────┐                 ┌─────────────────────┐
-│    Handlers     │ ─────────────> │  Chrome Storage     │
-│  Update State   │                 │     (State)         │
-└─────────────────┘                 └──────────┬──────────┘
-                                               │
-                                               │ onChange events
-                                               ▼
-                                    ┌─────────────────────┐
-                                    │ widget-tabs-        │
-                                    │ actions.js          │
-                                    │ Updates widget UI   │
-                                    └─────────────────────┘
-```
+The State Management flow is shown in the Mermaid diagram above, where handlers update Chrome Storage, which triggers onChange events that update the widget UI in widget-tabs-actions.js.
 
 ### 2.3 Message Formats
 
@@ -114,14 +109,12 @@ From Action Scripts (chrome.runtime.sendMessage):
 }
 ```
 
-#### Handler to widget-main.js Commands
+#### Handler Chrome API Requests
+Handlers can request Chrome API execution by calling router methods directly:
 ```javascript
-{
-    command: 'CREATE_TAB' | 'QUERY_TABS' | 'FETCH_URL' | etc.,
-    params: {
-        // Command-specific parameters
-    }
-}
+// In handler:
+const result = await router.createTab({ url: 'https://example.com' });
+const tabs = await router.queryTabs({ url: '*://printify.com/*' });
 ```
 
 #### Response Format
@@ -142,52 +135,100 @@ From Action Scripts (chrome.runtime.sendMessage):
 }
 ```
 
-**Note**: Error response formatting is centralized in `widget-error.js`. Content scripts use `SiPWidget.Error` methods, while `widget-main.js` uses the `ErrorResponse` helper object.
+**Note**: Error response formatting is centralized in `widget-error.js`. Content scripts use `SiPWidget.Error` methods. The background script (router and handlers) returns plain error objects with `success: false`.
 
 ## 3. Component Responsibilities
 
 ### 3.1 File Structure
 ```
 browser-extension/
+├── manifest.json               # Extension configuration
+├── background.js               # Service worker loader - imports all modules
+│   Why: Manifest V3 service workers require importScripts() to load modules
 ├── core-scripts/
-│   ├── widget-main.js          # Chrome API command executor
-│   ├── widget-router.js        # Central message router
+│   ├── widget-router.js        # Background script - Central message router & Chrome API executor
+│   ├── widget-relay.js         # Content script - Relays WordPress postMessages to router
 │   ├── widget-debug.js         # Debug utilities
 │   ├── widget-error.js         # Error response formatting
 │   └── widget-styles.css       # Widget styling
 ├── action-scripts/
-│   ├── widget-tabs-actions.js  # Widget UI creation and button handling
-│   ├── printify-tab-actions.js # Printify page monitoring and scraping
-│   └── printify-api-interceptor.js # API discovery monitor
+│   ├── widget-tabs-actions.js          # Widget UI creation and button handling
+│   ├── printify-tab-actions.js         # Printify page monitoring and scraping
+│   └── printify-api-interceptor-actions.js # API discovery monitor
 ├── handler-scripts/
-│   ├── widget-data-handlers.js # Widget operation logic
-│   ├── printify-data-handlers.js # Printify data processing
+│   ├── widget-data-handler.js          # Widget operation logic
+│   ├── printify-data-handler.js        # Printify data processing
+│   ├── wordpress-handler.js            # WordPress message routing
 │   └── printify-api-interceptor-handler.js # API discovery processing
 └── assets/                     # Images and static files
 ```
 
-**Naming Convention**: Complex features should have matching action/handler pairs:
-- `printify-api-interceptor.js` → `printify-api-interceptor-handler.js`
+**Manifest Configuration**:
+```json
+{
+    "background": {
+        "service_worker": "background.js"
+    },
+    "content_scripts": [
+        {
+            "matches": ["https://printify.com/*"],
+            "js": [
+                "core-scripts/widget-debug.js",
+                "core-scripts/widget-error.js",
+                "action-scripts/printify-tab-actions.js",
+                "action-scripts/printify-api-interceptor-actions.js",
+                "action-scripts/widget-tabs-actions.js"
+            ]
+        },
+        {
+            "matches": ["*://*/wp-admin/*"],
+            "js": ["core-scripts/widget-relay.js"]
+        }
+    ]
+}
+```
+
+**Naming Standards**:
+
+**Action Scripts** (content scripts that detect events and send messages):
+- Must end with `-actions.js` suffix
+- Examples: `widget-tabs-actions.js`, `printify-tab-actions.js`, `printify-api-interceptor-actions.js`
+- Located in `action-scripts/` directory
+
+**Handler Scripts** (background scripts that process messages):
+- Must end with `-handler.js` suffix (always singular)
+- Examples: `widget-data-handler.js`, `printify-data-handler.js`, `printify-api-interceptor-handler.js`
+- Located in `handler-scripts/` directory
+
+**Paired Features**: Complex features should have matching action/handler pairs:
+- `printify-api-interceptor-actions.js` → `printify-api-interceptor-handler.js`
 - This makes it clear which handler processes which action script's events
 
 ### 3.2 Core Scripts
 
-#### widget-router.js
-- Listens for postMessage from WordPress
-- Listens for chrome.runtime.sendMessage from all scripts
-- Routes messages to handlers based on 'type' field
-- Forwards Chrome API commands from handlers to widget-main.js
-- Returns responses to message originators
+#### widget-router.js (Background Script)
+**Why it exists**: Chrome extensions require a background script to access privileged APIs (tabs, cross-origin requests). Making the router the background script ensures ALL messages flow through one central point as documented.
 
-#### widget-main.js  
-- Executes Chrome API commands ONLY
-- No business logic or message routing
-- Commands: CREATE_TAB, QUERY_TABS, SEND_TAB_MESSAGE, FETCH_URL, etc.
-- Returns command results to router
+- Receives ALL chrome.runtime.sendMessage calls from content scripts
+- Routes messages to handlers based on 'type' field  
+- Executes Chrome API commands directly (no separate widget-main.js)
+- Provides router context to handlers with Chrome API methods
+- Sends responses back to message originators
+- Forwards messages to content scripts via chrome.tabs.sendMessage when needed
+
+#### widget-relay.js (Content Script - WordPress pages only)
+**Why it exists**: WordPress can only use window.postMessage() which content scripts can receive, but the router (background script) cannot. This relay bridges that gap.
+
+- Listens for postMessage events from WordPress
+- Validates message source and format
+- Relays WordPress messages to router via chrome.runtime.sendMessage
+- Returns responses back to WordPress via postMessage
 
 ### 3.3 Action Scripts
 
 #### widget-tabs-actions.js
+**Why it exists**: The widget UI needs to be injected into every page (both WordPress and Printify) to provide consistent user access. Separating UI from page-specific logic keeps code organized.
+
 - Creates and manages the floating widget UI
 - Handles widget button clicks (navigation, status checks, etc.)
 - Updates widget display based on Chrome storage changes
@@ -195,32 +236,49 @@ browser-extension/
 - Does NOT handle Printify page-specific actions
 
 #### printify-tab-actions.js
+**Why it exists**: Printify pages need specific DOM monitoring and scraping logic that would bloat the general widget code. This separation keeps Printify-specific logic isolated.
+
 - Monitors Printify pages for DOM changes
 - Scrapes mockup data when requested
 - Detects inventory changes (future)
 - Sends detected events to router
 - Does NOT handle widget UI
 
-#### printify-api-interceptor.js
+#### printify-api-interceptor-actions.js
+**Why it exists**: API interception is a complex feature requiring significant code for request monitoring and pattern analysis. It warrants its own dedicated file for maintainability.
+
 - Intercepts Printify API calls
 - Captures API patterns and responses
 - Sends captured data to router for processing
 
 ### 3.4 Handler Scripts
 
-#### widget-data-handlers.js
+#### widget-data-handler.js
+**Why it exists**: Widget operations (navigation, config, UI state) are distinct from data operations and need their own business logic layer in the background context.
+
 Processes widget-related operations:
 - Navigation between tabs
 - Widget state management
 - Configuration updates
 
-#### printify-data-handlers.js
+#### printify-data-handler.js
+**Why it exists**: Complex multi-step operations like mockup fetching need coordination logic that can access Chrome APIs. Separating this from UI logic enables cleaner testing and maintenance.
+
 Processes Printify data operations:
 - Mockup data fetching coordination
 - Data validation and formatting
 - WordPress API communication coordination
 
+#### wordpress-handler.js
+**Why it exists**: WordPress sends differently formatted messages (SIP_FETCH_MOCKUP vs fetchMockups). This handler translates WordPress commands to the extension's internal message format.
+
+Routes WordPress postMessage commands to appropriate handlers:
+- Converts WordPress message formats to extension formats
+- Routes to widget or printify handlers based on command
+
 #### printify-api-interceptor-handler.js
+**Why it exists**: Captured API data needs processing and storage logic separate from the capture mechanism. This separation allows the action script to focus on interception while the handler manages data.
+
 Processes captured API data:
 - Analyzes API patterns
 - Stores discovered endpoints
@@ -230,34 +288,41 @@ Processes captured API data:
 
 ### 4.1 API Access Limitations
 
-**Background Script (widget-main.js)**
+**Background Script (widget-router.js and handlers loaded by background.js)**
 - Full Chrome API access
+- Can make cross-origin requests
+- Can manage tabs, windows, storage
+- Runs as a service worker in Manifest V3
 
-**Content Scripts (everything else)**
+**Content Scripts (action scripts and widget-relay.js)**
 - Limited Chrome API access
 - Can use: chrome.storage, chrome.runtime.sendMessage
 - CANNOT use: chrome.tabs, chrome.windows, cross-origin fetch
-- Must request privileged operations from widget-main.js
+- Must request privileged operations from the background script
 
-This is WHY the architecture requires widget-main.js as a command executor.
+### 4.2 Message Passing Architecture
 
-### 4.2 Message Passing Constraints
+**Key Constraint**: Content scripts cannot intercept chrome.runtime.sendMessage calls from other content scripts. These messages go directly to the background script.
 
-- postMessage can only be received by scripts injected into the page
-- chrome.runtime.sendMessage is for internal extension communication
-- The router must be a content script to receive both types
+This is why the router MUST be the background script - it's the only way to receive all messages as documented.
+
+**Message Flow**:
+- postMessage can only be received by content scripts injected into the page
+- chrome.runtime.sendMessage sends messages directly to the background script (router)
+- The router uses chrome.tabs.sendMessage to communicate with specific content scripts
+- WordPress postMessage messages are relayed to the router by widget-relay.js
 
 ## 5. Common Operations
 
 ### 5.1 Mockup Fetching Flow
 
 1. WordPress plugin: `window.postMessage({ type: 'SIP_FETCH_MOCKUP', productId: '123' })`
-2. widget-router.js receives and routes to printify-data-handlers.js
-3. Handler requests tab info: sends command to widget-main.js
-4. Handler requests scraping: router sends message to printify-tab-actions.js
-5. printify-tab-actions.js scrapes and returns data
-6. Handler formats data and requests WordPress API call
-7. widget-main.js executes API call and returns result
+2. widget-relay.js receives postMessage and relays to router via chrome.runtime.sendMessage
+3. widget-router.js receives and routes to printify-data-handler.js (via wordpress-handler.js)
+4. Handler uses router context to execute chrome.tabs.query directly
+5. Handler uses router context to send message to printify-tab-actions.js
+6. printify-tab-actions.js scrapes and returns data to router
+7. Handler formats data and uses router context to call WordPress API
 8. Handler updates Chrome storage with status
 9. widget-tabs-actions.js updates UI from storage change
 
@@ -268,7 +333,7 @@ To add a new feature (e.g., inventory monitoring):
 1. **Add action detection** in appropriate action script
 2. **Define message format**: `{ type: 'printify', action: 'inventoryChanged', data: {...} }`
 3. **Add handler logic** in appropriate handler file
-4. **Define any new commands** for widget-main.js
+4. **Add any Chrome API methods** to router context if needed
 5. **Update Chrome storage schema** for new state
 6. **Update widget UI** to display new information
 
@@ -276,9 +341,11 @@ To add a new feature (e.g., inventory monitoring):
 
 ### 6.1 Module Pattern
 
-All content scripts use IIFE pattern with SiPWidget namespace:
+All scripts use IIFE pattern with SiPWidget namespace:
+
+**Content Scripts**:
 ```javascript
-var SiPWidget = SiPWidget || {};
+var SiPWidget = window.SiPWidget || {};
 SiPWidget.ModuleName = (function() {
     'use strict';
     
@@ -294,41 +361,68 @@ SiPWidget.ModuleName = (function() {
 })();
 ```
 
+**Background Scripts** (service workers):
+```javascript
+var SiPWidget = self.SiPWidget || {};  // Note: 'self' not 'window'
+SiPWidget.ModuleName = (function() {
+    'use strict';
+    
+    // In service workers, use console directly
+    const debug = {
+        log: (...args) => console.log('[Module Name]', ...args),
+        error: (...args) => console.error('[Module Name]', ...args),
+        warn: (...args) => console.warn('[Module Name]', ...args)
+    };
+    
+    // Private members
+    
+    // Public API
+    return {
+        handle: function() {}
+    };
+})();
+```
+
 ### 6.2 Message Handling Pattern
 
 Every handler follows this pattern:
 ```javascript
-function handle(request, sender, sendResponse) {
+function handle(request, sender, sendResponse, router) {
     debug.log('Processing:', request.action);
     
     switch (request.action) {
         case 'specificAction':
-            handleSpecificAction(request.data)
+            handleSpecificAction(request.data, router)
                 .then(result => sendResponse(result))
-                .catch(error => sendResponse(SiPWidget.Error.fromException(error)));
+                .catch(error => sendResponse({
+                    success: false,
+                    error: error.message || error.toString(),
+                    code: 'HANDLER_ERROR'
+                }));
             return true; // Keep channel open
             
         default:
-            sendResponse(SiPWidget.Error.create(
-                'Unknown action: ' + request.action,
-                SiPWidget.Error.CODES.UNKNOWN_ACTION
-            ));
+            sendResponse({
+                success: false,
+                error: 'Unknown action: ' + request.action,
+                code: 'UNKNOWN_ACTION'
+            });
     }
 }
 ```
 
-### 6.3 Chrome API Command Pattern
+### 6.3 Handler Context
 
-Commands to widget-main.js:
+Handlers run in the background script context and have access to router methods:
 ```javascript
-const result = await chrome.runtime.sendMessage({
-    type: 'CHROME_API_COMMAND',
-    command: 'CREATE_TAB',
-    params: {
-        url: 'https://example.com',
-        active: true
-    }
-});
+// Handler has access to router context
+function handle(request, sender, sendResponse, router) {
+    // Can call router methods directly
+    router.createTab({ url: 'https://example.com' })
+        .then(tab => sendResponse({ success: true, tabId: tab.id }))
+        .catch(error => sendResponse({ success: false, error: error.message }));
+    return true; // Keep channel open
+}
 ```
 
 ## 7. Storage Management
@@ -353,9 +447,60 @@ chrome.storage.local.set({
 - Monitor usage and prune old operation history
 - Use efficient data structures
 
-## 8. WordPress Integration
+## 8. Configuration and Deployment
 
-### 8.1 Sending Commands
+### 8.1 Extension Configuration
+
+The extension supports two configuration modes:
+
+#### Pre-configured Deployment
+Bundle the extension with a `config.json` file in the `assets/` directory:
+
+```json
+{
+    "wordpressUrl": "https://your-wordpress-site.com",
+    "apiKey": "your-32-character-api-key",
+    "autoSync": false,
+    "configured": true
+}
+```
+
+**Fields:**
+- `wordpressUrl`: The WordPress site URL where SiP Printify Manager is installed
+- `apiKey`: 32-character API key from WordPress plugin settings
+- `autoSync`: Reserved for future use (currently unused)
+- `configured`: Must be `true` to use pre-configuration
+
+**⚠️ SECURITY WARNING**: Never commit `config.json` with real API keys to version control. The browser-extension directory already has a `.gitignore` file, but it should be updated to use the correct path:
+```
+# Current (incorrect):
+config.json
+
+# Should be:
+assets/config.json
+```
+
+#### User-configured Deployment
+Ship without `config.json` or with `configured: false`. Users configure through:
+1. Extension popup/options page
+2. Settings stored in Chrome sync storage
+3. Persists across browser sessions
+
+### 8.2 Configuration Loading Order
+
+1. On startup, router checks for `assets/config.json`
+2. If found AND `configured: true`, uses those values
+3. Values are copied to Chrome storage for persistence
+4. If not found or `configured: false`, loads from Chrome storage
+5. Updates extension badge based on configuration state:
+   - ✓ Green badge: Configured and ready
+   - ! Orange badge: Configuration required
+
+**Note**: The `config.json` file is included in manifest's `web_accessible_resources` to allow the background script to fetch it using `chrome.runtime.getURL()`.
+
+## 9. WordPress Integration
+
+### 9.1 Sending Commands
 
 From WordPress plugin:
 ```javascript
@@ -399,7 +544,7 @@ Authentication via header: `X-SiP-API-Key: [32-character-key]`
 
 - [ ] Messages route correctly through widget-router.js
 - [ ] Handlers process actions and return proper responses
-- [ ] Chrome API commands execute in widget-main.js
+- [ ] Chrome API commands execute directly in router context
 - [ ] State updates propagate via Chrome storage
 - [ ] Widget UI reflects state changes
 - [ ] Error cases return standardized error responses
@@ -416,13 +561,15 @@ Images requiring chrome.runtime.getURL must be in manifest.json:
 }]
 ```
 
-### B. Migration Notes
+### B. Architecture Implementation Notes
 
-When implementing this architecture on existing code:
-1. First implement the router without breaking existing flows
-2. Gradually move message handling from widget-main.js to handlers
-3. Update action scripts to use new message format
-4. Remove old direct message patterns
-5. Clean up any bypass routes
+The router MUST be the background script because:
+1. Chrome extensions don't allow content scripts to intercept runtime messages
+2. All chrome.runtime.sendMessage calls go directly to the background script
+3. This is the only way to achieve the "ALL messages flow through router" requirement
 
-The key is maintaining functionality while transitioning to the central router pattern.
+Key implementation details:
+1. background.js loads all modules via importScripts in the correct order
+2. Handlers are loaded in the background context and receive router context
+3. widget-relay.js handles WordPress postMessage relay in content script context
+4. All Chrome API execution happens directly in the router, no separate executor needed
