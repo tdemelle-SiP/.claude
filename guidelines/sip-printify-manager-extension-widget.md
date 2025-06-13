@@ -50,7 +50,7 @@ The router is the background script and the single message hub that:
 - Executes Chrome API commands directly (no separate widget-main.js)
 - Returns responses to the originator
 
-### 2.2 Message Flow Diagram
+### 2.3 Message Flow Diagram
 ```mermaid
 graph TB
     subgraph "Content Scripts"
@@ -94,30 +94,68 @@ graph TB
 
 The State Management flow is shown in the Mermaid diagram above, where handlers update Chrome Storage, which triggers onChange events that update the widget UI in widget-tabs-actions.js.
 
-### 2.3 Message Formats
+### 2.4 Message Formats
 
-#### Incoming Messages to Router
+**IMPORTANT**: The extension uses TWO distinct message formats for different communication contexts:
 
-From WordPress (postMessage):
+#### External Messages (WordPress ↔ Extension via postMessage)
+
+Used for communication between web pages and the extension. These messages cross the browser security boundary.
+
+**Format**:
 ```javascript
 {
-    type: 'SIP_FETCH_MOCKUP',
-    source: 'sip-printify-manager',
-    productId: '123456',
-    requestId: 'unique-id'  // For response matching
+    type: 'SIP_COMMAND_NAME',     // Always prefixed with 'SIP_' for identification
+    source: 'sip-printify-manager', // Identifies sender
+    requestId: 'unique-id',        // Optional: for response matching
+    // Command-specific data
 }
 ```
 
-From Action Scripts (chrome.runtime.sendMessage):
+**Examples**:
+- WordPress → Extension: `type: 'SIP_FETCH_MOCKUP'`, `type: 'SIP_SHOW_WIDGET'`
+- Extension → WordPress: `type: 'SIP_EXTENSION_READY'`, `type: 'SIP_EXTENSION_RESPONSE'`
+
+**Why this format**: The 'SIP_' prefix identifies our messages among all postMessages on the page.
+
+#### Internal Messages (Within Extension via chrome.runtime)
+
+Used for communication between extension components (content scripts ↔ background script).
+
+**Format**:
 ```javascript
 {
-    type: 'widget' | 'printify',  // Determines which handler
-    action: 'specificAction',     // The operation to perform
-    data: {                       // Operation-specific data
+    type: 'widget' | 'printify' | 'wordpress',  // Determines which handler
+    action: 'specificAction',                   // The operation to perform
+    data: {                                     // Operation-specific data
         // ...
     }
 }
 ```
+
+**Examples**:
+- `{ type: 'widget', action: 'navigateToTab', data: { url: '...' } }`
+- `{ type: 'printify', action: 'fetchMockups', data: { productId: '...' } }`
+
+**Why this format**: The `type` field routes to specific handlers, `action` specifies the operation.
+
+#### Message Format Conversion
+
+The widget-relay.js converts external messages to internal format:
+
+```
+WordPress sends:          { type: 'SIP_SHOW_WIDGET', source: 'sip-printify-manager' }
+                            ↓
+Relay converts to:        { type: 'WORDPRESS_RELAY', data: { 
+                             type: 'wordpress', 
+                             action: 'SIP_SHOW_WIDGET',  // Original type becomes action
+                             data: {...} 
+                          }}
+                            ↓
+Router unwraps & routes:  { type: 'wordpress', action: 'SIP_SHOW_WIDGET', data: {...} }
+```
+
+**Key Point**: Never mix formats. External messages MUST use 'SIP_' prefix. Internal messages MUST use handler/action pattern.
 
 #### Handler Chrome API Requests
 Handlers can request Chrome API execution by calling router methods directly:
@@ -275,6 +313,7 @@ Processes widget-related operations:
 - Navigation between tabs
 - Widget state management
 - Configuration updates
+- **Required actions**: `showWidget`, `toggleWidget`, `navigate`, `updateState`, `getConfig`, `updateConfig`, `testConnection`, `checkPluginStatus`
 
 #### printify-data-handler.js
 **Why it exists**: Complex multi-step operations like mockup fetching need coordination logic that can access Chrome APIs. Separating this from UI logic enables cleaner testing and maintenance.
@@ -308,6 +347,9 @@ Processes captured API data:
 - Can make cross-origin requests
 - Can manage tabs, windows, storage
 - Runs as a service worker in Manifest V3
+- **CRITICAL**: No DOM access - cannot use `window`, `document`, or DOM APIs
+- Must check `typeof window !== 'undefined'` before using window
+- Service worker errors prevent ALL content scripts from loading
 
 **Content Scripts (action scripts and widget-relay.js)**
 - Limited Chrome API access
@@ -348,9 +390,12 @@ To add a new feature (e.g., inventory monitoring):
 1. **Add action detection** in appropriate action script
 2. **Define message format**: `{ type: 'printify', action: 'inventoryChanged', data: {...} }`
 3. **Add handler logic** in appropriate handler file
-4. **Add any Chrome API methods** to router context if needed
-5. **Update Chrome storage schema** for new state
-6. **Update widget UI** to display new information
+4. **If routing through wordpress-handler.js**, ensure the target handler implements the action
+5. **Add any Chrome API methods** to router context if needed
+6. **Update Chrome storage schema** for new state
+7. **Update widget UI** to display new information
+
+**CRITICAL**: When adding routing in wordpress-handler.js, you MUST implement the corresponding action in the target handler.
 
 ## 6. Implementation Standards
 
@@ -677,7 +722,7 @@ window.postMessage({
 }, '*');
 ```
 
-### 8.2 REST API Endpoints
+### 9.3 REST API Endpoints
 
 Extension calls these WordPress endpoints:
 - `POST /wp-json/sip-printify/v1/mockup-data`
@@ -686,9 +731,28 @@ Extension calls these WordPress endpoints:
 
 Authentication via header: `X-SiP-API-Key: [32-character-key]`
 
-## 9. Development Guidelines
+## 10. Development Guidelines
 
-### 9.1 Adding New Operations
+### 10.1 Widget Visibility Requirements
+
+**Widget Initialization**:
+- Widget MUST start with `sip-visible` class for immediate visibility
+- Default position MUST be within viewport bounds
+- For top-right positioning: `x: window.innerWidth - 340, y: 20` (accounts for 320px expanded width)
+- Position validation should account for both collapsed (60px) and expanded (320px) widths
+
+**CSS Classes**:
+- `sip-visible`: Required for widget to be visible (adds opacity: 1, visibility: visible)
+- `collapsed`/`expanded`: Controls widget state
+- Never rely on inline styles for critical visibility
+
+**Debugging "Missing" Widget**:
+1. Check if widget is actually loaded but positioned off-screen
+2. Look for `[Widget UI]` console messages
+3. Inspect DOM for `#sip-floating-widget` element
+4. Verify position values in inline styles
+
+### 10.2 Adding New Operations
 
 1. Start with the trigger (user action or page event)
 2. Define the message format
@@ -707,12 +771,31 @@ Authentication via header: `X-SiP-API-Key: [32-character-key]`
 
 ### 9.3 Testing Checklist
 
+- [ ] Run `node validate-manifest.js` to check manifest integrity
+- [ ] Check chrome://extensions for ANY errors or warnings
+- [ ] Click "service worker" link and check for console errors
+- [ ] Verify no BOM characters in JSON files: `file manifest.json` should show "ASCII text" not "UTF-8 Unicode (with BOM) text"
+- [ ] Add `console.log()` at top of problematic scripts to verify they load
+- [ ] Check that widget appears on screen (not just loaded)
 - [ ] Messages route correctly through widget-router.js
 - [ ] Handlers process actions and return proper responses
 - [ ] Chrome API commands execute directly in router context
 - [ ] State updates propagate via Chrome storage
 - [ ] Widget UI reflects state changes
 - [ ] Error cases return standardized error responses
+
+### 9.4 Common Pitfalls
+
+**Manifest Corruption**:
+- Chrome silently fails on manifest parsing errors
+- BOM characters cause content_scripts to not load
+- Always validate manifest.json before testing
+- Check service worker console for hidden errors
+
+**Partial Loading**:
+- Extension can appear to work with corrupt manifest
+- Background scripts may load while content scripts don't
+- Programmatic injection can mask manifest issues
 
 ## Appendices
 
