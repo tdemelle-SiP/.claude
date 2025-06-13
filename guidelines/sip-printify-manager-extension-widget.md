@@ -280,9 +280,10 @@ browser-extension/
 ### 3.3 Action Scripts
 
 #### widget-tabs-actions.js
-**Why it exists**: The widget UI needs to be injected into every page (both WordPress and Printify) to provide consistent user access. Separating UI from page-specific logic keeps code organized.
+**Why it exists**: The widget UI needs to be injected into specific pages (SiP Printify Manager and Printify) to provide consistent user access. Separating UI from page-specific logic keeps code organized.
 
 - Creates and manages the floating widget UI
+- **Only shows on**: SiP Printify Manager pages (`page=sip-printify-manager`) and Printify.com
 - Handles widget button clicks (navigation, status checks, etc.)
 - Updates widget display based on Chrome storage changes
 - Sends user-initiated actions to router
@@ -606,7 +607,7 @@ EXTENSION ANNOUNCES ITSELF:
    - May send SIP_SHOW_WIDGET message
 10. widget-tabs-actions.js creates/shows the floating widget
 
-RESULT: Extension fully functional without page reload
+RESULT: Extension detected, page reload recommended for reliability
 ```
 
 #### Why This Flow?
@@ -704,11 +705,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
 #### Key Benefits
 
-1. **No Manual Reload**: Programmatic injection eliminates reload requirement
-2. **Immediate Feedback**: UI updates as soon as extension is detected
+1. **Simple Page Reload**: Most reliable approach for Chrome extension activation
+2. **Immediate Feedback**: Clear installation complete message
 3. **Clean Architecture**: Each component has clear responsibility
-4. **Reliable Detection**: Push model with proper timing ensures detection
-5. **Better UX**: No disruptive page reloads
+4. **Reliable Detection**: Manifest-based loading eliminates race conditions
+5. **Better UX**: Quick automatic reload is better than uncertain waiting
 
 ### 9.2 Sending Commands
 
