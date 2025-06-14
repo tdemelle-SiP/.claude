@@ -845,7 +845,8 @@ The mockup management system allows users to view mockups of products that can b
 
 #### Automatic Triggers
 1. **Blueprint Row Creation**: When blueprint rows are created in the product table, the system checks which blueprints have existing mockups
-2. **Extension Installation**: When the browser extension is first installed, it checks for existing blueprint rows and prompts to fetch missing mockups
+2. **Extension Ready**: When the browser extension announces it's ready (via `extensionReady` event), the system re-checks for blueprints needing mockups
+3. **Extension Installation**: When the browser extension is first installed (via `extensionInstalled` event), it prompts to fetch missing mockups
 
 #### Fetching Process
 1. **Extension Check**: Validates that browser extension is installed, connected, and supports mockup fetching (v4.3.0+)
@@ -879,8 +880,9 @@ Mockups are stored with a simplified structure:
 ### Key Components
 1. **Frontend Module**: `mockup-actions.js` - Handles UI, fetching coordination, and display
    - Checks extension capabilities before offering mockup features
-   - Listens for extension installation messages to trigger initial mockup check
+   - Listens for jQuery events (`extensionReady`, `extensionInstalled`) from browser-extension-manager
    - Uses DataTable data instead of database queries for better performance
+   - Handles initialization order by checking if browserExtensionManager exists before use
 2. **Backend Functions**: `mockup-functions.php` - Manages data storage and image downloads
    - Returns detailed download results (count, failures) for accurate success reporting
 3. **Browser Extension**: 
@@ -894,6 +896,14 @@ Mockups are stored with a simplified structure:
 - PhotoSwipe is used for gallery display with a fallback modal for environments without PhotoSwipe
 - Mockup fetching can be done individually per blueprint or in batch
 - The system uses the established SiP AJAX patterns for all backend communication
+
+### Event-Driven Communication
+The mockup system uses jQuery events for inter-module communication:
+- **`extensionReady`**: Triggered by browser-extension-manager when extension announces readiness
+- **`extensionInstalled`**: Triggered when extension is first installed
+- **`blueprintRowsCreated`**: Triggered when product table creates blueprint rows
+
+This pattern allows modules to react to state changes without tight coupling.
 
 ## Performance Considerations
 

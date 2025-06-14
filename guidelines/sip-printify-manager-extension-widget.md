@@ -703,6 +703,12 @@ document.addEventListener('DOMContentLoaded', function() {
             extensionState.isConnected = true;
             extensionState.capabilities = event.data.capabilities;
             updateButtonState();
+            
+            // Trigger jQuery event for other modules
+            $(document).trigger('extensionReady', {
+                version: event.data.version,
+                capabilities: event.data.capabilities
+            });
         }
     });
 });
@@ -740,7 +746,34 @@ window.postMessage({
 }, '*');
 ```
 
-### 9.3 REST API Endpoints
+### 9.3 jQuery Events
+
+The browser-extension-manager triggers these jQuery events for inter-module communication:
+
+- **`extensionReady`**: Triggered when extension announces it's ready via `SIP_EXTENSION_READY`
+  ```javascript
+  $(document).trigger('extensionReady', {
+      version: data.version,
+      capabilities: data.capabilities
+  });
+  ```
+
+- **`extensionInstalled`**: Triggered when extension is first installed via `SIP_EXTENSION_INSTALLED`
+  ```javascript
+  $(document).trigger('extensionInstalled', {
+      firstInstall: true,
+      version: extensionState.version
+  });
+  ```
+
+Modules can listen for these events to react to extension state changes:
+```javascript
+$(document).on('extensionReady', function(e, data) {
+    // React to extension becoming ready
+});
+```
+
+### 9.4 REST API Endpoints
 
 Extension calls these WordPress endpoints:
 - `POST /wp-json/sip-printify/v1/extension-status`
@@ -779,14 +812,14 @@ Authentication via header: `X-SiP-API-Key: [32-character-key]`
 6. Update storage schema if needed
 7. Update UI components if needed
 
-### 9.2 Debugging
+### 10.3 Debugging
 
 - Enable debug mode: `chrome.storage.local.set({sip_printify_debug: true})`
 - Check router for message flow
 - Verify message formats match documentation
 - Check Chrome DevTools for both page and extension contexts
 
-### 9.3 Testing Checklist
+### 10.4 Testing Checklist
 
 - [ ] Run `node validate-manifest.js` to check manifest integrity
 - [ ] Check chrome://extensions for ANY errors or warnings
@@ -801,7 +834,7 @@ Authentication via header: `X-SiP-API-Key: [32-character-key]`
 - [ ] Widget UI reflects state changes
 - [ ] Error cases return standardized error responses
 
-### 9.4 Common Pitfalls
+### 10.5 Common Pitfalls
 
 **Manifest Corruption**:
 - Chrome silently fails on manifest parsing errors
