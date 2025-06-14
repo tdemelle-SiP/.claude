@@ -18,7 +18,7 @@ Keep it to 1-2 sentences per component.
 
 ## 1. Overview
 
-The SiP Printify Manager browser extension bridges WordPress and Printify, enabling functionality not available through Printify's public API. It provides a floating widget interface for real-time operations and data synchronization between the two platforms.
+The SiP Printify Manager browser extension bridges WordPress and Printify, enabling enhanced integration and functionality. It provides a floating widget interface for real-time operations and data synchronization between the two platforms.
 
 ### 1.1 Core Principles
 
@@ -65,7 +65,7 @@ graph TB
         
         subgraph "Handlers"
             WH[widget-data-handler.js<br/>- Widget operations<br/>- Navigation<br/>- Status updates]
-            PH[printify-data-handler.js<br/>- Mockup fetching<br/>- Data processing]
+            PH[printify-data-handler.js<br/>- Data processing<br/>- Status updates]
             WPH[wordpress-handler.js<br/>- WordPress routing]
         end
     end
@@ -113,7 +113,7 @@ Used for communication between web pages and the extension. These messages cross
 ```
 
 **Examples**:
-- WordPress → Extension: `type: 'SIP_FETCH_MOCKUP'`, `type: 'SIP_SHOW_WIDGET'`
+- WordPress → Extension: `type: 'SIP_CHECK_STATUS'`, `type: 'SIP_SHOW_WIDGET'`
 - Extension → WordPress: `type: 'SIP_EXTENSION_READY'`, `type: 'SIP_EXTENSION_RESPONSE'`
 
 **Why this format**: The 'SIP_' prefix identifies our messages among all postMessages on the page.
@@ -135,7 +135,7 @@ Used for communication between extension components (content scripts ↔ backgro
 
 **Examples**:
 - `{ type: 'widget', action: 'navigateToTab', data: { url: '...' } }`
-- `{ type: 'printify', action: 'fetchMockups', data: { productId: '...' } }`
+- `{ type: 'printify', action: 'updateStatus', data: { productId: '...' } }`
 
 **Why this format**: The `type` field routes to specific handlers, `action` specifies the operation.
 
@@ -293,7 +293,7 @@ browser-extension/
 **Why it exists**: Printify pages need specific DOM monitoring and scraping logic that would bloat the general widget code. This separation keeps Printify-specific logic isolated.
 
 - Monitors Printify pages for DOM changes
-- Scrapes mockup data when requested
+- Detects page state and product information
 - Detects inventory changes (future)
 - Sends detected events to router
 - Does NOT handle widget UI
@@ -316,20 +316,32 @@ Processes widget-related operations:
 - Configuration updates
 - **Required actions**: `showWidget`, `toggleWidget`, `navigate`, `updateState`, `getConfig`, `updateConfig`, `testConnection`, `checkPluginStatus`
 
+#### mockup-fetch-handler.js
+**Why it exists**: Mockup fetching is a complex multi-step operation requiring tab management, API interception, data processing, and WordPress communication. This dedicated handler isolates all mockup-related logic and provides clean separation from other extension functionality.
+
+Processes mockup fetching operations:
+- Navigates to Printify mockup library pages
+- Intercepts `generated-mockups-map` API responses  
+- Extracts blueprint-agnostic mockup data (one color variant only)
+- Sends processed data back to WordPress
+- **Required actions**: `fetchMockups`
+
 #### printify-data-handler.js
-**Why it exists**: Complex multi-step operations like mockup fetching need coordination logic that can access Chrome APIs. Separating this from UI logic enables cleaner testing and maintenance.
+**Why it exists**: Complex multi-step operations like api interception need coordination logic that can access Chrome APIs. Separating this from UI logic enables cleaner testing and maintenance.
 
 Processes Printify data operations:
-- Mockup data fetching coordination
 - Data validation and formatting
 - WordPress API communication coordination
+- Status update management
+- Routes mockup requests to MockupFetchHandler
 
 #### wordpress-handler.js
-**Why it exists**: WordPress sends differently formatted messages (SIP_FETCH_MOCKUP vs fetchMockups). This handler translates WordPress commands to the extension's internal message format.
+**Why it exists**: WordPress sends differently formatted messages (SIP_FETCH_MOCKUPS vs fetchMockups). This handler translates WordPress commands to the extension's internal message format.
 
 Routes WordPress postMessage commands to appropriate handlers:
 - Converts WordPress message formats to extension formats
 - Routes to widget or printify handlers based on command
+- **Supported commands**: `SIP_FETCH_MOCKUPS`, `SIP_NAVIGATE`, `SIP_SHOW_WIDGET`, `SIP_CHECK_STATUS`
 
 #### printify-api-interceptor-handler.js
 **Why it exists**: Captured API data needs processing and storage logic separate from the capture mechanism. This separation allows the action script to focus on interception while the handler manages data.
@@ -372,17 +384,15 @@ This is why the router MUST be the background script - it's the only way to rece
 
 ## 5. Common Operations
 
-### 5.1 Mockup Fetching Flow
+### 5.1 Status Update Flow
 
-1. WordPress plugin: `window.postMessage({ type: 'SIP_FETCH_MOCKUP', productId: '123' })`
+1. WordPress plugin: `window.postMessage({ type: 'SIP_CHECK_STATUS', source: 'sip-printify-manager' })`
 2. widget-relay.js receives postMessage and relays to router via chrome.runtime.sendMessage
-3. widget-router.js receives and routes to printify-data-handler.js (via wordpress-handler.js)
-4. Handler uses router context to execute chrome.tabs.query directly
-5. Handler uses router context to send message to printify-tab-actions.js
-6. printify-tab-actions.js scrapes and returns data to router
-7. Handler formats data and uses router context to call WordPress API
-8. Handler updates Chrome storage with status
-9. widget-tabs-actions.js updates UI from storage change
+3. widget-router.js receives and routes to widget-data-handler.js (via wordpress-handler.js)
+4. Handler uses router context to check plugin status
+5. Handler updates Chrome storage with status
+6. widget-tabs-actions.js updates UI from storage change
+7. Response sent back through relay to WordPress
 
 ### 5.2 Adding New Features
 
@@ -665,7 +675,7 @@ setTimeout(() => {
         source: 'sip-printify-extension',
         version: chrome.runtime.getManifest().version,
         capabilities: {
-            mockupFetching: true,
+            statusUpdates: true,
             apiInterception: true,
             navigation: true
         }
@@ -726,7 +736,6 @@ window.postMessage({
 ### 9.3 REST API Endpoints
 
 Extension calls these WordPress endpoints:
-- `POST /wp-json/sip-printify/v1/mockup-data`
 - `POST /wp-json/sip-printify/v1/extension-status`
 - `GET /wp-json/sip-printify/v1/plugin-status`
 
@@ -828,8 +837,8 @@ Key implementation details:
 ## Low Priority Enhancements
 
 ### 1. History View Feature
-- Implement history view for mockup captures and other actions
-- Referenced in widget-tabs-actions.js:801
+- Implement history view for captured data and actions
+- Referenced in widget-tabs-actions.js:781
 
 ### 2. Auto-Sync Feature  
 - The `autoSync` field in config.json is reserved for future use

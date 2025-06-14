@@ -836,6 +836,54 @@ ajax.handleAjaxAction().then(function(response) {
 });
 ```
 
+## Mockup Management System
+
+### Overview
+The mockup management system allows users to view mockups of products that can be created with each blueprint. Mockups are fetched from Printify using the browser extension and stored locally for quick access.
+
+### Mockup Fetching Flow
+1. **Blueprint Row Detection**: When blueprint rows are created in the product table, the system checks which blueprints have existing mockups
+2. **User Prompt**: If blueprints without mockups are found, a dialog asks if the user wants to fetch them
+3. **Product Selection**: For each blueprint, the system finds the first product using that blueprint
+4. **Browser Extension Integration**: The extension navigates to Printify's mockup library for the product
+5. **Data Scraping**: The extension scrapes mockup images and metadata from the page
+6. **Local Storage**: Mockup images are downloaded and stored in `/wp-content/uploads/sip-printify-manager/mockups/{blueprint_id}/`
+7. **Display**: Mockup buttons appear on blueprint rows, opening a PhotoSwipe gallery when clicked
+
+### Data Structure
+Mockups are stored with a simplified structure:
+```json
+{
+    "blueprint_id": "6",
+    "product_id": "68457f5919c5e1bf2104ad2d",
+    "generated_at": "2025-01-13T12:00:00Z",
+    "mockup_types": [
+        {
+            "id": "front",
+            "label": "Front",
+            "mockup_type_id": "92570",
+            "image_url": "https://images.printify.com/mockup/.../front.jpg",
+            "local_path": "mockups/6/front.jpg",
+            "local_url": "https://site.com/wp-content/uploads/..."
+        }
+    ]
+}
+```
+
+### Key Components
+1. **Frontend Module**: `mockup-actions.js` - Handles UI, fetching coordination, and display
+2. **Backend Functions**: `mockup-functions.php` - Manages data storage and image downloads
+3. **Browser Extension**: 
+   - `printify-data-handler.js` - Coordinates mockup fetching
+   - `printify-mockup-scraper-actions.js` - Scrapes mockup data from Printify pages
+4. **CSS Styling**: Mockup buttons and fallback modal in `tables.css`
+
+### Implementation Notes
+- Only one color variant is stored per mockup type to save space
+- PhotoSwipe is used for gallery display with a fallback modal for environments without PhotoSwipe
+- Mockup fetching can be done individually per blueprint or in batch
+- The system uses the established SiP AJAX patterns for all backend communication
+
 ## Performance Considerations
 
 1. **Highlighting Functions**
@@ -852,3 +900,8 @@ ajax.handleAjaxAction().then(function(response) {
    - Process template data once at source
    - Avoid redundant string operations
    - Cache frequently accessed data
+
+4. **Mockup Performance**
+   - Images are downloaded once and cached locally
+   - Thumbnails could be generated for faster loading (future enhancement)
+   - Batch fetching reduces API calls and user wait time
