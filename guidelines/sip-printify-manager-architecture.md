@@ -41,10 +41,29 @@ When a template is loaded, related rows are highlighted:
   - `unpublished`: `var(--uploaded-unpublished)` (#bfdfc5)
   - `published`: `var(--uploaded-published)` (#7bfd83)
 
+#### Blueprint Mockups
+Blueprint rows can display mockup buttons that allow users to:
+- View existing mockups in a PhotoSwipe gallery
+- Fetch mockups from Printify via the browser extension (requires extension v4.3.0+)
+
+**Mockup Button States:**
+- No button: Blueprint has no mockups and extension is not available
+- Download icon: No mockups but can be fetched via extension
+- Gallery icon: Mockups available for viewing
+- Spinner: Mockups are being fetched
+
+**Implementation:**
+- Module: `mockup-actions.js`
+- Button creation: `createMockupButtonHtml()`
+- Fetch dialog: `showMockupFetchDialog()`
+- Gallery display: `displayMockupGallery()` with PhotoSwipe
+- Extension integration: Requires `mockupFetching` capability
+
 #### Implementation
 - Main file: `product-actions.js`
 - Highlighting function: `updateProductTableHighlights()`
 - Initialization: `initializeProductDataTable()`
+- Mockup module: `mockup-actions.js`
 
 ## Template Table
 
@@ -839,63 +858,106 @@ ajax.handleAjaxAction().then(function(response) {
 ## Mockup Management System
 
 ### Overview
-The mockup management system allows users to view mockups of products that can be created with each blueprint. Mockups are fetched from Printify using the browser extension and stored locally for quick access.
+The mockup management system allows users to view product mockups for each blueprint. Mockups are fetched from Printify using the browser extension and stored locally for quick access via PhotoSwipe galleries.
+
+### Architecture
+
+#### Frontend Components
+- **mockup-actions.js**: Main module that handles mockup buttons, fetching, and display
+- **browser-extension-manager.js**: Triggers jQuery events when extension state changes
+- **PhotoSwipe integration**: Uses SiP Core's PhotoSwipe utility for gallery display
+
+#### Backend Components
+- **class-sip-mockup-ajax.php**: Handles AJAX requests for mockup operations
+- **Mockup storage**: Local file system storage in `/mockups/` directory
+- **Database tracking**: Post meta tracks which blueprints have mockups
+
+#### Browser Extension Components
+- **mockup-fetch-handler.js**: Navigates to Printify mockup pages and captures data
+- **Content script injection**: Intercepts `generated-mockups-map` API responses
+- **Tab reuse**: Sequential fetches reuse the same Printify tab for efficiency
 
 ### Mockup Fetching Flow
 
 #### Automatic Triggers
-1. **Blueprint Row Creation**: When blueprint rows are created in the product table, the system checks which blueprints have existing mockups
-2. **Extension Ready**: When the browser extension announces it's ready (via `extensionReady` event), the system re-checks for blueprints needing mockups
-3. **Extension Installation**: When the browser extension is first installed (via `extensionInstalled` event), it prompts to fetch missing mockups
+1. **Blueprint Row Creation**: When blueprint rows are created, checks which blueprints have mockups
+2. **Extension Ready**: When extension announces readiness, re-evaluates mockup availability
+3. **Extension First Install**: Prompts user to fetch missing mockups for better onboarding
 
-#### Fetching Process
-1. **Extension Check**: Validates that browser extension is installed, connected, and supports mockup fetching (v4.3.0+)
-2. **User Prompt**: If blueprints without mockups are found, a dialog asks if the user wants to fetch them
-3. **Product Selection**: For each blueprint, the system finds the first product using that blueprint (uses DataTable data, not database)
-4. **Browser Extension Integration**: The extension navigates to Printify's mockup library for the product
-5. **Data Scraping**: The extension intercepts the `generated-mockups-map` API response and extracts mockup data
-6. **Local Storage**: Mockup images are downloaded and stored in `/wp-content/uploads/sip-printify-manager/mockups/{blueprint_id}/`
-7. **Display**: Mockup buttons appear on blueprint rows, opening a PhotoSwipe gallery when clicked
+#### Manual Trigger
+- Clicking mockup button on blueprint row (download icon indicates fetchable mockups)
 
-### Data Structure
-Mockups are stored with a simplified structure:
-```json
-{
-    "blueprint_id": "6",
-    "product_id": "68457f5919c5e1bf2104ad2d",
-    "generated_at": "2025-01-13T12:00:00Z",
-    "mockup_types": [
-        {
-            "id": "front",
-            "label": "Front",
-            "mockup_type_id": "92570",
-            "image_url": "https://images.printify.com/mockup/.../front.jpg",
-            "local_path": "mockups/6/front.jpg",
-            "local_url": "https://site.com/wp-content/uploads/..."
-        }
-    ]
-}
+#### Fetch Process
+1. **Progress Dialog**: Shows batch processing dialog with user confirmation
+2. **Product Lookup**: Finds a product using the blueprint (required for Printify URL)
+3. **Extension Request**: Sends `SIP_FETCH_MOCKUPS` message to extension
+4. **Tab Navigation**: Extension navigates to mockup library page
+5. **API Interception**: Captures mockup data from Printify's API
+6. **Data Processing**: Extracts one color variant for blueprint-agnostic mockups
+7. **Local Storage**: Downloads and stores mockup images locally
+8. **UI Update**: Updates button to show gallery icon
+
+### Mockup Data Structure
+
+```php
+// Stored as post meta for each blueprint
+$mockup_data = array(
+    'blueprint_id' => '123',
+    'product_id' => '456',  // Product used to fetch mockups
+    'generated_at' => '2025-01-21T10:00:00Z',
+    'mockup_types' => array(
+        array(
+            'id' => 'front',
+            'label' => 'Front',
+            'mockup_type_id' => '789',
+            'image_url' => 'https://printify.com/...',
+            'local_url' => '/wp-content/uploads/sip-printify/mockups/...'
+        ),
+        // Additional mockup types...
+    )
+);
 ```
 
-### Key Components
-1. **Frontend Module**: `mockup-actions.js` - Handles UI, fetching coordination, and display
-   - Checks extension capabilities before offering mockup features
-   - Listens for jQuery events (`extensionReady`, `extensionInstalled`) from browser-extension-manager
-   - Uses DataTable data instead of database queries for better performance
-   - Handles initialization order by checking if browserExtensionManager exists before use
-2. **Backend Functions**: `mockup-functions.php` - Manages data storage and image downloads
-   - Returns detailed download results (count, failures) for accurate success reporting
-3. **Browser Extension**: 
-   - `mockup-fetch-handler.js` - Dedicated handler for mockup fetching operations
-   - `printify-data-handler.js` - Routes mockup requests to MockupFetchHandler
-   - `widget-router.js` - Sends installation notifications to trigger initial mockup check
-4. **CSS Styling**: Mockup buttons and fallback modal in `tables.css`
+### Event-Driven Communication
 
-### Implementation Notes
-- Only one color variant is stored per mockup type to save space
-- PhotoSwipe is used for gallery display with a fallback modal for environments without PhotoSwipe
-- Mockup fetching can be done individually per blueprint or in batch
-- The system uses the established SiP AJAX patterns for all backend communication
+The mockup system uses jQuery events for loose coupling between modules:
+
+```javascript
+// Extension ready event
+$(document).on('extensionReady', function(e, data) {
+    // Re-check for mockup availability
+});
+
+// Extension installed event  
+$(document).on('extensionInstalled', function(e, data) {
+    if (data.firstInstall) {
+        // Check for missing mockups
+    }
+});
+
+// Blueprint rows created event
+$(document).on('blueprintRowsCreated', function(e, data) {
+    // Add mockup buttons to rows
+});
+```
+
+### User Experience
+
+#### Button States
+- **No button**: No mockups and can't fetch (extension unavailable)
+- **Download icon**: No mockups but can fetch via extension
+- **Gallery icon**: Mockups available for viewing
+- **Spinner**: Currently fetching mockups
+
+#### Gallery Display
+- Uses PhotoSwipe for responsive image viewing
+- Shows all mockup types (front, back, etc.) for the blueprint
+- Fallback to simple modal if PhotoSwipe unavailable
+
+### Extension Requirements
+- Minimum version: 4.3.0 (for `mockupFetching` capability)
+- Must be installed and connected
+- Requires active Printify session for API access
 
 ### Event-Driven Communication
 The mockup system uses jQuery events for inter-module communication:

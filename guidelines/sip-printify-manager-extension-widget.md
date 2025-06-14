@@ -872,6 +872,249 @@ Key implementation details:
 3. widget-relay.js handles WordPress postMessage relay in content script context
 4. All Chrome API execution happens directly in the router, no separate executor needed
 
+## 11. Tab Management Architecture
+
+### 11.1 Global Tab Registry System
+
+The extension maintains a global registry of WordPress and Printify tabs, ensuring only one primary tab of each type exists at any time.
+
+#### Design Principles
+1. **Single Primary Tab**: Only one WordPress tab and one Printify tab are considered "primary"
+2. **Tab Reuse**: Operations always reuse existing tabs rather than creating duplicates
+3. **Graceful Orphan Handling**: Tabs aren't auto-closed but are reused when needed
+4. **Secondary Tab Support**: Additional tabs become "observers" that can redirect to primary tabs
+
+#### Implementation Structure
+```javascript
+// Global tab registry in router
+const globalTabs = {
+    wordpress: {
+        primary: { tabId: 123, url: '...', windowId: 1 },
+        secondary: [{ tabId: 456, url: '...', windowId: 2 }]
+    },
+    printify: {
+        primary: { tabId: 789, url: '...', windowId: 1 },
+        secondary: []
+    }
+};
+```
+
+#### Tab Navigation Logic
+```javascript
+async function navigateToPrintify(url) {
+    // 1. Check for existing Printify tab (primary or orphaned)
+    const existing = await findPrintifyTab();
+    
+    if (existing) {
+        // 2. Reuse existing tab
+        await chrome.tabs.update(existing.tabId, { url: url, active: true });
+        return { success: true, data: { tabId: existing.tabId, action: 'reused' } };
+    }
+    
+    // 3. Create new tab only if none exists
+    const newTab = await chrome.tabs.create({ url: url });
+    registerPrimaryTab('printify', newTab);
+    return { success: true, data: { tabId: newTab.id, action: 'created' } };
+}
+```
+
+#### Tab Lifecycle Events
+1. **Tab Creation**: First tab of each type becomes primary
+2. **Tab Closure**: Primary status transfers to next available tab
+3. **Orphan Detection**: Printify tabs without WordPress counterpart are marked as reusable
+4. **Secondary Tab Actions**: Can optionally redirect to primary tab
+
+### 11.2 Router Method Return Standardization
+
+All router methods follow a consistent return pattern aligned with the documented response format.
+
+#### Standard Return Format
+```javascript
+// Success Response
+{
+    success: true,
+    data: {
+        // Method-specific data
+    },
+    message?: string  // Optional human-readable message
+}
+
+// Error Response
+{
+    success: false,
+    error: string,    // Error message
+    code: string,     // Error code for programmatic handling
+    data?: any        // Optional partial data
+}
+```
+
+#### Router Method Returns
+
+##### Tab Management Methods
+```javascript
+// Create a new tab
+createTab(params) → {
+    success: true,
+    data: {
+        tabId: number,
+        tab: Chrome.Tab,
+        isNew: true
+    }
+}
+
+// Query tabs
+queryTabs(params) → {
+    success: true,
+    data: {
+        tabs: Chrome.Tab[],
+        primaryTabId?: number  // If a primary tab exists in results
+    }
+}
+
+// Send message to tab
+sendTabMessage(tabId, message) → {
+    success: true,
+    data: {
+        response: any,  // Response from content script
+        tabId: number
+    }
+}
+
+// Update tab properties
+updateTab(tabId, props) → {
+    success: true,
+    data: {
+        tab: Chrome.Tab,
+        tabId: number,
+        updated: string[]  // List of updated properties
+    }
+}
+
+// Remove tab
+removeTab(tabId) → {
+    success: true,
+    data: {
+        tabId: number,
+        wasPrimary: boolean
+    }
+}
+
+// Get current active tab
+getCurrentTab() → {
+    success: true,
+    data: {
+        tab: Chrome.Tab,
+        isPrimary: boolean,
+        tabType: 'wordpress' | 'printify' | 'other'
+    }
+}
+
+// Navigate with smart tab management
+navigateTab(url, tabType) → {
+    success: true,
+    data: {
+        tabId: number,
+        action: 'created' | 'reused' | 'navigated',
+        wasPrimary: boolean
+    }
+}
+```
+
+##### API Methods
+```javascript
+// Call WordPress API
+callWordPressAPI(endpoint, method, data) → {
+    success: true,
+    data: any  // API response data
+}
+
+// Test connection
+testWordPressConnection() → {
+    success: true,
+    data: {
+        connected: boolean,
+        apiVersion: string,
+        pluginActive: boolean
+    }
+}
+
+// Check plugin status
+checkWordPressPluginStatus() → {
+    success: true,
+    data: {
+        pluginActive: boolean,
+        pluginVersion?: string,
+        pluginName?: string
+    }
+}
+```
+
+##### Configuration Methods
+```javascript
+// Get configuration
+getConfig() → {
+    success: true,
+    data: {
+        wordpressUrl?: string,
+        apiKey?: string,
+        configured: boolean
+    }
+}
+
+// Update configuration
+updateConfig(newConfig) → {
+    success: true,
+    data: {
+        updated: string[],  // List of updated config keys
+        configured: boolean
+    }
+}
+```
+
+#### Error Handling
+
+All router methods use consistent error codes:
+
+```javascript
+// Configuration Errors
+{ code: 'NOT_CONFIGURED', error: 'Extension not configured' }
+{ code: 'INVALID_CONFIG', error: 'Invalid configuration values' }
+
+// Tab Errors  
+{ code: 'TAB_NOT_FOUND', error: 'Tab does not exist' }
+{ code: 'TAB_ACCESS_DENIED', error: 'Cannot access tab' }
+{ code: 'TAB_CREATION_FAILED', error: 'Failed to create tab' }
+
+// API Errors
+{ code: 'CONNECTION_ERROR', error: 'Failed to connect to WordPress' }
+{ code: 'AUTH_ERROR', error: 'Invalid API key' }
+{ code: 'PLUGIN_DEACTIVATED', error: 'WordPress plugin is deactivated' }
+
+// General Errors
+{ code: 'UNKNOWN_ERROR', error: 'An unexpected error occurred' }
+```
+
+#### Migration Guide
+
+Handlers expecting old return formats should be updated:
+
+```javascript
+// Old pattern (inconsistent)
+const tab = await router.getCurrentTab();
+if (tab) { /* ... */ }
+
+// New pattern (consistent)
+const result = await router.getCurrentTab();
+if (result.success) {
+    const tab = result.data.tab;
+    /* ... */
+} else {
+    console.error(`Error ${result.code}: ${result.error}`);
+}
+```
+
+This standardization eliminates the need for defensive programming and provides predictable, consistent interfaces throughout the extension.
+
 # SiP Printify Manager Browser Extension - TODO
 
 ## Low Priority Enhancements
