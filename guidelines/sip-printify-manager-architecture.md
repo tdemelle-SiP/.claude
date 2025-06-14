@@ -842,11 +842,17 @@ ajax.handleAjaxAction().then(function(response) {
 The mockup management system allows users to view mockups of products that can be created with each blueprint. Mockups are fetched from Printify using the browser extension and stored locally for quick access.
 
 ### Mockup Fetching Flow
-1. **Blueprint Row Detection**: When blueprint rows are created in the product table, the system checks which blueprints have existing mockups
+
+#### Automatic Triggers
+1. **Blueprint Row Creation**: When blueprint rows are created in the product table, the system checks which blueprints have existing mockups
+2. **Extension Installation**: When the browser extension is first installed, it checks for existing blueprint rows and prompts to fetch missing mockups
+
+#### Fetching Process
+1. **Extension Check**: Validates that browser extension is installed, connected, and supports mockup fetching (v4.3.0+)
 2. **User Prompt**: If blueprints without mockups are found, a dialog asks if the user wants to fetch them
-3. **Product Selection**: For each blueprint, the system finds the first product using that blueprint
+3. **Product Selection**: For each blueprint, the system finds the first product using that blueprint (uses DataTable data, not database)
 4. **Browser Extension Integration**: The extension navigates to Printify's mockup library for the product
-5. **Data Scraping**: The extension scrapes mockup images and metadata from the page
+5. **Data Scraping**: The extension intercepts the `generated-mockups-map` API response and extracts mockup data
 6. **Local Storage**: Mockup images are downloaded and stored in `/wp-content/uploads/sip-printify-manager/mockups/{blueprint_id}/`
 7. **Display**: Mockup buttons appear on blueprint rows, opening a PhotoSwipe gallery when clicked
 
@@ -872,10 +878,15 @@ Mockups are stored with a simplified structure:
 
 ### Key Components
 1. **Frontend Module**: `mockup-actions.js` - Handles UI, fetching coordination, and display
+   - Checks extension capabilities before offering mockup features
+   - Listens for extension installation messages to trigger initial mockup check
+   - Uses DataTable data instead of database queries for better performance
 2. **Backend Functions**: `mockup-functions.php` - Manages data storage and image downloads
+   - Returns detailed download results (count, failures) for accurate success reporting
 3. **Browser Extension**: 
-   - `printify-data-handler.js` - Coordinates mockup fetching
-   - `printify-mockup-scraper-actions.js` - Scrapes mockup data from Printify pages
+   - `mockup-fetch-handler.js` - Dedicated handler for mockup fetching operations
+   - `printify-data-handler.js` - Routes mockup requests to MockupFetchHandler
+   - `widget-router.js` - Sends installation notifications to trigger initial mockup check
 4. **CSS Styling**: Mockup buttons and fallback modal in `tables.css`
 
 ### Implementation Notes

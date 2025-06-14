@@ -617,6 +617,13 @@ EXTENSION ANNOUNCES ITSELF:
    - May send SIP_SHOW_WIDGET message
 10. widget-tabs-actions.js creates/shows the floating widget
 
+FIRST INSTALL DATA CHECK:
+11. For fresh installs only, router sends SIP_EXTENSION_INSTALLED message
+12. WordPress modules can check for data the extension can fetch:
+    - Mockup-actions checks for blueprints without mockups
+    - Prompts user to fetch missing data
+13. Provides seamless onboarding experience
+
 RESULT: Extension detected, page reload recommended for reliability
 ```
 
