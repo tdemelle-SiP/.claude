@@ -157,6 +157,45 @@ Router unwraps & routes:  { type: 'wordpress', action: 'SIP_SHOW_WIDGET', data: 
 
 **Key Point**: Never mix formats. External messages MUST use 'SIP_' prefix. Internal messages MUST use handler/action pattern.
 
+#### Request-Response Correlation
+
+**Why Request IDs**: When multiple async operations run concurrently (e.g., fetching mockups for 4 blueprints), responses must be matched to their originating requests to prevent race conditions.
+
+**Implementation Pattern**:
+```javascript
+// WordPress sends request with unique ID
+const requestId = 'operation_' + itemId + '_' + Date.now();
+window.postMessage({
+    type: 'SIP_COMMAND_NAME',
+    source: 'sip-printify-manager',
+    requestId: requestId,  // Required for async operations
+    data: { /* request data */ }
+}, '*');
+
+// Set up response listener BEFORE sending request
+const responseHandler = function(event) {
+    if (event.data && 
+        event.data.type === 'SIP_EXTENSION_RESPONSE' &&
+        event.data.requestId === requestId) {  // Match by requestId
+        
+        window.removeEventListener('message', responseHandler);
+        const response = event.data.response;
+        // Process response...
+    }
+};
+window.addEventListener('message', responseHandler);
+```
+
+**CRITICAL**: The relay preserves the requestId in wrapped responses:
+```javascript
+// Extension → WordPress (via relay)
+{
+    type: 'SIP_EXTENSION_RESPONSE',
+    requestId: 'operation_6_1642351234567',  // Preserved from request
+    response: { /* actual response data */ }
+}
+```
+
 #### Handler Chrome API Requests
 Handlers can request Chrome API execution by calling router methods directly:
 ```javascript
@@ -323,8 +362,10 @@ Processes mockup fetching operations:
 - Navigates to Printify mockup library pages
 - Intercepts `generated-mockups-map` API responses  
 - Extracts blueprint-agnostic mockup data (one color variant only)
-- Sends processed data back to WordPress
+- Returns data via sendResponse callback (relay handles WordPress delivery)
 - **Required actions**: `fetchMockups`
+
+**CRITICAL**: This handler MUST NOT use chrome.tabs.sendMessage to send data to WordPress. All responses MUST go through the sendResponse callback which the relay will properly format and deliver via postMessage.
 
 #### printify-data-handler.js
 **Why it exists**: Complex multi-step operations like api interception need coordination logic that can access Chrome APIs. Separating this from UI logic enables cleaner testing and maintenance.
@@ -752,6 +793,7 @@ window.postMessage({
 window.postMessage({
     type: 'SIP_FETCH_MOCKUPS',
     source: 'sip-printify-manager',
+    requestId: 'mockup_6_1642351234567',  // Unique ID for response correlation
     data: {
         blueprint_id: '6',
         product_id: '6740c96f6abac8a2d30d6a12',
@@ -760,8 +802,21 @@ window.postMessage({
     }
 }, '*');
 
-// Extension constructs API URL and fetches data
-// URL: /users/{userId}/shops/{shopId}/products/{productId}/generated-mockups-map
+// Extension processes request and returns response via relay
+// Response wrapped as SIP_EXTENSION_RESPONSE with matching requestId
+
+// WordPress receives:
+{
+    type: 'SIP_EXTENSION_RESPONSE',
+    requestId: 'mockup_6_1642351234567',  // Matches the request
+    response: {
+        success: true,
+        type: 'SIP_MOCKUP_DATA',           // Original message type
+        source: 'sip-printify-extension',
+        blueprint_id: '6',
+        data: { /* mockup data */ }
+    }
+}
 ```
 
 ### 9.3 jQuery Events
@@ -791,7 +846,31 @@ $(document).on('extensionReady', function(e, data) {
 });
 ```
 
-### 9.4 REST API Endpoints
+### 9.4 Common Pitfalls - MUST READ
+
+**CRITICAL: Understanding Message Boundaries**
+
+1. **chrome.tabs.sendMessage ONLY reaches content scripts**
+   ```javascript
+   // WRONG - WordPress pages cannot receive this:
+   chrome.tabs.sendMessage(tabId, { data: 'something' });
+   
+   // CORRECT - Use the relay pattern documented above
+   ```
+
+2. **WordPress pages can ONLY receive postMessage**
+   - WordPress has NO chrome.runtime.onMessage listener
+   - WordPress has NO access to Chrome Extension APIs
+   - ALL Extension → WordPress communication MUST use postMessage
+
+3. **The Relay is One-Way for Responses**
+   - widget-relay.js forwards WordPress → Extension messages
+   - Extension responses come back through the SAME relay
+   - Do NOT attempt to bypass the relay with direct messaging
+
+**Why This Architecture**: Chrome's security model creates strict boundaries between web pages and extensions. The relay pattern is the ONLY reliable way to bridge these boundaries.
+
+### 9.5 REST API Endpoints
 
 Extension calls these WordPress endpoints:
 - `POST /wp-json/sip-printify/v1/extension-status`
