@@ -15,6 +15,85 @@ SiP plugins use multiple storage mechanisms based on the data type and persisten
 7. **WordPress Options** - Plugin settings and configurations (server-side)
 8. **WordPress Transients** - Cached data with expiration (server-side)
 
+## Plugin Storage API
+
+The SiP Plugin Storage system provides a centralized API for managing plugin directories and files. All plugins must register their storage needs with the storage manager.
+
+### Registering Plugin Storage
+
+Register folders during plugin initialization (see [Creating a New Plugin](./sip-plugin-creation.md#step-2-create-main-plugin-file)):
+
+```php
+// In your main plugin file, after plugin class initialization
+sip_plugin_storage()->register_plugin('sip-your-plugin-name', array(
+    'folders' => array(
+        'data',
+        'exports',
+        'logs',
+        'cache',
+        'images',
+        'images/thumbnails'  // Nested folders supported
+    )
+));
+```
+
+**Why**: WordPress doesn't automatically create plugin upload directories. The storage manager ensures all registered folders exist before use.
+
+### Storage API Methods
+
+```php
+// Get the storage manager instance
+$storage = sip_plugin_storage();
+
+// Get base directory path for a plugin
+$base_dir = $storage->get_plugin_dir('sip-printify-manager');
+// Returns: /path/to/wp-content/uploads/sip-printify-manager/
+
+// Get base URL for a plugin's upload directory
+$base_url = $storage->get_plugin_url('sip-printify-manager');
+// Returns: https://site.com/wp-content/uploads/sip-printify-manager/
+
+// Get specific folder path
+$images_dir = $storage->get_folder_path('sip-printify-manager', 'images');
+// Returns: /path/to/wp-content/uploads/sip-printify-manager/images/
+
+// Construct full file paths
+$file_path = $storage->get_folder_path('sip-printify-manager', 'mockups') . $blueprint_id . '/metadata.json';
+
+// Construct full URLs
+$file_url = $storage->get_plugin_url('sip-printify-manager') . 'mockups/' . $blueprint_id . '/image.jpg';
+```
+
+### Common Patterns
+
+```php
+// Save file to plugin directory
+function save_mockup_data($blueprint_id, $data) {
+    $storage = sip_plugin_storage();
+    $dir = $storage->get_folder_path('sip-printify-manager', 'mockups') . $blueprint_id . '/';
+    
+    // Create subdirectory if needed
+    if (!is_dir($dir)) {
+        wp_mkdir_p($dir);
+    }
+    
+    $filepath = $dir . 'metadata.json';
+    return file_put_contents($filepath, json_encode($data, JSON_PRETTY_PRINT));
+}
+
+// Get file URL for display
+function get_mockup_url($blueprint_id, $filename) {
+    $storage = sip_plugin_storage();
+    return $storage->get_plugin_url('sip-printify-manager') . 'mockups/' . $blueprint_id . '/' . $filename;
+}
+```
+
+**Important**: 
+- Never use `get_directory()` or `get_url()` - these methods don't exist
+- Always use `get_folder_path()` for file system paths
+- Always use `get_plugin_url()` for URLs
+- Register all folders your plugin needs during initialization
+
 ## 1. Local Storage (Client-Side)
 
 Used for persistent UI state across browser sessions. All data stored under `sip-core` namespace.

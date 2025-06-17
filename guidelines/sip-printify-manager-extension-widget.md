@@ -537,9 +537,99 @@ function handle(request, sender, sendResponse, router) {
 }
 ```
 
-## 7. Storage Management
+## 7. Widget UI Features
 
-### 7.1 State Storage
+### 7.1 Cross-Tab Console Log Viewer
+
+**Why it exists**: During complex operations like mockup fetching that span multiple tabs (WordPress ↔ Printify), console logs from both contexts are needed for debugging. Page reloads during blueprint processing cause log loss, making cross-tab history essential for development and troubleshooting.
+
+#### Implementation Architecture
+
+**Log Capture System**:
+- **Extension Side** (`widget-debug.js`): Intercepts console.log/error/warn calls matching SiP prefixes
+- **WordPress Side** (`browser-extension-manager.js`): Intercepts SiP.Core.debug calls and sends to extension
+- **Storage**: Chrome local storage with 1MB limit and automatic cleanup
+- **Correlation**: Timestamps enable chronological interleaving of logs from both tabs
+
+#### SiP Prefixes Captured
+
+The system captures console logs containing these SiP-related prefixes:
+- `♀️ [SiP Printify Extension]` - Extension debug output
+- `SiP` - WordPress SiP.Core.debug calls
+- `▶`, `🟢`, `🔴`, `🟡`, `⚪`, `✅`, `❌`, `⚠️` - Emoji prefixes used in SiP debug output
+
+#### Usage Flow
+
+1. **History Button**: User clicks History button in extension widget
+2. **Log Retrieval**: `window.widgetDebug.getConsoleLogs()` retrieves stored logs
+3. **Window Creation**: New popup window opens with formatted log viewer
+4. **Features Available**:
+   - **Copy All Logs**: Copies all logs to clipboard in plain text format
+   - **Clear Logs**: Clears stored logs with confirmation
+   - **Visual Filtering**: Color-coded by log level (error/warn/log) and source (WordPress/Extension)
+   - **Chronological Display**: Logs sorted by timestamp showing cross-tab interaction sequence
+
+#### Technical Details
+
+**WordPress Console Interception**:
+```javascript
+// Intercepts SiP.Core.debug calls and sends to extension
+function sendLogToExtension(level, args) {
+    window.postMessage({
+        type: 'SIP_CONSOLE_LOG',
+        source: 'sip-printify-manager',
+        data: {
+            timestamp: Date.now(),
+            level: level,
+            message: args.join(' '),
+            source: 'WordPress',
+            url: window.location.href
+        }
+    }, '*');
+}
+```
+
+**Extension Console Interception**:
+```javascript
+// Captures extension console logs with SiP prefixes
+function captureLog(level, args) {
+    if (!shouldCaptureLog(args)) return;
+    
+    const entry = {
+        timestamp: Date.now(),
+        level: level,
+        message: args.join(' '),
+        source: 'Extension',
+        url: window.location.href
+    };
+    
+    storeLogEntry(entry);
+}
+```
+
+**Storage Management**:
+- **Key**: `sipConsoleLogs` in Chrome local storage
+- **Format**: Array of log objects with timestamp, level, message, source, url
+- **Size Management**: Automatic cleanup when approaching 1MB limit
+- **Persistence**: Survives page reloads and browser restarts
+
+#### User Experience
+
+**Log Viewer Window**:
+- **Dark Theme**: Console-like appearance for developer familiarity
+- **Grid Layout**: Timestamp | Source | Level | Message columns
+- **Color Coding**: Visual distinction between log levels and sources
+- **Copy Functionality**: One-click copy of all logs for sharing/analysis
+- **Statistics**: Shows total log count and breakdown by source
+
+**Integration Points**:
+- **Widget Button**: Seamlessly integrated into existing widget UI
+- **Error Handling**: Graceful fallback if log capture unavailable
+- **Performance**: Minimal impact on normal operation, only captures SiP-related logs
+
+## 8. Storage Management
+
+### 8.1 State Storage
 
 All UI state stored in Chrome storage for cross-tab sync:
 ```javascript
@@ -553,15 +643,15 @@ chrome.storage.local.set({
 });
 ```
 
-### 7.2 Storage Limits
+### 8.2 Storage Limits
 
 - Chrome storage has 5MB limit
 - Monitor usage and prune old operation history
 - Use efficient data structures
 
-## 8. Configuration and Deployment
+## 9. Configuration and Deployment
 
-### 8.1 Extension Configuration
+### 9.1 Extension Configuration
 
 The extension supports two configuration modes:
 
@@ -583,14 +673,7 @@ Bundle the extension with a `config.json` file in the `assets/` directory:
 - `autoSync`: Reserved for future use (currently unused)
 - `configured`: Must be `true` to use pre-configuration
 
-**⚠️ SECURITY WARNING**: Never commit `config.json` with real API keys to version control. The browser-extension directory already has a `.gitignore` file, but it should be updated to use the correct path:
-```
-# Current (incorrect):
-config.json
-
-# Should be:
-assets/config.json
-```
+**⚠️ SECURITY WARNING**: Never commit `config.json` with real API keys to version control. The browser-extension directory includes a `.gitignore` file that properly excludes `assets/config.json` from version control.
 
 #### User-configured Deployment
 Ship without `config.json` or with `configured: false`. Users configure through:
@@ -598,7 +681,7 @@ Ship without `config.json` or with `configured: false`. Users configure through:
 2. Settings stored in Chrome sync storage
 3. Persists across browser sessions
 
-### 8.2 Configuration Loading Order
+### 9.2 Configuration Loading Order
 
 1. On startup, router checks for `assets/config.json`
 2. If found AND `configured: true`, uses those values
@@ -610,9 +693,9 @@ Ship without `config.json` or with `configured: false`. Users configure through:
 
 **Note**: The `config.json` file is included in manifest's `web_accessible_resources` to allow the background script to fetch it using `chrome.runtime.getURL()`.
 
-## 9. WordPress Integration
+## 10. WordPress Integration
 
-### 9.1 Extension Detection and Installation Flow
+### 10.1 Extension Detection and Installation Flow
 
 #### Chrome Content Script Injection Behavior
 
@@ -775,7 +858,23 @@ document.addEventListener('DOMContentLoaded', function() {
 4. **Reliable Detection**: Manifest-based loading eliminates race conditions
 5. **Better UX**: Quick automatic reload is better than uncertain waiting
 
-### 9.2 Sending Commands
+### 10.2 Supported WordPress Commands
+
+The extension supports the following commands from WordPress:
+
+| Command | Purpose | Handler |
+|---------|---------|---------|
+| `SIP_NAVIGATE` | Navigate to URL in new/existing tab | Widget handler |
+| `SIP_OPEN_TAB` | Open URL in new tab | Widget handler |
+| `SIP_TOGGLE_WIDGET` | Toggle widget visibility | Widget handler |
+| `SIP_SHOW_WIDGET` | Show the widget | Widget handler |
+| `SIP_CHECK_STATUS` | Check plugin connection status | Widget handler |
+| `SIP_FETCH_MOCKUPS` | Fetch mockup data from Printify | Printify handler |
+| `SIP_CONSOLE_LOG` | Store console log from WordPress | WordPress handler |
+
+**Note**: Any other command will receive an error response with code `UNKNOWN_ACTION`.
+
+### 10.3 Sending Commands
 
 From WordPress plugin:
 ```javascript
@@ -819,7 +918,7 @@ window.postMessage({
 }
 ```
 
-### 9.3 jQuery Events
+### 10.3 jQuery Events
 
 The browser-extension-manager triggers these jQuery events for inter-module communication:
 
@@ -846,7 +945,7 @@ $(document).on('extensionReady', function(e, data) {
 });
 ```
 
-### 9.4 Common Pitfalls - MUST READ
+### 10.4 Common Pitfalls - MUST READ
 
 **CRITICAL: Understanding Message Boundaries**
 
@@ -870,7 +969,7 @@ $(document).on('extensionReady', function(e, data) {
 
 **Why This Architecture**: Chrome's security model creates strict boundaries between web pages and extensions. The relay pattern is the ONLY reliable way to bridge these boundaries.
 
-### 9.5 REST API Endpoints
+### 10.5 REST API Endpoints
 
 Extension calls these WordPress endpoints:
 - `POST /wp-json/sip-printify/v1/extension-status`
@@ -878,9 +977,9 @@ Extension calls these WordPress endpoints:
 
 Authentication via header: `X-SiP-API-Key: [32-character-key]`
 
-## 10. Development Guidelines
+## 11. Development Guidelines
 
-### 10.1 Widget Visibility Requirements
+### 11.1 Widget Visibility Requirements
 
 **Widget Initialization**:
 - Widget MUST start with `sip-visible` class for immediate visibility
@@ -899,7 +998,7 @@ Authentication via header: `X-SiP-API-Key: [32-character-key]`
 3. Inspect DOM for `#sip-floating-widget` element
 4. Verify position values in inline styles
 
-### 10.2 Adding New Operations
+### 11.2 Adding New Operations
 
 1. Start with the trigger (user action or page event)
 2. Define the message format
@@ -909,14 +1008,14 @@ Authentication via header: `X-SiP-API-Key: [32-character-key]`
 6. Update storage schema if needed
 7. Update UI components if needed
 
-### 10.3 Debugging
+### 11.3 Debugging
 
 - Enable debug mode: `chrome.storage.local.set({sip_printify_debug: true})`
 - Check router for message flow
 - Verify message formats match documentation
 - Check Chrome DevTools for both page and extension contexts
 
-### 10.4 Testing Checklist
+### 11.4 Testing Checklist
 
 - [ ] Run `node validate-manifest.js` to check manifest integrity
 - [ ] Check chrome://extensions for ANY errors or warnings
@@ -931,7 +1030,7 @@ Authentication via header: `X-SiP-API-Key: [32-character-key]`
 - [ ] Widget UI reflects state changes
 - [ ] Error cases return standardized error responses
 
-### 10.5 Common Pitfalls
+### 11.5 Common Pitfalls
 
 **Manifest Corruption**:
 - Chrome silently fails on manifest parsing errors
@@ -973,9 +1072,9 @@ Key implementation details:
 
 ## Low Priority Enhancements
 
-### 1. History View Feature
-- Implement history view for captured data and actions
-- Referenced in widget-tabs-actions.js:781
+### 1. ~~History View Feature~~ ✅ COMPLETED
+- ~~Implement history view for captured data and actions~~
+- ✅ **Cross-tab console log viewer implemented** - History button now opens captured SiP-related console logs from both WordPress and Extension in a new window with copy/clear functionality
 
 ### 2. Auto-Sync Feature  
 - The `autoSync` field in config.json is reserved for future use
@@ -994,5 +1093,6 @@ Key implementation details:
 - ✅ Proper error handling with standardized responses
 - ✅ Configuration system with pre-configured and user-configured modes
 - ✅ Installation flow with automatic page reload
-- ✅ All deprecated code removed (widget-main.js, plural handler names)
+- ✅ Cross-tab console log viewer with SiP-prefix filtering, chronological ordering, and copy/clear functionality
+- ✅ All deprecated code removed (widget-main.js, plural handler names, action history system)
 - ✅ Documentation fully updated to reflect current implementation
