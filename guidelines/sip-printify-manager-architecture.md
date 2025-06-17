@@ -8,6 +8,23 @@ The SIP Printify Manager consists of four main tables that work together to mana
 - **Image Table** - Handles image assets for products
 - **Product Creation Table** - Complex interface for creating and managing product variants
 
+## Core Architectural Principles
+
+### Data Processing Separation
+**Extension = Data Fetcher, WordPress = Data Processor**
+
+The browser extension acts as a "dumb pipe" that only captures and relays raw data:
+- Extension intercepts API responses and captures data
+- Extension sends raw, unprocessed data to WordPress
+- WordPress handles all data processing, validation, and transformation
+- WordPress saves both raw data (for debugging) and processed data
+
+This separation provides:
+- **Easier debugging** - Raw API responses can be inspected on WordPress side
+- **Faster iteration** - Processing logic can be changed without reloading extension
+- **Clear responsibilities** - Extension focuses on access, WordPress on business logic
+- **Data preservation** - Both raw and processed versions are available
+
 ## Product Table
 
 ### Purpose
@@ -48,7 +65,6 @@ Blueprint rows can display mockup buttons that allow users to:
 
 **Mockup Button States:**
 - No button: Blueprint has no mockups and extension is not available
-- Download icon: No mockups but can be fetched via extension
 - Gallery icon: Mockups available for viewing
 - Spinner: Mockups are being fetched
 

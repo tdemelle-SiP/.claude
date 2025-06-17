@@ -316,6 +316,33 @@ browser-extension/
 - Relays WordPress messages to router via chrome.runtime.sendMessage
 - Returns responses back to WordPress via postMessage
 
+#### widget-debug.js (Core Debug Module)
+**Why it exists**: Provides centralized debug logging and cross-tab console log capture. During complex operations spanning multiple tabs (WordPress ↔ Printify), logs from both contexts are captured and preserved for debugging.
+
+- Intercepts console.log/error/warn calls containing SiP-related prefixes
+- Formats logs consistently: `[HH:MM:SS] Source: Message`
+- Stores logs as pre-formatted strings in Chrome storage (max 1MB)
+- Provides debug methods that respect enabled/disabled state
+- Exposes `storeLogEntry()` for other modules to store formatted logs
+
+**Key Functions**:
+- `formatLogEntry(source, level, message)` - Centralized log formatting
+- `captureLog(level, args)` - Intercepts and formats console output
+- `storeLogEntry(entry)` - Stores formatted string with size management
+- `getConsoleLogs(callback)` - Retrieves stored logs for history viewing
+- `clearConsoleLogs()` - Clears all stored logs
+
+**Storage Format** (Updated 2025-06-17):
+```javascript
+// Chrome storage key: 'sipConsoleLogs'
+// Value: Array of formatted strings
+[
+    "[10:30:45] WordPress: Fetching mockups for Blueprint #6",
+    "[10:30:45] Extension: Request received, navigating to Printify",
+    "[10:30:48] Extension: API response captured - 12 mockups found"
+]
+```
+
 ### 3.3 Action Scripts
 
 #### widget-tabs-actions.js
@@ -356,14 +383,16 @@ Processes widget-related operations:
 - **Required actions**: `showWidget`, `toggleWidget`, `navigate`, `updateState`, `getConfig`, `updateConfig`, `testConnection`, `checkPluginStatus`
 
 #### mockup-fetch-handler.js
-**Why it exists**: Mockup fetching is a complex multi-step operation requiring tab management, API interception, data processing, and WordPress communication. This dedicated handler isolates all mockup-related logic and provides clean separation from other extension functionality.
+**Why it exists**: Mockup fetching is a complex multi-step operation requiring tab management and API interception. This dedicated handler isolates all mockup-related logic and provides clean separation from other extension functionality.
 
 Processes mockup fetching operations:
 - Navigates to Printify mockup library pages
 - Intercepts `generated-mockups-map` API responses  
-- Extracts blueprint-agnostic mockup data (one color variant only)
+- Returns **raw API response data** without processing
 - Returns data via sendResponse callback (relay handles WordPress delivery)
 - **Required actions**: `fetchMockups`
+
+**ARCHITECTURAL PRINCIPLE**: The extension acts as a "dumb pipe" that only captures and relays raw data. All data processing, validation, and transformation happens on the WordPress side. This separation enables easier debugging, faster iteration, and clearer responsibilities.
 
 **CRITICAL**: This handler MUST NOT use chrome.tabs.sendMessage to send data to WordPress. All responses MUST go through the sendResponse callback which the relay will properly format and deliver via postMessage.
 
@@ -571,47 +600,84 @@ The system captures console logs containing these SiP-related prefixes:
 
 #### Technical Details
 
-**WordPress Console Interception**:
+**WordPress Console Interception** (browser-extension-manager.js):
 ```javascript
 // Intercepts SiP.Core.debug calls and sends to extension
 function sendLogToExtension(level, args) {
+    // Convert arguments to string
+    let message = args.map(arg => {
+        if (typeof arg === 'object') {
+            try {
+                return JSON.stringify(arg, null, 2);
+            } catch (e) {
+                return String(arg);
+            }
+        }
+        return String(arg);
+    }).join(' ');
+    
+    // Format timestamp
+    const timestamp = new Date().toTimeString().split(' ')[0]; // HH:MM:SS
+    
+    // Add level prefix for warnings and errors
+    if (level === 'warn') {
+        message = 'Warning: ' + message;
+    } else if (level === 'error') {
+        message = 'Error: ' + message;
+    }
+    
+    // Create formatted log string
+    const formattedLog = `[${timestamp}] WordPress: ${message}`;
+    
+    // Send pre-formatted string to extension
     window.postMessage({
         type: 'SIP_CONSOLE_LOG',
         source: 'sip-printify-manager',
-        data: {
-            timestamp: Date.now(),
-            level: level,
-            message: args.join(' '),
-            source: 'WordPress',
-            url: window.location.href
-        }
+        data: formattedLog
     }, '*');
 }
 ```
 
-**Extension Console Interception**:
+**Extension Console Interception** (widget-debug.js):
 ```javascript
 // Captures extension console logs with SiP prefixes
 function captureLog(level, args) {
     if (!shouldCaptureLog(args)) return;
     
-    const entry = {
-        timestamp: Date.now(),
-        level: level,
-        message: args.join(' '),
-        source: 'Extension',
-        url: window.location.href
-    };
+    // Determine source
+    var source = inWordPressContext() ? 'WordPress' : 'Extension';
     
-    storeLogEntry(entry);
+    // Format message
+    var message = args.map(function(arg) {
+        if (typeof arg === 'object') {
+            try {
+                return JSON.stringify(arg, null, 2);
+            } catch (e) {
+                return String(arg);
+            }
+        }
+        return String(arg);
+    }).join(' ');
+    
+    // Use centralized formatting function
+    var formattedLog = formatLogEntry(source, level, message);
+    
+    // Store the formatted log entry
+    storeLogEntry(formattedLog);
 }
 ```
 
 **Storage Management**:
 - **Key**: `sipConsoleLogs` in Chrome local storage
-- **Format**: Array of log objects with timestamp, level, message, source, url
+- **Format**: Array of formatted log strings: `[HH:MM:SS] Source: Message`
 - **Size Management**: Automatic cleanup when approaching 1MB limit
 - **Persistence**: Survives page reloads and browser restarts
+
+**Log Format Standardization** (Updated 2025-06-17):
+- All logs stored as pre-formatted strings for simplicity
+- Format: `[HH:MM:SS] WordPress: Message` or `[HH:MM:SS] Extension: Message`
+- Warnings prefixed with "Warning:", errors prefixed with "Error:"
+- No JSON parsing needed - what you see is what you copy
 
 #### User Experience
 
