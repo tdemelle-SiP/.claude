@@ -309,6 +309,62 @@ a.pswp-item {
 }
 ```
 
+## Alternative Implementation Patterns
+
+### Thumbnail Grid with PhotoSwipe
+
+When you need a thumbnail overview before launching the lightbox:
+
+```javascript
+// Create modal with thumbnail grid
+var modalHtml = '<div class="sip-mockup-modal">' +
+    '<div class="sip-mockup-modal-content">' +
+        '<div class="sip-mockup-modal-header">' +
+            '<h3>' + title + '</h3>' +
+            '<button class="sip-mockup-modal-close">&times;</button>' +
+        '</div>' +
+        '<div class="sip-mockup-modal-body">';
+
+// Hidden container for PhotoSwipe
+var galleryId = 'gallery-' + Date.now();
+var $galleryContainer = $('<div id="' + galleryId + '" style="display:none;"></div>');
+
+// Build both thumbnail grid and PhotoSwipe items
+items.forEach(function(item, index) {
+    // Thumbnail in modal
+    modalHtml += '<div class="sip-mockup-item" data-index="' + index + '">' +
+        '<img src="' + item.url + '" alt="' + item.label + '">' +
+        '<p>' + item.label + '</p>' +
+        '</div>';
+    
+    // PhotoSwipe item
+    var $link = $('<a></a>')
+        .attr('href', item.url)
+        .attr('data-pswp-src', item.url)
+        .attr('data-pswp-width', '1000')
+        .attr('data-pswp-height', '1000')
+        .attr('class', 'pswp-item')
+        .attr('data-caption', item.label);
+    
+    $galleryContainer.append($link);
+});
+
+// Initialize PhotoSwipe
+var lightbox = new PhotoSwipeLightbox({
+    gallery: '#' + galleryId,
+    children: 'a.pswp-item',
+    pswpModule: PhotoSwipe,
+    preloaderDelay: 0
+});
+lightbox.init();
+
+// Handle thumbnail clicks
+$('.sip-mockup-item').on('click', function() {
+    var index = parseInt($(this).data('index'));
+    lightbox.loadAndOpen(index);
+});
+```
+
 ## Best Practices
 
 1. **Always include dimensions**
@@ -333,6 +389,12 @@ updatePhotoSwipeDimensions();
 ```javascript
 gallery: '#container-id',
 children: 'a.pswp-item'
+```
+
+5. **Programmatic opening**
+```javascript
+// Open gallery at specific index
+lightbox.loadAndOpen(index);
 ```
 
 ## Checklist
