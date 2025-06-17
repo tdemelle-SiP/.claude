@@ -413,6 +413,87 @@ The creation table CSS in `tables.css` follows a hierarchical structure:
 
 All styles include clear comments explaining their purpose without requiring selector parsing.
 
+## Shop-Level Data Management
+
+### Purpose
+Certain data is constant across all products in a shop and should be stored at the shop level rather than duplicated in each product.
+
+### Shop-Level Data Storage Pattern
+```javascript
+// PHP: Store once when shop connects or products are fetched
+update_option('sip_printify_shop_id', $shop_id);
+update_option('sip_printify_shop_name', $shop_name);
+update_option('sip_printify_user_id', $user_id);  // Extracted from first product
+
+// JavaScript: Access globally via wp_localize_script
+window.sipPrintifyManagerData = {
+    shopId: '17823150',
+    shopName: 'My Shop',
+    userId: '14758458',
+    // ... other data
+};
+```
+
+### Implementation Details
+- **Shop ID & Name**: Retrieved from `/v1/shops.json` API endpoint
+- **User ID**: Extracted from first product during initial fetch (products contain `user_id` at root level)
+- **Storage**: WordPress options table via `update_option()`
+- **Access**: Made globally available to JavaScript via `wp_localize_script()`
+
+### Why This Architecture
+- **Data ownership**: User owns shop, shop contains products - hierarchical relationship
+- **No redundancy**: Store once at appropriate level, not in every product
+- **Performance**: No JSON parsing or database queries for frequently needed data
+- **Consistency**: Single source of truth for shop-level constants
+
+### Example Usage
+```javascript
+// Mockup fetching needs user_id to construct API URL
+var shopId = window.sipPrintifyManagerData.shopId;
+var userId = window.sipPrintifyManagerData.userId;
+
+// Construct URL: /users/{userId}/shops/{shopId}/products/{productId}/generated-mockups-map
+```
+
+## Global Data Access Pattern
+
+### Purpose
+Make plugin configuration and frequently-needed data available to JavaScript without requiring AJAX calls.
+
+### Implementation
+Data is made available via `wp_localize_script()` in the main plugin file:
+
+```php
+wp_localize_script('sip-main', 'sipPrintifyManagerData', array(
+    'hasToken' => !empty($token),
+    'shopName' => $shop_name,
+    'shopId' => $shop_id,
+    'userId' => get_option('sip_printify_user_id'),
+    'templates' => $templates,
+    'images' => $processed_images,
+    'products' => $products_summary['products'] ?? [],
+    'creationTemplateWip' => $creation_template_wip,
+    'extensionApiKey' => get_option('sip_extension_api_key')
+));
+```
+
+### Available Data
+- **hasToken**: Boolean indicating if Printify API token is configured
+- **shopName**: Display name of the connected Printify shop
+- **shopId**: Printify shop identifier
+- **userId**: Printify user identifier (extracted from first product)
+- **templates**: Array of available product templates
+- **images**: Array of available images with metadata
+- **products**: Initial product data for table population
+- **creationTemplateWip**: Current work-in-progress template data
+- **extensionApiKey**: API key for browser extension authentication
+
+### Why This Architecture
+- **Performance**: No AJAX calls needed for frequently-used data
+- **Availability**: Data ready immediately on page load
+- **Consistency**: Single source of truth for configuration
+- **Security**: Server-side filtering of sensitive data before exposure
+
 ## Cross-Table Systems
 
 ### Dynamic Row Highlighting System
@@ -877,25 +958,33 @@ The mockup management system allows users to view product mockups for each bluep
 - **Content script injection**: Intercepts `generated-mockups-map` API responses
 - **Tab reuse**: Sequential fetches reuse the same Printify tab for efficiency
 
-### Mockup Fetching Flow
+### Mockup Workflow
 
-#### Automatic Triggers
-1. **Blueprint Row Creation**: When blueprint rows are created, checks which blueprints have mockups
-2. **Extension Ready**: When extension announces readiness, re-evaluates mockup availability
-3. **Extension First Install**: Prompts user to fetch missing mockups for better onboarding
+#### Automated Fetch-on-Load System
+The mockup system follows a strict automated workflow with NO manual fetching from blueprint rows:
 
-#### Manual Trigger
-- Clicking mockup button on blueprint row (download icon indicates fetchable mockups)
+1. **Blueprint Row Creation**: When blueprint rows are created, the system checks which blueprints have mockups
+2. **Missing Mockups Detection**: If blueprints without mockups are found:
+   - NO buttons appear on the blueprint rows
+   - Progress dialog automatically appears asking "There are X blueprints without mockups. Would you like to fetch mockups now?"
+3. **Batch Fetching**: If user confirms:
+   - ALL missing mockups are fetched as a batch operation through the progress dialog
+   - Extension handles the fetching invisibly in the background
+   - Progress updates shown in the dialog
+4. **Post-Fetch State**: After successful fetching:
+   - Mockup data and images are stored locally
+   - Blueprint rows now display gallery buttons
+   - Clicking these buttons opens PhotoSwipe lightbox with the stored mockups
 
-#### Fetch Process
+#### Fetch Process Details
 1. **Progress Dialog**: Shows batch processing dialog with user confirmation
 2. **Product Lookup**: Finds a product using the blueprint (required for Printify URL)
 3. **Extension Request**: Sends `SIP_FETCH_MOCKUPS` message to extension
-4. **Tab Navigation**: Extension navigates to mockup library page
-5. **API Interception**: Captures mockup data from Printify's API
+4. **Tab Navigation**: Extension navigates to mockup library page (invisible to user)
+5. **DOM Data Extraction**: Extracts mockup data from loaded images in the page
 6. **Data Processing**: Extracts one color variant for blueprint-agnostic mockups
 7. **Local Storage**: Downloads and stores mockup images locally
-8. **UI Update**: Updates button to show gallery icon
+8. **UI Update**: Blueprint rows that now have mockups show gallery buttons
 
 ### Mockup Data Structure
 
@@ -944,15 +1033,24 @@ $(document).on('blueprintRowsCreated', function(e, data) {
 ### User Experience
 
 #### Button States
-- **No button**: No mockups and can't fetch (extension unavailable)
-- **Download icon**: No mockups but can fetch via extension
-- **Gallery icon**: Mockups available for viewing
-- **Spinner**: Currently fetching mockups
+Blueprint rows follow a simple two-state system:
+- **No button**: No mockups available (triggers automated fetch dialog on page load)
+- **Gallery icon button**: Mockups have been fetched and stored - clicking opens PhotoSwipe gallery
+
+Note: There are NO download buttons on individual blueprint rows. All fetching is handled through the batch progress dialog system.
 
 #### Gallery Display
 - Uses PhotoSwipe for responsive image viewing
 - Shows all mockup types (front, back, etc.) for the blueprint
 - Fallback to simple modal if PhotoSwipe unavailable
+
+#### Automated Fetch Dialog
+When blueprints without mockups are detected on page load:
+- Modal dialog appears automatically
+- Shows count of blueprints needing mockups
+- User can accept to fetch all or cancel
+- Progress updates shown during batch operation
+- Dialog closes automatically when complete
 
 ### Extension Requirements
 - Minimum version: 4.3.0 (for `mockupFetching` capability)

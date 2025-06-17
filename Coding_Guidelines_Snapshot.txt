@@ -153,7 +153,7 @@ Never use write to file to make code updates.
  
  Do not preserve legacy code.  Clean up all remnants of unused or deprecated code thoroughly.  Do not implement or ignore backward compatibility code. Backward combatibility is unnecessary complexity that creates confusion and masks errors that should be fixed.  If we're in transition, we don't handle that with backward compatibility code. We handle that by letting the code throw errors and using those errors as cues to get all the code up to the correct standard.
 
- Do not create custom test tools or instructions.  Testing will take place in the actual code.
+ Do not create custom test tools or instructions unless explicitly asked to do so.  Testing will take place in the actual code.
 
 -- SYMPTOM VS ROOT CAUSE DISTINCTION --
   Symptom vs. Root Cause: A Critical Distinction
@@ -223,14 +223,12 @@ Never use write to file to make code updates.
   - Symptom: Null object errors → Adding null checks before every usage
   - Root Cause: Object not created when expected → Fix creation timing
 
-  The goal is code that CAN'T fail because it's structurally correct, not code that's defended      
-  against failure.
+  The goal is code that CAN'T fail because it's structurally correct, not code that's defended against failure.
 
 -- LEGITIMATE setTimeout USAGE --
   When setTimeout IS Appropriate (Industry Standard Patterns)
 
-  setTimeout is NOT always a symptom. There are legitimate, industry-standard uses where it's the 
-  correct solution:
+  setTimeout is NOT always a symptom. There are legitimate, industry-standard uses where it's the correct solution:
 
   1. Browser Extension Content Script Announcement
   CORRECT USE:

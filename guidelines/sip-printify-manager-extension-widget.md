@@ -746,6 +746,24 @@ window.postMessage({
 }, '*');
 ```
 
+#### Example: Mockup Fetching
+```javascript
+// WordPress sends mockup fetch request
+window.postMessage({
+    type: 'SIP_FETCH_MOCKUPS',
+    source: 'sip-printify-manager',
+    data: {
+        blueprint_id: '6',
+        product_id: '6740c96f6abac8a2d30d6a12',
+        shop_id: '17823150',
+        user_id: '14758458'  // Retrieved from global sipPrintifyManagerData
+    }
+}, '*');
+
+// Extension constructs API URL and fetches data
+// URL: /users/{userId}/shops/{shopId}/products/{productId}/generated-mockups-map
+```
+
 ### 9.3 jQuery Events
 
 The browser-extension-manager triggers these jQuery events for inter-module communication:
