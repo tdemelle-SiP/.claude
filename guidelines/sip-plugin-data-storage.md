@@ -15,6 +15,96 @@ SiP plugins use multiple storage mechanisms based on the data type and persisten
 7. **WordPress Options** - Plugin settings and configurations (server-side)
 8. **WordPress Transients** - Cached data with expiration (server-side)
 
+## Data Storage Architecture
+
+### Storage Architecture (ASCII)
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                    SiP Data Storage Architecture                     │
+└─────────────────────────────────────────────────────────────────────┘
+
+Client-Side Storage                        Server-Side Storage
+───────────────────                        ──────────────────
+
+┌─────────────────────┐                   ┌─────────────────────┐
+│   Browser Memory    │                   │  WordPress Database │
+│                     │                   │                     │
+│ ┌─────────────────┐ │                   │ ┌─────────────────┐ │
+│ │ Window Object   │ │                   │ │  Plugin Tables  │ │
+│ │ • Runtime data  │ │                   │ │ • Products      │ │
+│ │ • Module state  │ │                   │ │ • Templates     │ │
+│ └─────────────────┘ │                   │ │ • Events        │ │
+│                     │                   │ └─────────────────┘ │
+│ ┌─────────────────┐ │                   │                     │
+│ │ localStorage    │ │                   │ ┌─────────────────┐ │
+│ │ • UI state      │ │◄─────Sync────────┤ │ WP Options      │ │
+│ │ • Preferences   │ │                   │ │ • Settings      │ │
+│ │ • Table state   │ │                   │ │ • Plugin config │ │
+│ └─────────────────┘ │                   │ └─────────────────┘ │
+│                     │                   │                     │
+│ ┌─────────────────┐ │                   │ ┌─────────────────┐ │
+│ │ sessionStorage  │ │                   │ │ WP Transients   │ │
+│ │ • Temp data     │ │                   │ │ • Cache data    │ │
+│ │ • Form drafts   │ │                   │ │ • API responses │ │
+│ └─────────────────┘ │                   │ └─────────────────┘ │
+└─────────────────────┘                   └─────────────────────┘
+                                                    │
+                    ┌────────────────────────────────┘
+                    │
+┌───────────────────▼─────────────────────┐
+│          File System Storage            │
+│                                         │
+│ /wp-content/uploads/                    │
+│ └── sip-plugin-name/                   │
+│     ├── data/         (JSON files)     │
+│     ├── images/       (User uploads)   │
+│     ├── exports/      (CSV/ZIP files)  │
+│     ├── logs/         (Debug logs)     │
+│     └── cache/        (Temp files)     │
+└─────────────────────────────────────────┘
+
+Data Flow:
+─────────►  Read/Write Operations
+◄────────   Synchronization
+```
+
+### Storage Architecture (Mermaid)
+
+```mermaid
+graph TB
+    subgraph Client["Client-Side Storage"]
+        Window["Window Object<br/>• Runtime data<br/>• Module state<br/>• Temporary objects"]
+        Local["localStorage<br/>• UI preferences<br/>• Table states<br/>• User settings"]
+        Session["sessionStorage<br/>• Form drafts<br/>• Temporary data<br/>• Session info"]
+    end
+    
+    subgraph Server["Server-Side Storage"]
+        subgraph Database["WordPress Database"]
+            Tables["Plugin Tables<br/>• Products<br/>• Templates<br/>• Events<br/>• Configurations"]
+            Options["WP Options<br/>• Plugin settings<br/>• Feature flags<br/>• API credentials"]
+            Transients["WP Transients<br/>• Cached data<br/>• API responses<br/>• Temporary data"]
+        end
+        
+        subgraph FileSystem["File System"]
+            Uploads["wp-content/uploads/"]
+            PluginDir["sip-plugin-name/<br/>• data/ (JSON)<br/>• images/ (uploads)<br/>• exports/ (CSV/ZIP)<br/>• logs/ (debug)<br/>• cache/ (temp)"]
+            Uploads --> PluginDir
+        end
+    end
+    
+    Window -.->|AJAX| Tables
+    Local -.->|Settings Sync| Options
+    Session -.->|Form Submit| Tables
+    Tables -->|Export| PluginDir
+    PluginDir -->|Import| Tables
+    
+    style Client fill:#e6f3ff
+    style Server fill:#ffe6e6
+    style Database fill:#f0f0f0
+    style FileSystem fill:#f0f0f0
+```
+
 ## Plugin Storage API
 
 The SiP Plugin Storage system provides a centralized API for managing plugin directories and files. All plugins must register their storage needs with the storage manager.

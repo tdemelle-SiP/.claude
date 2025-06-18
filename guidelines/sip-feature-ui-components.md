@@ -27,6 +27,104 @@ This guide documents the UI components and browser storage patterns used in SiP 
 3. **Responsive**: Components should work across different screen sizes
 4. **Performance**: Components should be optimized for performance
 
+## UI Component Hierarchy
+
+### Component Hierarchy (ASCII)
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                     SiP UI Component Hierarchy                       │
+└─────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────┐
+│                          Page Container                              │
+│  ┌─────────────────────────────────────────────────────────────┐   │
+│  │                      Standard Header                         │   │
+│  │  ┌─────────────┐  ┌──────────────────┐  ┌───────────────┐ │   │
+│  │  │ Back Link   │  │   Plugin Title   │  │ Debug Toggle  │ │   │
+│  │  └─────────────┘  └──────────────────┘  └───────────────┘ │   │
+│  └─────────────────────────────────────────────────────────────┘   │
+│                                                                     │
+│  ┌─────────────────────────────────────────────────────────────┐   │
+│  │                        Main Content                          │   │
+│  │  ┌───────────────────────────────────────────────────────┐ │   │
+│  │  │                    Data Tables                        │ │   │
+│  │  │  ┌─────────────┐  ┌─────────────┐  ┌────────────┐   │ │   │
+│  │  │  │   Search    │  │  Pagination │  │  Actions   │   │ │   │
+│  │  │  └─────────────┘  └─────────────┘  └────────────┘   │ │   │
+│  │  │  ┌───────────────────────────────────────────────┐   │ │   │
+│  │  │  │              Table Rows                       │   │ │   │
+│  │  │  │  ┌──┬─────────────────────────────────┬───┐  │   │ │   │
+│  │  │  │  │☐ │         Row Content             │ ▼ │  │   │ │   │
+│  │  │  │  └──┴─────────────────────────────────┴───┘  │   │ │   │
+│  │  │  └───────────────────────────────────────────────┘   │ │   │
+│  │  └───────────────────────────────────────────────────────┘ │   │
+│  │                                                             │   │
+│  │  ┌───────────────────────────────────────────────────────┐ │   │
+│  │  │                  Action Controls                      │ │   │
+│  │  │  ┌─────────────┐  ┌─────────────┐  ┌────────────┐   │ │   │
+│  │  │  │  Dropdown   │  │   Buttons   │  │   Toggle   │   │ │   │
+│  │  │  └─────────────┘  └─────────────┘  └────────────┘   │ │   │
+│  │  └───────────────────────────────────────────────────────┘ │   │
+│  └─────────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────┐
+│                         Overlay Components                           │
+│  ┌─────────────────────────────────────────────────────────────┐   │
+│  │  Spinner/Loading  │  Modal Dialogs  │  Toast Notifications  │   │
+│  │  ┌─────────────┐  │  ┌───────────┐  │  ┌────────────────┐  │   │
+│  │  │      ⟳      │  │  │┌─────────┐│  │  │ Success! ✓     │  │   │
+│  │  │  Loading... │  │  ││ Dialog  ││  │  └────────────────┘  │   │
+│  │  └─────────────┘  │  │└─────────┘│  │                      │   │
+│  │                   │  └───────────┘  │                      │   │
+│  └─────────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────────┘
+
+Z-Index Layers:
+1000: Page Content
+9998: Overlay
+9999: Spinner
+10000: Modal Dialogs
+10001: Toast Notifications
+```
+
+### Component Hierarchy (Mermaid)
+
+```mermaid
+graph TB
+    subgraph Page["Page Container"]
+        Header["Standard Header<br/>• Back Link<br/>• Plugin Title<br/>• Debug Toggle"]
+        
+        subgraph Content["Main Content Area"]
+            Tables["Data Tables<br/>• Search<br/>• Pagination<br/>• Row Actions<br/>• Checkboxes"]
+            Controls["Action Controls<br/>• Dropdowns<br/>• Buttons<br/>• Toggles"]
+            Forms["Form Elements<br/>• Input Fields<br/>• Select2<br/>• File Upload"]
+        end
+        
+        Header --> Content
+    end
+    
+    subgraph Overlays["Overlay Components<br/>(Higher Z-Index)"]
+        Spinner["Spinner/Loading<br/>z-index: 9999"]
+        Modals["Modal Dialogs<br/>z-index: 10000"]
+        Toast["Toast Notifications<br/>z-index: 10001"]
+        Progress["Progress Dialogs<br/>z-index: 10000"]
+    end
+    
+    subgraph State["State Management"]
+        LocalStorage["localStorage<br/>sip-core namespace"]
+        SessionData["Session Data<br/>• Table states<br/>• UI preferences<br/>• Scroll positions"]
+    end
+    
+    Content --> State
+    Overlays --> State
+    
+    style Page fill:#f0f0f0
+    style Overlays fill:#ffe6e6
+    style State fill:#e6f3ff
+```
+
 ## UI State Management with Local Storage
 
 SiP plugins use localStorage to persist UI state across sessions. All state is stored under a `sip-core` namespace.

@@ -12,6 +12,93 @@ JavaScript → PHP Handler → JavaScript (same action_type)
 ### Cross-Table Flow  
 JavaScript (table A) → PHP Handler (table B functions) → JavaScript (table A success handler)
 
+### AJAX Data Flow Visualization (ASCII)
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│                    SiP AJAX Request Flow                          │
+└──────────────────────────────────────────────────────────────────┘
+
+JavaScript Side                           PHP Side
+─────────────────                        ─────────────
+                                        
+1. Create Request                       
+┌─────────────────┐                     
+│ createFormData  │                     
+│ • plugin_id     │                     
+│ • action_type   │                     
+│ • action        │                     
+└────────┬────────┘                     
+         │                              
+2. Send Request                         
+┌────────▼────────┐                     
+│ handleAjaxAction│                     
+│ • Show spinner  │                     
+│ • Add nonce     │                     
+│ • POST to admin │────────────────────►
+└─────────────────┘                     
+                                        3. Route Request
+                                        ┌─────────────────┐
+                                        │ wp_ajax_sip_*   │
+                                        │ • Verify nonce  │
+                                        │ • Check perms   │
+                                        └────────┬────────┘
+                                                 │
+                                        4. Process Action
+                                        ┌────────▼────────┐
+                                        │ Plugin Handler  │
+                                        │ • Validate data │
+                                        │ • Execute logic │
+                                        │ • Access DB     │
+                                        └────────┬────────┘
+                                                 │
+5. Handle Response                      ┌────────▼────────┐
+┌─────────────────┐                     │ wp_send_json_*  │
+│ Success Handler │◄────────────────────┤ • success/error │
+│ • Hide spinner  │                     │ • data payload  │
+│ • Update UI     │                     └─────────────────┘
+│ • Show toast    │                     
+└─────────────────┘                     
+```
+
+### AJAX Data Flow Visualization (Mermaid)
+
+```mermaid
+sequenceDiagram
+    participant JS as JavaScript Module
+    participant Core as SiP.Core.ajax
+    participant WP as WordPress Admin
+    participant Handler as Plugin Handler
+    participant DB as Database
+    
+    JS->>JS: createFormData(plugin, type, action)
+    JS->>Core: handleAjaxAction(formData)
+    Core->>Core: Show spinner
+    Core->>Core: Add nonce
+    Core->>WP: POST /wp-admin/admin-ajax.php
+    
+    WP->>WP: Verify nonce
+    WP->>WP: Check permissions
+    WP->>Handler: Route to plugin handler
+    
+    Handler->>Handler: Validate input
+    Handler->>DB: Query/Update data
+    DB-->>Handler: Return results
+    
+    Handler->>WP: wp_send_json_success/error
+    WP-->>Core: JSON response
+    Core->>Core: Hide spinner
+    Core->>JS: Promise resolved/rejected
+    
+    alt Success
+        JS->>JS: Update UI
+        JS->>JS: Show success toast
+    else Error
+        JS->>JS: Show error message
+        JS->>JS: Log error details
+    end
+```
+
 For detailed dashboard integration examples, see the [Dashboards Guide](./sip-plugin-dashboards.md#step-4-implement-action-forms).
 
 ## Implementation Checklist & Code Examples

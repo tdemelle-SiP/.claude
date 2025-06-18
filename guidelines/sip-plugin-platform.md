@@ -19,6 +19,117 @@ The SiP Plugins Platform follows a layered architecture:
 2. **Module Layer**: Feature modules built on the core (progress-dialog, header-debug-toggle, etc.)
 3. **Child Plugin Layer**: Plugin-specific functionality that uses core and module features
 
+### Plugin Architecture Relationships
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                        WordPress Environment                         │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  ┌─────────────────────────────────────────────────────────────┐  │
+│  │                    SiP Plugins Core                          │  │
+│  │                                                              │  │
+│  │  ┌────────────────────────────────────────────────────────┐ │  │
+│  │  │                    Core Layer                          │ │  │
+│  │  │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌────────┐│ │  │
+│  │  │  │  Debug   │  │   AJAX   │  │  State   │  │ Utils  ││ │  │
+│  │  │  └──────────┘  └──────────┘  └──────────┘  └────────┘│ │  │
+│  │  └────────────────────────────────────────────────────────┘ │  │
+│  │                             ▲                                │  │
+│  │  ┌────────────────────────────────────────────────────────┐ │  │
+│  │  │                   Module Layer                         │ │  │
+│  │  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐   │ │  │
+│  │  │  │  Progress   │  │   Header    │  │  PhotoSwipe │   │ │  │
+│  │  │  │   Dialog    │  │Debug Toggle │  │  Lightbox   │   │ │  │
+│  │  │  └─────────────┘  └─────────────┘  └─────────────┘   │ │  │
+│  │  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐   │ │  │
+│  │  │  │  Network    │  │   Direct    │  │ DataTables  │   │ │  │
+│  │  │  │   Filter    │  │  Updater    │  │  Wrapper    │   │ │  │
+│  │  │  └─────────────┘  └─────────────┘  └─────────────┘   │ │  │
+│  │  └────────────────────────────────────────────────────────┘ │  │
+│  └─────────────────────────────────────────────────────────────┘  │
+│                                ▲                                    │
+│  ┌──────────────────────┐     ▲     ┌─────────────────────────┐  │
+│  │  SiP Printify Mgr    │◄────┼────►│  SiP Product Gallery    │  │
+│  │  ┌────────────────┐  │     ▲     │  ┌───────────────────┐  │  │
+│  │  │ Product Tables │  │     ▲     │  │ Gallery Display   │  │  │
+│  │  │ Image Manager  │  │     ▲     │  │ Cart Integration  │  │  │
+│  │  │ Template Mgmt  │  │     ▲     │  └───────────────────┘  │  │
+│  │  └────────────────┘  │     ▲     └─────────────────────────┘  │
+│  └──────────────────────┘     ▲                                   │
+│                               ▲                                    │
+│  ┌──────────────────────┐     ▲     ┌─────────────────────────┐  │
+│  │  SiP Development     │◄────┴────►│  Other SiP Plugins      │  │
+│  │      Tools           │           │                         │  │
+│  └──────────────────────┘           └─────────────────────────┘  │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+
+Legend:
+━━━━ Platform boundary
+──── Module dependency
+◄──► Plugin communication (via Core)
+  ▲  Inherits from Core
+```
+
+### Plugin Architecture Relationships (Mermaid)
+
+```mermaid
+graph TB
+    subgraph WordPress["WordPress Environment"]
+        subgraph Core["SiP Plugins Core"]
+            subgraph CoreLayer["Core Layer"]
+                Debug[Debug]
+                AJAX[AJAX]
+                State[State]
+                Utils[Utils]
+            end
+            
+            subgraph ModuleLayer["Module Layer"]
+                Progress[Progress Dialog]
+                HeaderDebug[Header Debug Toggle]
+                PhotoSwipe[PhotoSwipe Lightbox]
+                Network[Network Filter]
+                DirectUpdate[Direct Updater]
+                DataTables[DataTables Wrapper]
+            end
+            
+            CoreLayer --> ModuleLayer
+        end
+        
+        subgraph Plugins["Child Plugins"]
+            PrintifyMgr["SiP Printify Manager<br/>• Product Tables<br/>• Image Manager<br/>• Template Mgmt"]
+            Gallery["SiP Product Gallery<br/>• Gallery Display<br/>• Cart Integration"]
+            DevTools["SiP Development Tools"]
+            Others["Other SiP Plugins"]
+        end
+        
+        Core --> PrintifyMgr
+        Core --> Gallery
+        Core --> DevTools
+        Core --> Others
+        
+        PrintifyMgr -.->|Via Core| Gallery
+        PrintifyMgr -.->|Via Core| DevTools
+        Gallery -.->|Via Core| DevTools
+    end
+    
+    style Core fill:#e6f3ff
+    style CoreLayer fill:#cce7ff
+    style ModuleLayer fill:#b3daff
+    style PrintifyMgr fill:#fff0e6
+    style Gallery fill:#fff0e6
+    style DevTools fill:#fff0e6
+```
+
+### Dependency Flow
+
+All child plugins depend on the Core plugin, which provides:
+- Shared JavaScript and CSS assets
+- Common PHP utilities and classes
+- Centralized storage management
+- Update mechanisms
+
 ### Directory Structure
 
 ```
@@ -234,20 +345,181 @@ The standard data flow in SiP plugins follows this pattern:
 5. **Response**: Server sends a standardized response
 6. **UI Update**: JavaScript updates the UI based on response
 
+### Data Flow Patterns (ASCII)
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                           SiP Plugin Data Flow                           │
+└─────────────────────────────────────────────────────────────────────────┘
+
+  Browser/Client Side                      Server Side (WordPress/PHP)
+ ┌─────────────────┐                     ┌──────────────────────────┐
+ │                 │                     │                          │
+ │   User Event    │                     │   WordPress Admin        │
+ │  (Click/Input)  │                     │                          │
+ └────────┬────────┘                     └──────────────────────────┘
+          │                                           ▲
+          ▼                                           │
+ ┌─────────────────┐                                 │
+ │  Event Handler  │                                 │
+ │   (JS Module)   │                                 │
+ └────────┬────────┘                                 │
+          │                                          │
+          ▼                                          │
+ ┌─────────────────┐         AJAX Request           │
+ │  SiP.Core.ajax  │─────────────────────────────────┤
+ │  handleAction() │         (POST + nonce)          │
+ └────────┬────────┘                                 │
+          │                                          ▼
+          │                              ┌──────────────────────────┐
+          │                              │  wp_ajax_sip_* handler   │
+          │                              │  (Plugin PHP Handler)    │
+          │                              └────────────┬─────────────┘
+          │                                           │
+          │                                           ▼
+          │                              ┌──────────────────────────┐
+          │                              │   Process Request        │
+          │                              │   - Validate nonce       │
+          │                              │   - Check permissions    │
+          │                              │   - Execute logic       │
+          │                              └────────────┬─────────────┘
+          │                                           │
+          │                                           ▼
+          │                              ┌──────────────────────────┐
+          │                              │  Data Layer Access       │
+          │                              │  - Database queries     │
+          │                              │  - File operations      │
+          │                              │  - External APIs        │
+          │                              └────────────┬─────────────┘
+          │                                           │
+          │                                           ▼
+          │                              ┌──────────────────────────┐
+          │         JSON Response        │  SiP_AJAX_Response      │
+          │◄─────────────────────────────┤  wp_send_json_*()      │
+          │                              └──────────────────────────┘
+          ▼
+ ┌─────────────────┐
+ │ Promise Handler │
+ │  .then/.catch   │
+ └────────┬────────┘
+          │
+          ▼
+ ┌─────────────────┐                     ┌──────────────────────────┐
+ │   UI Updates    │                     │  Optional: Trigger       │
+ │  - DOM changes  │────────────────────►│  - DataTable reload     │
+ │  - Toast msgs   │                     │  - State refresh        │
+ │  - Spinner hide │                     │  - Event emission       │
+ └─────────────────┘                     └──────────────────────────┘
+```
+
+### Data Flow Patterns (Mermaid)
+
+```mermaid
+flowchart TD
+    subgraph Browser["Browser/Client Side"]
+        A[User Event<br/>Click/Input] --> B[Event Handler<br/>JS Module]
+        B --> C[SiP.Core.ajax<br/>handleAction]
+        C -->|AJAX Request<br/>POST + nonce| SERVER
+        
+        RESPONSE -->|JSON Response| D[Promise Handler<br/>.then/.catch]
+        D --> E[UI Updates<br/>DOM changes<br/>Toast messages<br/>Spinner hide]
+        E --> F[Optional Triggers<br/>DataTable reload<br/>State refresh<br/>Event emission]
+    end
+    
+    subgraph Server["Server Side WordPress/PHP"]
+        SERVER[wp_ajax_sip_* handler<br/>Plugin PHP Handler] --> G[Process Request<br/>- Validate nonce<br/>- Check permissions<br/>- Execute logic]
+        G --> H[Data Layer Access<br/>- Database queries<br/>- File operations<br/>- External APIs]
+        H --> RESPONSE[SiP_AJAX_Response<br/>wp_send_json_*]
+    end
+    
+    style A fill:#e1f5e1
+    style E fill:#e1f5e1
+    style SERVER fill:#ffe1e1
+    style RESPONSE fill:#ffe1e1
+```
+
 ### JavaScript Architecture
 
 The JavaScript architecture follows a modular namespace pattern:
 
-```
-SiP.Core              # Core namespace (provided by platform)
-├── debug             # Debugging utilities
-├── utilities         # Shared utilities
-├── ajax              # AJAX handling
-└── state             # State management
+#### JavaScript Namespace Structure (ASCII)
 
-SiP.PluginName        # Plugin-specific namespace
-├── init              # Initialization
-└── modules           # Feature modules
+```
+window.SiP                                 # Global namespace
+│
+├── Core                                   # Platform-provided core
+│   ├── debug                             # Debug logging system
+│   │   ├── log()                        # Standard logging
+│   │   ├── error()                      # Error logging
+│   │   ├── warn()                       # Warning logging
+│   │   └── info()                       # Info logging
+│   │
+│   ├── ajax                              # AJAX handling
+│   │   ├── handleAjaxAction()           # Send AJAX requests
+│   │   ├── registerSuccessHandler()     # Register handlers
+│   │   └── getRegisteredActions()       # List actions
+│   │
+│   ├── utilities                         # Utility functions
+│   │   ├── createFormData()             # Form data helper
+│   │   ├── normalizeForClass()          # CSS class generator
+│   │   ├── escapeHtml()                 # HTML escaping
+│   │   ├── toast.show()                 # Toast notifications
+│   │   └── spinner.show/hide()          # Loading spinner
+│   │
+│   └── state                             # State management
+│       ├── get()                        # Get state value
+│       ├── set()                        # Set state value
+│       └── clear()                      # Clear state
+│
+├── PrintifyManager                       # Plugin namespace example
+│   ├── init()                           # Plugin initialization
+│   ├── productActions                   # Product table module
+│   │   ├── init()                      # Module init
+│   │   ├── handleProductAction()       # Action handler
+│   │   └── refreshTable()              # Table refresh
+│   │
+│   ├── imageActions                     # Image table module
+│   └── templateActions                  # Template module
+│
+└── [OtherPlugins]                       # Other plugin namespaces
+```
+
+#### JavaScript Namespace Structure (Mermaid)
+
+```mermaid
+graph TD
+    Window[window.SiP]
+    
+    subgraph Core["SiP.Core (Platform Provided)"]
+        Debug["debug<br/>• log()<br/>• error()<br/>• warn()<br/>• info()"]
+        Ajax["ajax<br/>• handleAjaxAction()<br/>• registerSuccessHandler()<br/>• getRegisteredActions()"]
+        Utils["utilities<br/>• createFormData()<br/>• normalizeForClass()<br/>• escapeHtml()<br/>• toast.show()<br/>• spinner.show/hide()"]
+        State["state<br/>• get()<br/>• set()<br/>• clear()"]
+    end
+    
+    subgraph Plugins["Plugin Namespaces"]
+        PM["SiP.PrintifyManager"]
+        PG["SiP.ProductGallery"]
+        DT["SiP.DevelopmentTools"]
+        
+        subgraph PMModules["PrintifyManager Modules"]
+            PMInit["init()"]
+            PMProduct["productActions<br/>• init()<br/>• handleAction()<br/>• refreshTable()"]
+            PMImage["imageActions"]
+            PMTemplate["templateActions"]
+        end
+    end
+    
+    Window --> Core
+    Window --> Plugins
+    PM --> PMModules
+    
+    PMProduct -.->|uses| Debug
+    PMProduct -.->|uses| Ajax
+    PMProduct -.->|uses| Utils
+    
+    style Core fill:#e6f3ff
+    style Plugins fill:#fff0e6
 ```
 
 ## Best Practices

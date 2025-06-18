@@ -32,6 +32,97 @@ This document serves as a central reference point and navigation guide for the S
 
 Do NOT update for routine code changes, bug fixes, or implementation details that don't affect overall structure.
 
+## Visual Documentation Map
+
+### Documentation Structure (ASCII)
+
+```
+┌────────────────────────────────────────────────────────────────┐
+│              SiP Plugin Suite Documentation Map                 │
+└────────────────────────────────────────────────────────────────┘
+
+📋 Coding_Guidelines_Snapshot.txt ← START HERE (Required Reading)
+│
+├── 🏗️ Platform & Architecture
+│   ├── sip-plugin-platform.md      → Core architecture & dependencies
+│   ├── sip-plugin-creation.md      → Step-by-step plugin creation
+│   └── sip-printify-manager-architecture.md → Complex plugin example
+│
+├── 🔧 Core Features
+│   ├── sip-plugin-ajax.md          → AJAX patterns & implementation
+│   ├── sip-plugin-dashboards.md    → Dashboard creation guide
+│   ├── sip-plugin-data-storage.md  → Storage types & patterns
+│   └── sip-feature-datatables.md   → DataTables integration
+│
+├── 🎨 UI Components
+│   ├── sip-feature-ui-components.md → UI hierarchy & state mgmt
+│   ├── sip-feature-progress-dialog.md → Batch processing UI
+│   └── sip-feature-modals.md      → Modal & toast patterns
+│
+├── 💻 Development Standards
+│   ├── sip-development-css.md      → CSS architecture & BEM
+│   ├── sip-development-debug-logging.md → Debug system usage
+│   ├── sip-development-documentation.md → Documentation standards
+│   └── sip-development-testing.md  → Testing & debugging guide
+│
+└── 🚀 Release Process
+    └── sip-development-release-mgmt.md → Git workflow & versioning
+```
+
+### Documentation Structure (Mermaid)
+
+```mermaid
+graph TD
+    Guidelines["📋 Coding Guidelines<br/>(Required Reading)"]
+    
+    subgraph Platform["🏗️ Platform & Architecture"]
+        PlatformGuide["Platform Guide<br/>Core architecture"]
+        Creation["Plugin Creation<br/>12-step process"]
+        PrintifyArch["Printify Architecture<br/>Complex example"]
+    end
+    
+    subgraph Features["🔧 Core Features"]
+        Ajax["AJAX Guide<br/>Request patterns"]
+        Dashboards["Dashboard Guide<br/>Admin UI creation"]
+        Storage["Data Storage<br/>8 storage types"]
+        DataTables["DataTables<br/>Table patterns"]
+    end
+    
+    subgraph UI["🎨 UI Components"]
+        Components["UI Components<br/>Component hierarchy"]
+        Progress["Progress Dialog<br/>Batch processing"]
+        Modals["Modals & Toast<br/>Notifications"]
+    end
+    
+    subgraph Dev["💻 Development"]
+        CSS["CSS Standards<br/>BEM & organization"]
+        Debug["Debug Logging<br/>Troubleshooting"]
+        Docs["Documentation<br/>JSDoc/PHPDoc"]
+        Testing["Testing Guide<br/>Debug workflow"]
+    end
+    
+    subgraph Release["🚀 Release"]
+        ReleaseMgmt["Release Process<br/>16-step automation"]
+    end
+    
+    Guidelines --> Platform
+    Guidelines --> Features
+    Guidelines --> UI
+    Guidelines --> Dev
+    
+    Platform --> Features
+    Features --> UI
+    UI --> Dev
+    Dev --> Release
+    
+    style Guidelines fill:#ff6b6b,color:#fff
+    style Platform fill:#4ecdc4
+    style Features fill:#45b7d1
+    style UI fill:#96ceb4
+    style Dev fill:#ffeaa7
+    style Release fill:#dfe6e9
+```
+
 ## Getting Started with SiP Plugins
 
 New to SiP Plugin development? Follow this path to get up to speed quickly:
