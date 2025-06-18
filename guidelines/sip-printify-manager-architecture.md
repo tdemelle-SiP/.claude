@@ -60,19 +60,27 @@ When a template is loaded, related rows are highlighted:
 
 #### Blueprint Mockups
 Blueprint rows can display mockup buttons that allow users to:
-- View existing mockups in a PhotoSwipe gallery
+- View existing mockups in a PhotoSwipe gallery with thumbnail index
 - Fetch mockups from Printify via the browser extension (requires extension v4.3.0+)
 
+**Mockup Storage:**
+- Location: `/wp-content/uploads/sip-printify-manager/mockups/{blueprint_id}/`
+- Files: Individual `.jpg` images and `metadata.json`
+- Detection: Only blueprints with actual image files are considered to have mockups
+- Cleanup: Incomplete folders (metadata without images) are automatically cleaned
+
 **Mockup Button States:**
-- No button: Blueprint has no mockups and extension is not available
-- Gallery icon: Mockups available for viewing
-- Spinner: Mockups are being fetched
+- No button: Blueprint has no mockup images
+- Gallery icon: Mockup images available for viewing
+- Button appears in 4th TD cell of blueprint summary rows
 
 **Implementation:**
 - Module: `mockup-actions.js`
-- Button creation: `createMockupButtonHtml()`
-- Fetch dialog: `showMockupFetchDialog()`
-- Gallery display: `displayMockupGallery()` with PhotoSwipe
+- Detection: `sip_get_existing_blueprint_mockups()` checks for `.jpg` files
+- Button creation: `createMockupButtonHtml()` - icon-only button
+- Fetch dialog: `showMockupFetchDialog()` - batch processing with progress
+- Gallery display: `displayMockupGallery()` - hybrid thumbnail grid + PhotoSwipe
+- Cleanup utility: `cleanupIncompleteMockups()` - removes incomplete downloads
 - Extension integration: Requires `mockupFetching` capability
 
 #### Implementation

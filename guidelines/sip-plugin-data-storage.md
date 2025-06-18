@@ -496,6 +496,15 @@ wp-content/uploads/
 │   │   └── product-xyz789.json
 │   ├── exports/
 │   │   └── export-2024-01-01.json
+│   ├── mockups/
+│   │   ├── 6/
+│   │   │   ├── metadata.json
+│   │   │   ├── front.jpg
+│   │   │   ├── back.jpg
+│   │   │   └── folded.jpg
+│   │   └── 12/
+│   │       ├── metadata.json
+│   │       └── *.jpg
 │   └── logs/
 │       └── sync-log-2024-01.json
 ├── sip-development-tools/
@@ -592,6 +601,67 @@ async function loadJsonTemplate(filepath) {
             "status": "draft"
         }
     ]
+}
+```
+
+### Mockup Storage Pattern
+
+Blueprint mockups follow a specific storage pattern to ensure data integrity:
+
+```php
+// Mockup storage structure
+$storage = sip_plugin_storage();
+$mockups_dir = $storage->get_folder_path('sip-printify-manager', 'mockups');
+
+// Blueprint-specific folder
+$blueprint_dir = $mockups_dir . '/' . $blueprint_id . '/';
+
+// Files in each blueprint folder:
+// - metadata.json: Mockup metadata and URLs
+// - *.jpg: Downloaded mockup images
+// - generated-mockup-maps.json: Raw API response (optional)
+```
+
+**Detection Logic:**
+```php
+// Only consider blueprints with actual images as having mockups
+function sip_get_existing_blueprint_mockups() {
+    $blueprint_ids = array();
+    $dirs = scandir($mockups_dir);
+    
+    foreach ($dirs as $dir) {
+        if (is_dir($mockups_dir . '/' . $dir)) {
+            $image_count = 0;
+            $files = scandir($mockups_dir . '/' . $dir);
+            
+            // Count actual image files
+            foreach ($files as $file) {
+                if (pathinfo($file, PATHINFO_EXTENSION) === 'jpg') {
+                    $image_count++;
+                }
+            }
+            
+            // Only include if images exist
+            if ($image_count > 0) {
+                $blueprint_ids[] = $dir;
+            }
+        }
+    }
+    
+    return $blueprint_ids;
+}
+```
+
+**Cleanup Pattern:**
+```php
+// Clean up incomplete downloads (metadata without images)
+if (is_dir($blueprint_dir)) {
+    $files = scandir($blueprint_dir);
+    foreach ($files as $file) {
+        if (is_file($blueprint_dir . '/' . $file)) {
+            unlink($blueprint_dir . '/' . $file);
+        }
+    }
 }
 ```
 
