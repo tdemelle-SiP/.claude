@@ -46,18 +46,24 @@ Do NOT update for routine code changes, bug fixes, or implementation details tha
 ├── 🏗️ Platform & Architecture
 │   ├── sip-plugin-platform.md      → Core architecture & dependencies
 │   ├── sip-plugin-creation.md      → Step-by-step plugin creation
-│   └── sip-printify-manager-architecture.md → Complex plugin example
+│   ├── sip-printify-manager-architecture.md → Complex plugin example
+│   └── sip-printify-manager-extension-widget.md → Browser extension docs
 │
 ├── 🔧 Core Features
 │   ├── sip-plugin-ajax.md          → AJAX patterns & implementation
 │   ├── sip-plugin-dashboards.md    → Dashboard creation guide
 │   ├── sip-plugin-data-storage.md  → Storage types & patterns
-│   └── sip-feature-datatables.md   → DataTables integration
+│   ├── sip-feature-datatables.md   → DataTables integration
+│   ├── sip-feature-codemirror.md   → Code editor integration
+│   └── sip-feature-photoswipe.md   → Image lightbox gallery
 │
 ├── 🎨 UI Components
 │   ├── sip-feature-ui-components.md → UI hierarchy & state mgmt
 │   ├── sip-feature-progress-dialog.md → Batch processing UI
 │   └── sip-feature-modals.md      → Modal & toast patterns
+│
+├── 📊 Data Analysis
+│   └── mockup-map-analysis.md      → Mockup data structure guide
 │
 ├── 💻 Development Standards
 │   ├── sip-development-css.md      → CSS architecture & BEM
@@ -79,6 +85,7 @@ graph TD
         PlatformGuide["Platform Guide<br/>Core architecture"]
         Creation["Plugin Creation<br/>12-step process"]
         PrintifyArch["Printify Architecture<br/>Complex example"]
+        Extension["Extension Widget<br/>Browser extension"]
     end
     
     subgraph Features["🔧 Core Features"]
@@ -86,12 +93,18 @@ graph TD
         Dashboards["Dashboard Guide<br/>Admin UI creation"]
         Storage["Data Storage<br/>8 storage types"]
         DataTables["DataTables<br/>Table patterns"]
+        CodeMirror["CodeMirror<br/>Code editor"]
+        PhotoSwipe["PhotoSwipe<br/>Image lightbox"]
     end
     
     subgraph UI["🎨 UI Components"]
         Components["UI Components<br/>Component hierarchy"]
         Progress["Progress Dialog<br/>Batch processing"]
         Modals["Modals & Toast<br/>Notifications"]
+    end
+    
+    subgraph Data["📊 Data Analysis"]
+        MockupMap["Mockup Map<br/>Data structure"]
     end
     
     subgraph Dev["💻 Development"]
@@ -108,17 +121,20 @@ graph TD
     Guidelines --> Platform
     Guidelines --> Features
     Guidelines --> UI
+    Guidelines --> Data
     Guidelines --> Dev
     
     Platform --> Features
     Features --> UI
-    UI --> Dev
+    UI --> Data
+    Data --> Dev
     Dev --> Release
     
     style Guidelines fill:#ff6b6b,color:#fff
     style Platform fill:#4ecdc4
     style Features fill:#45b7d1
     style UI fill:#96ceb4
+    style Data fill:#a29bfe
     style Dev fill:#ffeaa7
     style Release fill:#dfe6e9
 ```
