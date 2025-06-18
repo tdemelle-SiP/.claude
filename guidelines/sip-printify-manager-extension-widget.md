@@ -1011,7 +1011,45 @@ $(document).on('extensionReady', function(e, data) {
 });
 ```
 
-### 10.4 Common Pitfalls - MUST READ
+### 10.4 Extension Detection on Authentication Page
+
+The SiP Printify Manager authentication page includes a two-step process where Step 1 checks for extension installation.
+
+#### Implementation Pattern
+
+**HTML Structure** (dashboard-html.php):
+```html
+<div id="extension-not-detected">
+    <!-- Shows install button and instructions -->
+</div>
+
+<div id="extension-detected" style="display: none;">
+    <!-- Shows success message - hidden by default -->
+</div>
+```
+
+**JavaScript Detection** (shop-actions.js):
+```javascript
+// Listen for extensionReady event from browser-extension-manager
+$(document).on('extensionReady', function(e, data) {
+    $('#extension-not-detected').hide();
+    $('#extension-detected').show();
+    $('#extension-install-section').addClass('completed');
+});
+```
+
+**Why This Pattern**:
+- Initial state is clear: extension not detected (only one div visible)
+- Detection uses existing event system (no duplicate listeners)
+- UI updates are coordinated through jQuery events
+
+**Key Points**:
+- The `browser-extension-manager.js` handles all extension communication
+- Other modules listen for the `extensionReady` jQuery event
+- No direct `window.addEventListener` for extension messages in individual modules
+- Legacy DOM marker detection maintained for backward compatibility
+
+### 10.5 Common Pitfalls - MUST READ
 
 **CRITICAL: Understanding Message Boundaries**
 

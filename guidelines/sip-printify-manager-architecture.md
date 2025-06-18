@@ -470,6 +470,17 @@ window.sipPrintifyManagerData = {
 - **Performance**: No JSON parsing or database queries for frequently needed data
 - **Consistency**: Single source of truth for shop-level constants
 
+### Shop Authorization Flow
+
+The shop authorization process works as follows:
+
+1. **Token Submission**: User enters Printify API token
+2. **Shop Details Fetched**: PHP calls `/v1/shops.json` to get shop info
+3. **Details Stored**: PHP saves to WordPress options and returns in AJAX response
+4. **UI Update**: JavaScript updates shop name display immediately
+
+The shop details are properly saved in WordPress options during authorization, making them available on subsequent page loads via `wp_localize_script`.
+
 ### Example Usage
 ```javascript
 // Mockup fetching needs user_id to construct API URL

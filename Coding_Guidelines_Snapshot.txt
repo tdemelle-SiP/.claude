@@ -119,6 +119,7 @@ Implementation Checkpoint Requirements
   - Event handler workarounds
   - State management to track framework behavior
   - inline css styles not being used legitimately for dynamic values.
+  - Multiple redundant storage/recovery mechanisms ("belt and suspenders")
 
   These are symptom treatments. Return to root       
   cause analysis.
@@ -320,6 +321,49 @@ Never use write to file to make code updates.
 
   Ask yourself: "Am I using setTimeout because I WANT a delay, or because I'm HOPING something 
   will be ready?" If it's hope, fix the root cause.
+
+-- MULTIPLE REDUNDANT STORAGE ("Belt and Suspenders") --
+  
+  The Problem Pattern:
+  Creating multiple ways to store/recover the same data "just in case" something fails.
+  
+  Example of Multiple Redundant Storage (WRONG):
+  // Shop authorization - creating multiple recovery paths
+  // PHP: Store in database
+  update_option('shop_name', $shop_name);
+  
+  // JavaScript: Also store in localStorage "just in case"
+  localStorage.setItem('shop_name', shopName);
+  
+  // PHP: Add fallback to re-fetch if missing
+  if (empty($shop_name)) {
+      $shop_name = fetch_shop_details($token)['shop_name'];
+  }
+  
+  This creates technical debt:
+  - Confusion about which source is authoritative
+  - Sync issues between storage locations  
+  - False sense of robustness
+  - Hides the real bug (why is shop_name empty?)
+  
+  Example of Single Source of Truth (CORRECT):
+  // PHP: Store once in the authoritative location
+  update_option('shop_name', $shop_name);
+  
+  // JavaScript: Display what server returns
+  if (response.data.shop_name) {
+      $('.shop-name').text(response.data.shop_name);
+  }
+  
+  // Trust that WordPress options work correctly
+  // Fix any bugs at the source, not with recovery layers
+  
+  Key Principle:
+  If you're creating multiple ways to recover the same data, STOP.
+  You're treating a symptom. Instead:
+  - Find out why the primary storage isn't working
+  - Fix that root cause
+  - Trust your data flow
 
  
  -- REVIEWING --
