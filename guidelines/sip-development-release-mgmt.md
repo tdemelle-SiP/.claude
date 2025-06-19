@@ -63,8 +63,27 @@ Minimal validation ensures only essential requirements:
 ### UI Elements
 - **Add Repository Button**: Located above the release table, right-aligned with title
 - **Repository Path Column**: Shows truncated path with full path on hover
-- **Edit Path**: Click path to update repository location
 - **Remove Repository**: Option to remove from management
+
+### Disconnected Repository Handling
+When a repository cannot be found at its stored path:
+
+1. **Visual Indicators**:
+   - Row appears greyed out
+   - Path column shows "Repository not found" message
+   - Version and status information unavailable
+
+2. **Available Actions**:
+   - **Delete**: Removes the repository entry permanently
+   - **Reconnect**: Opens file browser to select new location
+     - Uses same validation as adding new repository
+     - If validation fails or user cancels, row remains disconnected
+     - Useful when repository moved or drive temporarily unmounted
+
+3. **Automatic Recovery**:
+   - System checks repository availability on each page load
+   - When missing repository becomes available again (e.g., drive remounted), full functionality automatically restored
+   - No manual intervention required if repository returns to original location
 
 ## Release Process Workflow
 
@@ -447,384 +466,93 @@ powershell -Command "Get-ExecutionPolicy"
    - Test auto-update system
    - Monitor error logs
 
-## Implementation Plan: Repository Management System
+## Repository Management System Implementation
 
 ### Overview
-This plan details the steps to transition from the current auto-detection system (limited to WordPress plugins directory) to a flexible repository management system that supports both plugins and extensions located anywhere on the file system.
+The repository management system provides flexible support for both WordPress plugins and browser extensions located anywhere on the file system, replacing the previous auto-detection system that was limited to the WordPress plugins directory.
 
-**CRITICAL**: All implementation MUST strictly follow SiP coding standards and patterns:
-- Use SiP AJAX patterns (no custom solutions)
-- Follow SiP file structure conventions
-- Use SiP Core utilities and components
-- Implement using established SiP patterns only
-- NO alternative implementations for established structures
+**Implementation follows SiP coding standards:**
+- Uses SiP AJAX patterns with standard request/response flow
+- Follows SiP file structure conventions
+- Uses SiP Core utilities and components (file browser, AJAX, debug logging)
+- Implements established SiP patterns consistently
 
-### Current State
-- Release manager uses `get_plugins()` which only detects plugins in `wp-content/plugins/`
-- No support for browser extensions
-- No support for repositories outside WordPress directory
-- Hardcoded plugin detection in `get_sip_plugins()` method
+### System Features
+- **Manual Repository Registration**: Add/remove repositories via UI (no in-place path updates)
+- **Flexible Repository Locations**: Support for repositories anywhere on file system
+- **Multi-Type Support**: Handles both WordPress plugins and browser extensions
+- **Persistent Storage**: Repository paths stored in WordPress options following SiP patterns
+- **Cross-Platform File Browser**: Uses SiP Core file browser component for directory selection
+- **Disconnected Repository Handling**: Shows missing repositories with reconnection capability
+- **Unified Release Process**: Single release system for plugins and extensions with type-specific scripts
 
-### Target State
-- Manual repository registration via UI (add/remove only, no in-place updates)
-- Support for plugins and extensions anywhere on file system
-- Persistent storage of repository paths in WordPress options
-- Cross-platform file browser for directory selection using SiP Core component
-- Handle missing/moved repositories with reconnection capability
-- Unified release process for plugins and extensions
+### Technical Architecture
+- **Storage**: WordPress options table (`sip_development_tools_repositories`)
+- **AJAX Actions**: Standard SiP AJAX pattern with dedicated action handlers
+- **Repository Detection**: Automatic type detection (plugin vs extension) based on files
+- **Migration Support**: One-time automatic migration of existing WordPress plugins
 
-### Implementation Steps
+### Key Components
 
-#### Step 1: Database Storage Implementation (Following SiP Standards)
-**File**: `sip-development-tools/includes/repository-manager.php` (new)
+#### SiP_Repository_Manager Class
+**File**: `sip-development-tools/includes/repository-manager.php`
 
-**MUST follow SiP class naming and structure patterns**
+**Core Methods:**
+- `get_repositories()` - Get all repositories with status checking
+- `add_repository($path)` - Add new repository with validation
+- `remove_repository($id)` - Remove repository by ID
+- `reconnect_repository($old_id, $new_path)` - Reconnect missing repository
+- `validate_repository($path)` - Validate repository structure
+- `migrate_existing_plugins()` - One-time migration from old system
 
-```php
-<?php
-/**
- * Repository Manager Class
- * 
- * Manages repository registration for SiP Development Tools
- * Following SiP coding standards and patterns
- */
+#### Repository AJAX Handlers
+**File**: `sip-development-tools/includes/repository-ajax-handlers.php`
 
-// Prevent direct access
-if (!defined('ABSPATH')) exit;
+Implements standard SiP AJAX patterns:
+- `sip_ajax_add_repository()` - Handle add repository requests
+- `sip_ajax_remove_repository()` - Handle remove repository requests
+- `sip_ajax_reconnect_repository()` - Handle reconnect repository requests
+- `sip_ajax_get_repositories()` - Return all repositories with status
 
-class SiP_Repository_Manager {
-    private static $option_name = 'sip_development_tools_repositories';
-    
-    /**
-     * Get all registered repositories with status check
-     * @return array Repository configurations with status
-     */
-    public static function get_repositories() {
-        $repositories = get_option(self::$option_name, array());
-        
-        // Check status of each repository
-        foreach ($repositories as &$repo) {
-            $repo['status'] = self::check_repository_status($repo['path']);
-        }
-        
-        return $repositories;
-    }
-    
-    /**
-     * Check if repository path exists and is valid
-     * @param string $path Repository path
-     * @return string Status: 'active', 'missing', or 'invalid'
-     */
-    private static function check_repository_status($path) {
-        if (!is_dir($path)) {
-            return 'missing';
-        }
-        if (!is_dir($path . '/.git')) {
-            return 'invalid';
-        }
-        return 'active';
-    }
-    
-    /**
-     * Add a new repository (NO UPDATE METHOD - add/remove only)
-     * @param string $path Repository path
-     * @return array Result with success status and message
-     */
-    public static function add_repository($path) {
-        $repositories = get_option(self::$option_name, array());
-        
-        // Validate repository
-        $validation = self::validate_repository($path);
-        if ($validation !== true) {
-            return array(
-                'success' => false,
-                'message' => $validation
-            );
-        }
-        
-        // Check for duplicates
-        foreach ($repositories as $existing) {
-            if ($existing['path'] === $path) {
-                return array(
-                    'success' => false,
-                    'message' => 'Repository already registered'
-                );
-            }
-        }
-        
-        // Extract repository information
-        $repository = self::extract_repository_info($path);
-        
-        $repositories[] = $repository;
-        update_option(self::$option_name, $repositories);
-        
-        return array(
-            'success' => true,
-            'message' => 'Repository added successfully',
-            'repository' => $repository
-        );
-    }
-    
-    /**
-     * Remove repository by ID
-     * @param string $id Repository ID (path-based)
-     * @return array Result with success status and message
-     */
-    public static function remove_repository($id) {
-        $repositories = get_option(self::$option_name, array());
-        $found = false;
-        
-        foreach ($repositories as $index => $repo) {
-            if (md5($repo['path']) === $id) {
-                array_splice($repositories, $index, 1);
-                $found = true;
-                break;
-            }
-        }
-        
-        if (!$found) {
-            return array(
-                'success' => false,
-                'message' => 'Repository not found'
-            );
-        }
-        
-        update_option(self::$option_name, $repositories);
-        
-        return array(
-            'success' => true,
-            'message' => 'Repository removed successfully'
-        );
-    }
-    
-    /**
-     * Reconnect a missing repository to a new path
-     * @param string $old_id Original repository ID
-     * @param string $new_path New repository path
-     * @return array Result with success status and message
-     */
-    public static function reconnect_repository($old_id, $new_path) {
-        // First remove the old entry
-        $remove_result = self::remove_repository($old_id);
-        if (!$remove_result['success']) {
-            return $remove_result;
-        }
-        
-        // Then add the new path
-        return self::add_repository($new_path);
-    }
-    
-    /**
-     * Validate repository path
-     * @param string $path Repository path to validate
-     * @return bool|string True if valid, error message if not
-     */
-    public static function validate_repository($path) {
-        // Check if path exists
-        if (!is_dir($path)) {
-            return 'Repository path does not exist';
-        }
-        
-        // Check for .git directory
-        if (!is_dir($path . '/.git')) {
-            return 'Not a git repository (no .git directory found)';
-        }
-        
-        // Determine type and validate accordingly
-        $type = self::detect_repository_type($path);
-        
-        if ($type === 'plugin') {
-            // Look for PHP file with plugin header
-            $plugin_file_found = false;
-            $files = glob($path . '/*.php');
-            foreach ($files as $file) {
-                $content = file_get_contents($file, false, null, 0, 8192);
-                if (strpos($content, 'Plugin Name:') !== false) {
-                    $plugin_file_found = true;
-                    break;
-                }
-            }
-            if (!$plugin_file_found) {
-                return 'No valid WordPress plugin file found';
-            }
-        } elseif ($type === 'extension') {
-            // Check for manifest.json
-            if (!file_exists($path . '/manifest.json')) {
-                return 'No manifest.json file found';
-            }
-        } else {
-            return 'Unable to determine repository type';
-        }
-        
-        return true;
-    }
-    
-    /**
-     * Detect repository type based on files
-     * @param string $path Repository path
-     * @return string 'plugin', 'extension', or 'unknown'
-     */
-    private static function detect_repository_type($path) {
-        // Check for manifest.json (extension)
-        if (file_exists($path . '/manifest.json')) {
-            return 'extension';
-        }
-        
-        // Check for WordPress plugin header
-        $files = glob($path . '/*.php');
-        foreach ($files as $file) {
-            $content = file_get_contents($file, false, null, 0, 8192);
-            if (strpos($content, 'Plugin Name:') !== false) {
-                return 'plugin';
-            }
-        }
-        
-        return 'unknown';
-    }
-    
-    /**
-     * Extract repository information from path
-     * @param string $path Repository path
-     * @return array Repository configuration
-     */
-    private static function extract_repository_info($path) {
-        $type = self::detect_repository_type($path);
-        $repository = array(
-            'path' => $path,
-            'type' => $type,
-            'slug' => basename($path)
-        );
-        
-        if ($type === 'plugin') {
-            // Find main plugin file
-            $files = glob($path . '/*.php');
-            foreach ($files as $file) {
-                $content = file_get_contents($file, false, null, 0, 8192);
-                if (strpos($content, 'Plugin Name:') !== false) {
-                    $repository['main_file'] = basename($file);
-                    $plugin_data = get_plugin_data($file);
-                    $repository['name'] = $plugin_data['Name'];
-                    $repository['version'] = $plugin_data['Version'];
-                    break;
-                }
-            }
-        } elseif ($type === 'extension') {
-            $repository['main_file'] = 'manifest.json';
-            $manifest = json_decode(file_get_contents($path . '/manifest.json'), true);
-            $repository['name'] = $manifest['name'];
-            $repository['version'] = $manifest['version'];
-        }
-        
-        return $repository;
-    }
-    
-    /**
-     * Get repository details including git status
-     * @param array $repository Repository configuration
-     * @return array Repository with additional status information
-     */
-    public static function get_repository_status($repository) {
-        // Add git status information
-        $repository['branch'] = self::get_current_branch($repository['path']);
-        $repository['has_changes'] = self::has_uncommitted_changes($repository['path']);
-        $repository['ahead_behind'] = self::get_ahead_behind_status($repository['path']);
-        
-        return $repository;
-    }
-    
-    // Git helper methods would go here...
-}
-```
+#### JavaScript Repository Manager
+**File**: `sip-development-tools/assets/js/modules/repository-manager.js`
 
-**Action**: Include this file in `sip-development-tools.php`:
-```php
-require_once plugin_dir_path(__FILE__) . 'includes/repository-manager.php';
-```
+Follows SiP module pattern:
+- Uses `SiP.Core.fileBrowser` for directory selection
+- Uses `SiP.Core.ajax.handleAjaxAction` for AJAX requests
+- Uses `SiP.Core.utilities.createFormData` for request preparation
+- Implements event delegation for dynamic UI elements
 
-#### Step 2: AJAX Handlers for Repository Management
-**File**: `sip-development-tools/includes/release-functions.php` (update)
+#### Release Function Updates
+**File**: `sip-development-tools/includes/release-functions.php`
 
-Add new AJAX action handlers:
-```php
-// Add to existing AJAX setup
-add_action('wp_ajax_sip_repository_action', 'sip_handle_repository_action');
+Enhanced `sip_create_release()` function:
+- Accepts `repo_path` and `repo_type` parameters
+- Supports both plugin and extension releases
+- Automatically selects appropriate PowerShell script
 
-/**
- * Handle repository management actions
- */
-function sip_handle_repository_action() {
-    // Verify nonce
-    if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'sip_admin_nonce')) {
-        SiP_AJAX_Response::error('Invalid nonce');
-        return;
-    }
-    
-    $action = isset($_POST['repository_action']) ? sanitize_text_field($_POST['repository_action']) : '';
-    
-    switch ($action) {
-        case 'add':
-            sip_add_repository();
-            break;
-        case 'update':
-            sip_update_repository();
-            break;
-        case 'remove':
-            sip_remove_repository();
-            break;
-        case 'validate':
-            sip_validate_repository();
-            break;
-        case 'browse':
-            sip_browse_directories();
-            break;
-        default:
-            SiP_AJAX_Response::error('Invalid repository action');
-    }
-}
+### Usage
 
-/**
- * Add a new repository
- */
-function sip_add_repository() {
-    $path = isset($_POST['path']) ? sanitize_text_field($_POST['path']) : '';
-    $type = isset($_POST['type']) ? sanitize_text_field($_POST['type']) : 'plugin';
-    
-    $repository = array(
-        'path' => $path,
-        'type' => $type
-    );
-    
-    // Validate and enrich repository data
-    $validated = SiP_Repository_Manager::validate_repository($repository);
-    
-    if (is_array($validated) && !isset($validated['path'])) {
-        // Validation returned errors
-        SiP_AJAX_Response::error('Validation failed', array('errors' => $validated));
-        return;
-    }
-    
-    // Add repository
-    if (SiP_Repository_Manager::add_repository($validated)) {
-        SiP_AJAX_Response::success('Repository added successfully', array(
-            'repository' => $validated
-        ));
-    } else {
-        SiP_AJAX_Response::error('Failed to add repository');
-    }
-}
+#### Adding a Repository
+1. Click "Add Repository" button in release management interface
+2. Use file browser to select repository directory
+3. System validates repository structure automatically
+4. Repository appears in release table if valid
 
-// Similar implementations for update, remove, validate...
-```
+#### Managing Disconnected Repositories
+When a repository is moved or becomes unavailable:
+1. Row appears greyed out with "Repository not found" message
+2. Two options available:
+   - **Delete**: Remove from management permanently
+   - **Reconnect**: Use file browser to select new location
+3. Reconnection performs full validation like adding new repository
 
-#### Step 3: JavaScript Module for Repository Management
-**File**: `sip-development-tools/assets/js/modules/repository-manager.js` (new)
-
-```javascript
-var SiP = SiP || {};
-SiP.DevTools = SiP.DevTools || {};
-
-SiP.DevTools.repositoryManager = (function($) {
-    const PLUGIN_ID = 'sip-development-tools';
+#### Releasing Projects
+Release process works identically for plugins and extensions:
+1. Select version number and log level
+2. Click "Create Release" button  
+3. System automatically uses appropriate PowerShell script based on repository type
+4. Progress tracked in real-time log viewer
     
     function init() {
         attachEventListeners();

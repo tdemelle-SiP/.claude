@@ -194,6 +194,18 @@ This includes:
 - **Theme**: Default theme with SiP customizations
 - **Dependencies**: jQuery
 - **Size**: ~180KB total
+- **SiP Wrapper**: `SiP.Core.fileBrowser` module provides simplified API
+- **Usage Example**:
+  ```javascript
+  SiP.Core.fileBrowser.browse({
+      title: 'Select Directory',
+      selectFolders: true,
+      selectFiles: false,
+      onSelect: function(path) {
+          // Handle selected path
+      }
+  });
+  ```
 
 ### CodeMirror (v5.65.13)
 - **Storage**: `/assets/lib/codemirror/`
