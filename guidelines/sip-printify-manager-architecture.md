@@ -1100,6 +1100,107 @@ The mockup system uses jQuery events for inter-module communication:
 
 This pattern allows modules to react to state changes without tight coupling.
 
+## JSON Creation Process and Field Inheritance
+
+### Overview
+The product creation process assembles JSON data for the Printify API by combining template data with child product overrides. This system allows for flexible product creation while maintaining template defaults.
+
+### The assemble_product_json() Function
+
+Located in `creation-table-functions.php`, this function is the heart of the JSON creation process:
+
+```php
+function assemble_product_json($child_product, $creation_template_wip_data) {
+    $product_json = [
+        'title' => $child_product['child_product_title'] ?? $creation_template_wip_data['template_title'],
+        'description' => (!empty($child_product['description'])) ? $child_product['description'] : ($creation_template_wip_data['description'] ?? ''),
+        'tags' => (!empty($child_product['tags'])) ? 
+            (is_array($child_product['tags']) ? $child_product['tags'] : [$child_product['tags']]) : 
+            ($creation_template_wip_data['tags'] ?? []),
+        'blueprint_id' => $creation_template_wip_data['blueprint_id'],
+        'print_provider_id' => $creation_template_wip_data['print_provider_id'],
+        'variants' => [],
+        'print_areas' => [],
+        'is_printify_express_eligible' => false,
+        'is_printify_express_enabled' => false
+    ];
+    // ... variant and print area processing
+}
+```
+
+### Field Inheritance Patterns
+
+#### Critical Distinction: Empty Strings vs Null Values
+
+The system treats empty strings (`""`) and null values differently:
+- **Empty string (`""`)**: Treated as "intentionally blank" - a deliberate choice to have no value
+- **Null or unset**: Treated as "use default" - inherit from template
+
+#### The Description/Tags Fix
+
+**Problem**: Child products often have empty strings for description and tags, which were being sent to Printify as blank values instead of using template defaults.
+
+**Root Cause**: The null coalescing operator (`??`) only checks for null/unset values, not empty strings:
+```php
+// WRONG: Empty strings bypass the template default
+'description' => $child_product['description'] ?? $creation_template_wip_data['description'] ?? ''
+```
+
+**Solution**: Use `!empty()` checks to treat empty strings as "use template default":
+```php
+// CORRECT: Empty strings trigger template default usage
+'description' => (!empty($child_product['description'])) 
+    ? $child_product['description'] 
+    : ($creation_template_wip_data['description'] ?? '')
+```
+
+### Field-by-Field Inheritance Rules
+
+| Field | Inheritance Pattern | Notes |
+|-------|-------------------|-------|
+| `title` | Child overrides template | Uses `??` operator - null triggers template default |
+| `description` | Child overrides if not empty | Uses `!empty()` - empty string triggers template default |
+| `tags` | Child overrides if not empty | Uses `!empty()` - ensures array format |
+| `blueprint_id` | Always from template | Blueprint defines product type |
+| `print_provider_id` | Always from template | Provider is template-level |
+| `variants` | Always from template | Size/color options from template |
+| `print_areas` | Template base, child image overrides | Complex merge of template structure with child images |
+
+### Print Area Merging Logic
+
+Print areas follow a sophisticated merge pattern:
+1. Start with template's complete print area structure
+2. Deep copy to avoid modifying template data
+3. For each child product print area:
+   - Match by position (front, back, etc.)
+   - Replace template images with child images at specific indices
+   - Preserve template structure and metadata
+4. Validate and clean resulting structure
+
+### API Test Injection System
+
+For testing Printify API behavior, the system includes a test injection mechanism located in `sip_upload_child_product_to_printify()` around line 1177.
+
+**Purpose**: Test which JSON fields Printify accepts/ignores during product creation
+**Location**: Injected directly before API call for maximum reliability
+**Control**: `$enable_test_injection` flag (set to `false` in production)
+
+**Complete Testing Guide**: See [SiP Printify Manager Testing](./sip-printify-manager-testing.md) for detailed testing procedures, setup instructions, and troubleshooting.
+
+### Debug Output Files
+
+When API testing is enabled, the system generates debug files in `/templates/wip/` for analysis. These files should be reviewed and deleted after extracting insights, as they contain verbose test data.
+
+**Note**: Test results and findings should be documented in this architecture guide rather than preserved as files.
+
+### Key Learnings from API Testing
+
+Through extensive testing, we've confirmed:
+1. **Description and Tags**: Accepted and stored by Printify when sent during creation
+2. **Images Field**: Completely ignored during creation - Printify generates its own mockups
+3. **Mockup Control**: Not possible via creation API - requires post-creation management
+4. **Printify Express**: Must be explicitly disabled with both flags set to `false`
+
 ## Performance Considerations
 
 1. **Highlighting Functions**
