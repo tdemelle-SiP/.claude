@@ -452,6 +452,13 @@ powershell -Command "Get-ExecutionPolicy"
 ### Overview
 This plan details the steps to transition from the current auto-detection system (limited to WordPress plugins directory) to a flexible repository management system that supports both plugins and extensions located anywhere on the file system.
 
+**CRITICAL**: All implementation MUST strictly follow SiP coding standards and patterns:
+- Use SiP AJAX patterns (no custom solutions)
+- Follow SiP file structure conventions
+- Use SiP Core utilities and components
+- Implement using established SiP patterns only
+- NO alternative implementations for established structures
+
 ### Current State
 - Release manager uses `get_plugins()` which only detects plugins in `wp-content/plugins/`
 - No support for browser extensions
@@ -459,155 +466,256 @@ This plan details the steps to transition from the current auto-detection system
 - Hardcoded plugin detection in `get_sip_plugins()` method
 
 ### Target State
-- Manual repository registration via UI
+- Manual repository registration via UI (add/remove only, no in-place updates)
 - Support for plugins and extensions anywhere on file system
 - Persistent storage of repository paths in WordPress options
-- Cross-platform file browser for directory selection
+- Cross-platform file browser for directory selection using SiP Core component
+- Handle missing/moved repositories with reconnection capability
 - Unified release process for plugins and extensions
 
 ### Implementation Steps
 
-#### Step 1: Database Storage Implementation
+#### Step 1: Database Storage Implementation (Following SiP Standards)
 **File**: `sip-development-tools/includes/repository-manager.php` (new)
 
+**MUST follow SiP class naming and structure patterns**
+
 ```php
-// Create new file for repository management functions
+<?php
+/**
+ * Repository Manager Class
+ * 
+ * Manages repository registration for SiP Development Tools
+ * Following SiP coding standards and patterns
+ */
+
+// Prevent direct access
+if (!defined('ABSPATH')) exit;
+
 class SiP_Repository_Manager {
     private static $option_name = 'sip_development_tools_repositories';
     
     /**
-     * Get all registered repositories
-     * @return array Repository configurations
+     * Get all registered repositories with status check
+     * @return array Repository configurations with status
      */
     public static function get_repositories() {
-        return get_option(self::$option_name, array());
+        $repositories = get_option(self::$option_name, array());
+        
+        // Check status of each repository
+        foreach ($repositories as &$repo) {
+            $repo['status'] = self::check_repository_status($repo['path']);
+        }
+        
+        return $repositories;
     }
     
     /**
-     * Add a new repository
-     * @param array $repository Repository configuration
-     * @return bool Success status
+     * Check if repository path exists and is valid
+     * @param string $path Repository path
+     * @return string Status: 'active', 'missing', or 'invalid'
      */
-    public static function add_repository($repository) {
-        $repositories = self::get_repositories();
+    private static function check_repository_status($path) {
+        if (!is_dir($path)) {
+            return 'missing';
+        }
+        if (!is_dir($path . '/.git')) {
+            return 'invalid';
+        }
+        return 'active';
+    }
+    
+    /**
+     * Add a new repository (NO UPDATE METHOD - add/remove only)
+     * @param string $path Repository path
+     * @return array Result with success status and message
+     */
+    public static function add_repository($path) {
+        $repositories = get_option(self::$option_name, array());
         
         // Validate repository
-        if (!self::validate_repository($repository)) {
-            return false;
+        $validation = self::validate_repository($path);
+        if ($validation !== true) {
+            return array(
+                'success' => false,
+                'message' => $validation
+            );
         }
         
         // Check for duplicates
         foreach ($repositories as $existing) {
-            if ($existing['path'] === $repository['path']) {
-                return false;
+            if ($existing['path'] === $path) {
+                return array(
+                    'success' => false,
+                    'message' => 'Repository already registered'
+                );
             }
         }
         
+        // Extract repository information
+        $repository = self::extract_repository_info($path);
+        
         $repositories[] = $repository;
-        return update_option(self::$option_name, $repositories);
+        update_option(self::$option_name, $repositories);
+        
+        return array(
+            'success' => true,
+            'message' => 'Repository added successfully',
+            'repository' => $repository
+        );
     }
     
     /**
-     * Update repository at given index
-     * @param int $index Repository index
-     * @param array $repository Updated configuration
-     * @return bool Success status
+     * Remove repository by ID
+     * @param string $id Repository ID (path-based)
+     * @return array Result with success status and message
      */
-    public static function update_repository($index, $repository) {
-        $repositories = self::get_repositories();
+    public static function remove_repository($id) {
+        $repositories = get_option(self::$option_name, array());
+        $found = false;
         
-        if (!isset($repositories[$index])) {
-            return false;
+        foreach ($repositories as $index => $repo) {
+            if (md5($repo['path']) === $id) {
+                array_splice($repositories, $index, 1);
+                $found = true;
+                break;
+            }
         }
         
-        if (!self::validate_repository($repository)) {
-            return false;
+        if (!$found) {
+            return array(
+                'success' => false,
+                'message' => 'Repository not found'
+            );
         }
         
-        $repositories[$index] = $repository;
-        return update_option(self::$option_name, $repositories);
+        update_option(self::$option_name, $repositories);
+        
+        return array(
+            'success' => true,
+            'message' => 'Repository removed successfully'
+        );
     }
     
     /**
-     * Remove repository at given index
-     * @param int $index Repository index
-     * @return bool Success status
+     * Reconnect a missing repository to a new path
+     * @param string $old_id Original repository ID
+     * @param string $new_path New repository path
+     * @return array Result with success status and message
      */
-    public static function remove_repository($index) {
-        $repositories = self::get_repositories();
-        
-        if (!isset($repositories[$index])) {
-            return false;
+    public static function reconnect_repository($old_id, $new_path) {
+        // First remove the old entry
+        $remove_result = self::remove_repository($old_id);
+        if (!$remove_result['success']) {
+            return $remove_result;
         }
         
-        array_splice($repositories, $index, 1);
-        return update_option(self::$option_name, $repositories);
+        // Then add the new path
+        return self::add_repository($new_path);
     }
     
     /**
-     * Validate repository configuration
-     * @param array $repository Repository to validate
-     * @return bool|array True if valid, array of errors if not
+     * Validate repository path
+     * @param string $path Repository path to validate
+     * @return bool|string True if valid, error message if not
      */
-    public static function validate_repository($repository) {
-        $errors = array();
-        
-        // Check required fields
-        if (empty($repository['path'])) {
-            $errors[] = 'Repository path is required';
-        }
-        
+    public static function validate_repository($path) {
         // Check if path exists
-        if (!empty($repository['path']) && !is_dir($repository['path'])) {
-            $errors[] = 'Repository path does not exist';
+        if (!is_dir($path)) {
+            return 'Repository path does not exist';
         }
         
         // Check for .git directory
-        if (!empty($repository['path']) && !is_dir($repository['path'] . '/.git')) {
-            $errors[] = 'Not a git repository (no .git directory found)';
+        if (!is_dir($path . '/.git')) {
+            return 'Not a git repository (no .git directory found)';
         }
         
-        // Check for main file based on type
-        if ($repository['type'] === 'plugin') {
+        // Determine type and validate accordingly
+        $type = self::detect_repository_type($path);
+        
+        if ($type === 'plugin') {
             // Look for PHP file with plugin header
             $plugin_file_found = false;
-            $files = glob($repository['path'] . '/*.php');
+            $files = glob($path . '/*.php');
             foreach ($files as $file) {
                 $content = file_get_contents($file, false, null, 0, 8192);
                 if (strpos($content, 'Plugin Name:') !== false) {
                     $plugin_file_found = true;
-                    $repository['main_file'] = basename($file);
                     break;
                 }
             }
             if (!$plugin_file_found) {
-                $errors[] = 'No valid WordPress plugin file found';
+                return 'No valid WordPress plugin file found';
             }
-        } elseif ($repository['type'] === 'extension') {
+        } elseif ($type === 'extension') {
             // Check for manifest.json
-            if (!file_exists($repository['path'] . '/manifest.json')) {
-                $errors[] = 'No manifest.json file found';
-            } else {
-                $repository['main_file'] = 'manifest.json';
+            if (!file_exists($path . '/manifest.json')) {
+                return 'No manifest.json file found';
+            }
+        } else {
+            return 'Unable to determine repository type';
+        }
+        
+        return true;
+    }
+    
+    /**
+     * Detect repository type based on files
+     * @param string $path Repository path
+     * @return string 'plugin', 'extension', or 'unknown'
+     */
+    private static function detect_repository_type($path) {
+        // Check for manifest.json (extension)
+        if (file_exists($path . '/manifest.json')) {
+            return 'extension';
+        }
+        
+        // Check for WordPress plugin header
+        $files = glob($path . '/*.php');
+        foreach ($files as $file) {
+            $content = file_get_contents($file, false, null, 0, 8192);
+            if (strpos($content, 'Plugin Name:') !== false) {
+                return 'plugin';
             }
         }
         
-        // Extract name and slug if not provided
-        if (empty($repository['name']) || empty($repository['slug'])) {
-            if ($repository['type'] === 'plugin' && !empty($repository['main_file'])) {
-                $plugin_data = get_plugin_data($repository['path'] . '/' . $repository['main_file']);
-                $repository['name'] = $plugin_data['Name'];
-                $repository['slug'] = basename($repository['path']);
-                $repository['version'] = $plugin_data['Version'];
-            } elseif ($repository['type'] === 'extension') {
-                $manifest = json_decode(file_get_contents($repository['path'] . '/manifest.json'), true);
-                $repository['name'] = $manifest['name'];
-                $repository['slug'] = basename($repository['path']);
-                $repository['version'] = $manifest['version'];
+        return 'unknown';
+    }
+    
+    /**
+     * Extract repository information from path
+     * @param string $path Repository path
+     * @return array Repository configuration
+     */
+    private static function extract_repository_info($path) {
+        $type = self::detect_repository_type($path);
+        $repository = array(
+            'path' => $path,
+            'type' => $type,
+            'slug' => basename($path)
+        );
+        
+        if ($type === 'plugin') {
+            // Find main plugin file
+            $files = glob($path . '/*.php');
+            foreach ($files as $file) {
+                $content = file_get_contents($file, false, null, 0, 8192);
+                if (strpos($content, 'Plugin Name:') !== false) {
+                    $repository['main_file'] = basename($file);
+                    $plugin_data = get_plugin_data($file);
+                    $repository['name'] = $plugin_data['Name'];
+                    $repository['version'] = $plugin_data['Version'];
+                    break;
+                }
             }
+        } elseif ($type === 'extension') {
+            $repository['main_file'] = 'manifest.json';
+            $manifest = json_decode(file_get_contents($path . '/manifest.json'), true);
+            $repository['name'] = $manifest['name'];
+            $repository['version'] = $manifest['version'];
         }
         
-        return empty($errors) ? $repository : $errors;
+        return $repository;
     }
     
     /**

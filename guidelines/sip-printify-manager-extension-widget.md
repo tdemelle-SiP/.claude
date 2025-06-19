@@ -3,7 +3,7 @@
 **Version:** 1.0.0 (Independent Release)  
 **Last Updated:** January 21, 2025
 
-**Repository:** `/mnt/c/Users/tdeme/Repositories/sip-printify-manager-extension`  
+**Repository Location**: Flexible - can be located anywhere on the file system when added via SiP Development Tools  
 **GitHub:** https://github.com/tdemelle-SiP/sip-printify-manager-extension
 
 <!-- DOCUMENTATION RULES:
@@ -61,7 +61,7 @@ This approach reduces unnecessary message traffic and provides more responsive u
 
 **Version Independence**: Extension versioning is independent from WordPress plugin, starting at v1.0.0 and following semantic versioning.
 
-**Release Automation**: Uses Chrome Web Store API for automated publishing integrated with SiP Development Tools release management system.
+**Repository Management**: The extension repository is managed through the SiP Development Tools repository manager system, which allows flexible repository locations anywhere on the file system. See [Release Management Documentation](./sip-development-release-mgmt.md#repository-management) for details on adding and managing extension repositories.
 
 ### 2.3 SiP Ecosystem Integration
 
@@ -70,6 +70,8 @@ This approach reduces unnecessary message traffic and provides more responsive u
 - Installation status and connection monitoring  
 - Auto-update preference toggle
 - Chrome Web Store installation links
+
+**SiP Development Tools Integration**: For development and release management, the extension repository must be manually added to SiP Development Tools using the repository manager. Once added, it appears in the release management table with the same capabilities as WordPress plugins.
 
 **Data Storage Compliance**: Extension status is stored using SiP data storage patterns:
 - Client-side: localStorage under `sip-core.sip-printify-manager.extension`
@@ -80,11 +82,18 @@ This approach reduces unnecessary message traffic and provides more responsive u
 
 ### 2.4 Release Process Integration
 
-**Automated Publishing**: Release management includes Chrome Web Store API integration for:
-- Extension packaging and validation
-- Store submission and review process
-- Update deployment to users
-- Stuffisparts data file updates
+**Unified Release System**: The extension uses the same automated release system as WordPress plugins through SiP Development Tools. The system supports both plugin and extension releases with type-specific handling.
+
+**Extension-Specific Features**:
+- Chrome Web Store API integration for automated publishing
+- Extension packaging and validation via `release-extension.ps1`
+- Store submission and review process automation
+- Stuffisparts data file updates for version tracking
+
+**Repository Requirements**: To enable release management:
+1. Extension repository must be added to SiP Development Tools via "Add Repository" button
+2. Repository must contain valid `manifest.json` file
+3. Repository must be a Git repository with `develop` and `master` branches
 
 **Version Synchronization**: Release system updates both Chrome Web Store and stuffisparts server data to maintain dashboard accuracy.
 
