@@ -3,6 +3,9 @@
 **Version:** 1.0.0 (Independent Release)  
 **Last Updated:** January 21, 2025
 
+**Repository:** `/mnt/c/Users/tdeme/Repositories/sip-printify-manager-extension`  
+**GitHub:** https://github.com/tdemelle-SiP/sip-printify-manager-extension
+
 <!-- DOCUMENTATION RULES:
 1. ARCHITECTURAL WHY - Document WHY each component exists (constraints/requirements that necessitate it)
 2. NO HISTORY - Current state only, not how we got here  
@@ -1439,5 +1442,156 @@ Key implementation details:
 ---
 
 **Total Estimated Tasks: 47**  
+
+## 11. WordPress Plugin Implementation
+
+### 11.1 Current State
+
+**Version Communication**: Extension already announces version on load:
+```javascript
+// In widget-relay.js line 70
+version: chrome.runtime.getManifest().version
+```
+
+WordPress already captures version in browser-extension-manager.js:
+```javascript  
+// Line 112
+extensionState.version = data.version;
+```
+
+### 11.2 Required WordPress Plugin Changes
+
+#### Update browser-extension-manager.js
+**File**: `/wp-content/plugins/sip-printify-manager/assets/js/modules/browser-extension-manager.js`
+
+**Changes needed:**
+1. Migrate from local `extensionState` object to `SiP.Core.state` management
+2. Add Chrome Web Store installation detection
+3. Add update checking against stuffisparts server
+
+**Key sections to modify:**
+- Line 17-23: extensionState object → migrate to SiP.Core.state
+- Line 112: Where version is captured → store in SiP state
+- Add new function: `checkForExtensionUpdates()`
+
+#### Create extension-functions.php
+**Create new file**: `/wp-content/plugins/sip-printify-manager/includes/extension-functions.php`
+
+```php
+<?php
+// Register extension storage following SiP patterns
+sip_plugin_storage()->register_plugin('sip-printify-manager-extension', array(
+    'folders' => array('data', 'logs', 'cache')
+));
+
+// AJAX handler for extension update checks
+function sip_handle_extension_update_check() {
+    // Implementation following SiP AJAX patterns
+    $current_version = isset($_POST['current_version']) ? sanitize_text_field($_POST['current_version']) : '';
+    
+    // Check stuffisparts for latest version
+    $response = wp_remote_get('https://updates.stuffisparts.com/update-api.php?extension=sip-printify-manager-extension');
+    
+    if (is_wp_error($response)) {
+        SiP_AJAX_Response::error('sip-printify-manager', 'extension_update', 'check', $response->get_error_message());
+        return;
+    }
+    
+    $data = json_decode(wp_remote_retrieve_body($response), true);
+    
+    // Compare versions and return update status
+    SiP_AJAX_Response::success('sip-printify-manager', 'extension_update', 'check', array(
+        'update_available' => version_compare($current_version, $data['version'], '<'),
+        'latest_version' => $data['version'],
+        'chrome_store_url' => $data['chrome_store_url']
+    ));
+}
+```
+
+#### Update WordPress Plugin Core Files
+
+1. **sip-printify-manager.php**:
+   - Add: `require_once plugin_dir_path(__FILE__) . 'includes/extension-functions.php';`
+   - Remove: Any references to embedded extension files
+
+2. **includes/printify-ajax-shell.php**:
+   - Add extension AJAX action handler:
+   ```php
+   case 'extension_update':
+       require_once plugin_dir_path(dirname(__FILE__)) . 'includes/extension-functions.php';
+       sip_handle_extension_update_check();
+       break;
+   ```
+
+3. **views/dashboard-html.php**:
+   - Update installation instructions to use Chrome Web Store link
+   - Add extension version display using SiP Core state
+   - Remove embedded extension download links
+
+### 11.3 Data Structure Requirements
+
+#### Stuffisparts Server Data
+The update server needs to include extension data:
+
+```json
+{
+  "plugins": { 
+    // existing plugin entries
+  },
+  "extensions": {
+    "sip-printify-manager-extension": {
+      "name": "SiP Printify Manager Extension",
+      "version": "1.0.0",
+      "chrome_store_id": "[TBD after publication]",
+      "chrome_store_url": "https://chrome.google.com/webstore/detail/[TBD]",
+      "download_url": "https://updates.stuffisparts.com/extensions/sip-printify-manager-extension-1.0.0.zip",
+      "requires": {
+        "sip-printify-manager": "4.3.0"
+      },
+      "changelog": "Initial Chrome Web Store release"
+    }
+  }
+}
+```
+
+#### WordPress Options Storage
+Extension preferences stored following SiP patterns:
+```php
+// Option: sip_printify_manager_extension_preferences
+array(
+    'auto_update' => true,
+    'last_check' => '2025-01-21 12:00:00',
+    'installed_version' => '1.0.0',
+    'available_version' => '1.0.0'
+)
+```
+
+### 11.4 File Browser Integration
+
+The repository management system can now use the SiP Core file browser for adding extension repositories:
+
+```javascript
+// In release-actions.js - Add Repository button handler
+$('#add-repository-btn').on('click', function() {
+    SiP.Core.fileBrowser.browse({
+        title: 'Select Repository Directory',
+        onSelect: function(path) {
+            // Validate and add repository
+            validateAndAddRepository(path);
+        }
+    });
+});
+```
+
+This replaces any manual path input with the standardized cross-platform file browser.
+
+## 12. Conflicts and Standards Clarification
+
+Based on reviewing both documentation files, there are no significant conflicts. The implementation guide provides tactical details while this document provides the architectural overview. Key clarifications:
+
+1. **Version Independence**: Extension version (1.0.0) is completely independent from WordPress plugin version (4.3.4)
+2. **Repository Structure**: Extension has its own repository with standard SiP Git workflow
+3. **Update Mechanism**: Chrome Web Store handles updates, but SiP dashboard shows version info
+4. **Data Storage**: Uses standard SiP patterns for both client and server storage
 **Critical Path: Repository setup → Release integration → Dashboard integration → Testing**  
 **Success Criteria: Extension appears and behaves identically to other SiP plugins in dashboard with automatic updates functioning correctly**

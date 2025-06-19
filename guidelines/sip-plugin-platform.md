@@ -187,6 +187,7 @@ The following core features are always available to child plugins. For details o
 | Network Filter Helper | `SiP.Core.networkFilterHelper` | Network request filtering utilities |
 | Direct Updater | `SiP.Core.directUpdater` | Plugin update utilities |
 | PhotoSwipe Lightbox | `SiP.Core.photoswipeLightbox` | Image lightbox functionality |
+| File Browser | `SiP.Core.fileBrowser` | Cross-platform directory browser dialog |
 
 ### Server-Side Features
 
@@ -198,8 +199,16 @@ The following core features are always available to child plugins. For details o
 
 ### Third-Party Libraries
 
-- **DataTables**: Available via jQuery plugin interface
-- **PhotoSwipe**: Available via the core PhotoSwipe wrapper
+All third-party libraries are automatically loaded by the platform and available globally:
+
+| Library | Version | Access | Purpose |
+|---------|---------|--------|---------|
+| **PhotoSwipe** | 5.4.4 | Via module wrapper | Image lightbox galleries |
+| **DataTables** | 2.2.1 | jQuery plugin (`$.fn.DataTable`) | Advanced table functionality |
+| **jsTree** | 3.3.16 | jQuery plugin (`$.fn.jstree`) | File/directory browser |
+| **CodeMirror** | 5.65.13 | Global `CodeMirror` object | Code editor with syntax highlighting |
+
+See [Third-Party Library Integration](./sip-feature-third-party-libraries.md) for implementation details.
 
 ## Using Core Features in Child Plugins
 

@@ -55,7 +55,8 @@ Do NOT update for routine code changes, bug fixes, or implementation details tha
 │   ├── sip-plugin-data-storage.md  → Storage types & patterns
 │   ├── sip-feature-datatables.md   → DataTables integration
 │   ├── sip-feature-codemirror.md   → Code editor integration
-│   └── sip-feature-photoswipe.md   → Image lightbox gallery
+│   ├── sip-feature-photoswipe.md   → Image lightbox gallery
+│   └── sip-feature-third-party-libraries.md → Library integration standards
 │
 ├── 🎨 UI Components
 │   ├── sip-feature-ui-components.md → UI hierarchy & state mgmt
@@ -95,6 +96,7 @@ graph TD
         DataTables["DataTables<br/>Table patterns"]
         CodeMirror["CodeMirror<br/>Code editor"]
         PhotoSwipe["PhotoSwipe<br/>Image lightbox"]
+        ThirdParty["Third-Party Libraries<br/>Integration standards"]
     end
     
     subgraph UI["🎨 UI Components"]
@@ -277,6 +279,8 @@ Guides for implementing specific SiP Core features in your plugins.
 | [Modals](./guidelines/sip-feature-modals.md) | Modal dialogs and toast notifications | ✅ Complete |
 | [CodeMirror](./guidelines/sip-feature-codemirror.md) | Code editor integration | ✅ Complete |
 | [PhotoSwipe](./guidelines/sip-feature-photoswipe.md) | Image lightbox functionality | ✅ Complete |
+| [Third-Party Libraries](./guidelines/sip-feature-third-party-libraries.md) | Standards for integrating external libraries | ✅ Complete |
+| [File Browser](./guidelines/sip-feature-file-browser.md) | Cross-platform directory browser dialog | ✅ Complete |
 
 ### Development Tools (sip-development-*)
 Guides for using the SiP Development Tools plugin for automated workflows.

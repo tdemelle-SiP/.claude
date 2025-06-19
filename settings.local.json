@@ -32,7 +32,8 @@
       "WebFetch(domain:developers.printify.com)",
       "Bash(jq:*)",
       "Bash(touch:*)",
-      "Bash(zip:*)"
+      "Bash(zip:*)",
+      "Bash(curl:*)"
     ],
     "deny": []
   },
