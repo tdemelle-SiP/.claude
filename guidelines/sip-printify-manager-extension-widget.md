@@ -1,6 +1,6 @@
 # SiP Printify Manager Browser Extension
 
-**Version:** 4.3.0  
+**Version:** 1.0.0 (Independent Release)  
 **Last Updated:** January 21, 2025
 
 <!-- DOCUMENTATION RULES:
@@ -18,9 +18,17 @@ Keep it to 1-2 sentences per component.
 
 ## 1. Overview
 
-The SiP Printify Manager browser extension bridges WordPress and Printify, enabling enhanced integration and functionality. It provides a floating widget interface for real-time operations and data synchronization between the two platforms.
+The SiP Printify Manager browser extension is a standalone Chrome Web Store extension that integrates with the SiP Printify Manager WordPress plugin. It provides enhanced mockup data access and automated workflow capabilities that cannot be achieved through Printify's public API alone.
 
-### 1.1 Core Principles
+### 1.1 Distribution & Update Architecture
+
+**Chrome Web Store Distribution**: Extension is published as "unlisted" on Chrome Web Store to provide automatic updates while maintaining privacy. Users install via direct Chrome Web Store link provided by the WordPress plugin.
+
+**Independent Release Management**: Extension follows the same Git workflow and automated release system as other SiP plugins, with its own repository and version numbering independent of the WordPress plugin.
+
+**SiP Ecosystem Integration**: Extension appears in SiP Plugins Core dashboard alongside other plugins, with version tracking, update notifications, and installation management integrated into the SiP platform.
+
+### 1.2 Core Principles
 
 **Push-Driven Communication**: The extension uses a push-driven architecture where:
 - The extension announces its presence when ready (not polled by WordPress)
@@ -30,9 +38,84 @@ The SiP Printify Manager browser extension bridges WordPress and Printify, enabl
 
 This approach reduces unnecessary message traffic and provides more responsive user experience.
 
-## 2. Architecture Rationale
+**Version Management Integration**: Extension version is communicated to WordPress on ready announcement and stored using SiP data storage patterns for integration with the update management system.
 
-### 2.1 Why This Architecture?
+**Data Processing Separation**: Extension acts as a "dumb pipe" capturing and relaying raw data, while WordPress handles all processing, validation, and business logic.
+
+## 2. Distribution & Release Management
+
+### 2.1 Chrome Web Store Integration
+
+**Publication Model**: Extension is published as "unlisted" on Chrome Web Store, making it accessible only via direct link while providing automatic update functionality.
+
+**Automatic Updates**: Chrome handles extension updates automatically every 5-6 hours when new versions are published to the store, eliminating manual installation requirements.
+
+**Installation Flow**: WordPress plugin provides direct Chrome Web Store installation link, replacing embedded extension files and manual filesystem access.
+
+### 2.2 Independent Repository Structure
+
+**Separate Repository**: Extension maintains its own `sip-printify-manager-extension` repository with standard SiP Git workflow (develop → master branches).
+
+**Version Independence**: Extension versioning is independent from WordPress plugin, starting at v1.0.0 and following semantic versioning.
+
+**Release Automation**: Uses Chrome Web Store API for automated publishing integrated with SiP Development Tools release management system.
+
+### 2.3 SiP Ecosystem Integration
+
+**SiP Core Dashboard Integration**: Extension appears as a first-class tool in SiP Plugins Core dashboard alongside WordPress plugins with:
+- Version display and update notifications
+- Installation status and connection monitoring  
+- Auto-update preference toggle
+- Chrome Web Store installation links
+
+**Data Storage Compliance**: Extension status is stored using SiP data storage patterns:
+- Client-side: localStorage under `sip-core.sip-printify-manager.extension`
+- Server-side: WordPress options for extension preferences
+- State management: SiP Core state management system
+
+**Update Server Integration**: Stuffisparts update server includes extension data for dashboard version checking and update notifications.
+
+### 2.4 Release Process Integration
+
+**Automated Publishing**: Release management includes Chrome Web Store API integration for:
+- Extension packaging and validation
+- Store submission and review process
+- Update deployment to users
+- Stuffisparts data file updates
+
+**Version Synchronization**: Release system updates both Chrome Web Store and stuffisparts server data to maintain dashboard accuracy.
+
+**Rollback Capability**: Failed releases can be rolled back via Chrome Web Store developer console while maintaining version tracking integrity.
+
+## 3. Technical Architecture
+
+### 3.1 Version Communication Protocol
+
+**Extension Ready Announcement**: Extension announces version on load:
+```javascript
+window.postMessage({
+    type: 'SIP_EXTENSION_READY',
+    source: 'sip-printify-extension',
+    version: chrome.runtime.getManifest().version,
+    capabilities: { ... }
+}, window.location.origin);
+```
+
+**WordPress Version Capture**: Browser extension manager captures and stores version:
+```javascript
+extensionState.version = data.version;
+SiP.Core.state.setPluginState('sip-printify-manager', 'extension', {
+    version: data.version,
+    isInstalled: true,
+    isConnected: true
+});
+```
+
+**Update Checking**: WordPress compares local version against stuffisparts server data for update notifications.
+
+## 4. Architecture Rationale
+
+### 4.1 Why This Architecture?
 
 **Central Router Pattern**: All messages flow through widget-router.js because Chrome extensions don't allow content scripts to intercept runtime messages from other content scripts - they go directly to the background script.
 
@@ -1200,3 +1283,161 @@ Key implementation details:
 - ✅ Cross-tab console log viewer with SiP-prefix filtering, chronological ordering, and copy/clear functionality
 - ✅ All deprecated code removed (widget-main.js, plural handler names, action history system)
 - ✅ Documentation fully updated to reflect current implementation
+
+---
+
+# IMPLEMENTATION BACKLOG: Chrome Web Store Distribution
+
+## Phase 1: Repository & Release Infrastructure
+
+### 1.1 New Repository Setup
+- [ ] **Create `sip-printify-manager-extension` repository**
+  - [ ] Initialize with develop/master branch structure
+  - [ ] Copy extension files from current browser-extension directory
+  - [ ] Create .gitignore for extension-specific files
+  - [ ] Set up repository description and README
+
+### 1.2 Release Management Integration
+- [ ] **Create release-extension.ps1 script** (based on existing release-plugin.ps1)
+  - [ ] Adapt 16-step process for extension requirements
+  - [ ] Add Chrome Web Store API integration steps
+  - [ ] Add extension packaging and validation
+  - [ ] Update stuffisparts server data file
+
+- [ ] **Chrome Web Store API Integration**
+  - [ ] Set up Chrome Web Store API credentials
+  - [ ] Create extension upload automation
+  - [ ] Add store submission and review monitoring
+  - [ ] Implement rollback capabilities
+
+- [ ] **Modify SiP Development Tools**
+  - [ ] Add extension release UI option
+  - [ ] Create extension-specific release actions
+  - [ ] Add Chrome Web Store status monitoring
+
+## Phase 2: Data Storage Integration
+
+### 2.1 WordPress Data Storage Updates
+- [ ] **Update browser-extension-manager.js**
+  - [ ] Integrate SiP Core state management system
+  - [ ] Store extension version in localStorage using SiP patterns
+  - [ ] Add auto-update preference toggle
+  - [ ] Implement update checking logic
+
+- [ ] **Create extension-functions.php**
+  - [ ] Add extension storage registration with sip_plugin_storage()
+  - [ ] Create extension update checking functions
+  - [ ] Add WordPress options management for extension preferences
+  - [ ] Implement AJAX handlers for extension operations
+
+- [ ] **Update WordPress Options Structure**
+  - [ ] Add `sip_extension_settings` option
+  - [ ] Store auto-update preferences
+  - [ ] Track extension installation methods
+  - [ ] Store last version check timestamps
+
+### 2.2 Client-Side State Management
+- [ ] **Integrate with SiP Core State System**
+  - [ ] Register extension state in SiP.Core.state
+  - [ ] Update extension state on version announcements
+  - [ ] Persist extension preferences in localStorage
+  - [ ] Sync client state with server options
+
+## Phase 3: SiP Core Dashboard Integration
+
+### 3.1 Dashboard Display Updates
+- [ ] **Modify SiP Plugins Core dashboard**
+  - [ ] Add extensions section alongside plugins
+  - [ ] Display extension version and status
+  - [ ] Show update available notifications
+  - [ ] Add Chrome Web Store installation links
+
+- [ ] **Create Extension Update UI**
+  - [ ] Add "Update Available" notifications
+  - [ ] Create auto-update toggle interface
+  - [ ] Add manual update/install buttons
+  - [ ] Display extension connection status
+
+### 3.2 Update Server Integration
+- [ ] **Extend stuffisparts data structure**
+  - [ ] Add `extensions` section to server data file
+  - [ ] Include Chrome Web Store URLs and IDs
+  - [ ] Track extension version information
+  - [ ] Support multiple installation methods
+
+- [ ] **Update Server Data Management**
+  - [ ] Modify release scripts to update extension data
+  - [ ] Ensure version synchronization between store and server
+  - [ ] Add extension-specific metadata fields
+
+## Phase 4: WordPress Plugin Updates
+
+### 4.1 Installation Flow Changes
+- [ ] **Update Installation Instructions**
+  - [ ] Replace filesystem path references with Chrome Web Store links
+  - [ ] Update user guidance in WordPress admin
+  - [ ] Create installation wizard for new users
+  - [ ] Add fallback for manual installation
+
+- [ ] **Remove Embedded Extension Files**
+  - [ ] Remove browser-extension directory from WordPress plugin
+  - [ ] Update plugin packaging to exclude extension files
+  - [ ] Clean up references to local extension files
+  - [ ] Update documentation and help text
+
+### 4.2 Extension Communication Updates
+- [ ] **Version Detection Enhancement**
+  - [ ] Ensure extension version is captured on ready announcement
+  - [ ] Store version persistently for offline comparison
+  - [ ] Add version validation and compatibility checking
+  - [ ] Handle extension not installed scenarios
+
+## Phase 5: Testing & Documentation
+
+### 5.1 Integration Testing
+- [ ] **Test Extension Installation Flow**
+  - [ ] Verify Chrome Web Store installation process
+  - [ ] Test automatic update functionality
+  - [ ] Validate version detection and storage
+  - [ ] Ensure dashboard integration works correctly
+
+- [ ] **Test Release Process**
+  - [ ] Verify automated Chrome Web Store publishing
+  - [ ] Test stuffisparts data file updates
+  - [ ] Validate version synchronization
+  - [ ] Test rollback procedures
+
+### 5.2 Documentation Updates
+- [ ] **Update User Documentation**
+  - [ ] Revise installation instructions
+  - [ ] Document new update process
+  - [ ] Update troubleshooting guides
+  - [ ] Create migration guide for existing users
+
+- [ ] **Update Developer Documentation**
+  - [ ] Document release process changes
+  - [ ] Update architecture documentation
+  - [ ] Document Chrome Web Store API integration
+  - [ ] Update data storage patterns documentation
+
+## Phase 6: Migration & Deployment
+
+### 6.1 User Migration
+- [ ] **Create Migration Strategy**
+  - [ ] Plan transition from embedded to Chrome Web Store
+  - [ ] Create user communication for migration
+  - [ ] Provide installation assistance
+  - [ ] Handle edge cases and troubleshooting
+
+### 6.2 Deployment Validation
+- [ ] **Production Testing**
+  - [ ] Test full release pipeline end-to-end
+  - [ ] Validate all integration points
+  - [ ] Verify update notifications work correctly
+  - [ ] Confirm auto-update functionality
+
+---
+
+**Total Estimated Tasks: 47**  
+**Critical Path: Repository setup → Release integration → Dashboard integration → Testing**  
+**Success Criteria: Extension appears and behaves identically to other SiP plugins in dashboard with automatic updates functioning correctly**

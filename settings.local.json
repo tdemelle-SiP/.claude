@@ -30,7 +30,9 @@
       "Bash(od:*)",
       "Bash(cp:*)",
       "WebFetch(domain:developers.printify.com)",
-      "Bash(jq:*)"
+      "Bash(jq:*)",
+      "Bash(touch:*)",
+      "Bash(zip:*)"
     ],
     "deny": []
   },
