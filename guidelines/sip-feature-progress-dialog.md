@@ -127,7 +127,7 @@ const dialog = SiP.Core.progressDialog.create({
 dialog.start();
 ```
 
-Note: When using `processBatch`, set `batchCount` to the number of items to properly distribute step weights across all batches.
+Note: When using `processBatch`, set `batchCount` to the number of items to properly distribute step weights across all batches. This is especially important when using `batchSize: 1`, where each item becomes its own batch - without setting `batchCount`, the progress bar will show 100% from the start.
 
 ### Execute Each Step
 
@@ -451,6 +451,52 @@ processItemFn: async function(item, dialog) {
     const result = await processSingleItem(item);
     return { success: true };
 }
+```
+
+**Example: Individual API Calls with Granular Progress**
+```javascript
+// Fetching products individually for real-time progress updates
+SiP.Core.progressDialog.processBatch({
+    items: productIds,
+    batchSize: 1,  // Process one at a time
+    
+    dialogOptions: {
+        title: 'Loading Products',
+        item: 'product',
+        progressMessage: 'Fetching {stepCount} of {count} {item}s',
+        secondaryProgressMessage: 'Loading {item} "{name}" from API...',
+        waitForUserOnStart: false,
+        waitForUserOnComplete: false
+    },
+    
+    // IMPORTANT: When using steps with batchSize: 1
+    steps: {
+        weights: {
+            fetch: 100
+        },
+        batchCount: productIds.length  // Must set this!
+    },
+    
+    processItemFn: async (productId, dialog) => {
+        const formData = SiP.Core.utilities.createFormData(
+            'plugin-name', 'action_type', 'fetch_single_item'
+        );
+        formData.append('item_id', productId);
+        
+        const response = await SiP.Core.ajax.handleAjaxAction(
+            'plugin-name', 'action_type', formData
+        );
+        
+        if (response.success) {
+            // Update local data immediately
+            updateLocalData(response.data);
+            return { success: true };
+        } else {
+            dialog.showError(`Failed: ${response.message}`);
+            return { success: false, error: response.message };
+        }
+    }
+});
 ```
 
 ### ProcessBatchFn (Batch Processing)
