@@ -1,8 +1,6 @@
-# Creating a New SiP Plugin
+# SiP Plugin Architecture
 
-Understand the [SiP Plugins Platform](./sip-plugin-platform.md) architecture before proceeding.
-
-This guide walks you through creating a new SiP plugin from scratch, presenting standards and conventions in the context where you'll use them.
+This guide covers creating new SiP plugins and implementing dashboards, presenting the complete architecture, standards and conventions. Before starting, understand the [SiP Plugins Platform](./sip-plugin-platform.md) architecture.
 
 ## Prerequisites
 
@@ -10,9 +8,7 @@ This guide walks you through creating a new SiP plugin from scratch, presenting 
 - WordPress development environment setup
 - Understanding of PHP and JavaScript
 
-## Step 1: Create Plugin Directory Structure
-
-Create a new directory in your WordPress plugins folder following this structure:
+## Plugin Directory Structure
 
 ```
 wp-content/plugins/
@@ -37,9 +33,7 @@ wp-content/plugins/
     └── vendor/                         # Third-party dependencies (if any)
 ```
 
-### Directory Patterns from Existing Plugins
-
-**SiP Printify Manager Example:**
+### Example from SiP Printify Manager
 ```
 sip-printify-manager/
 ├── includes/
@@ -63,9 +57,9 @@ sip-printify-manager/
     └── dashboard-html.php
 ```
 
-### Naming Convention Standards
+## Naming Convention Standards
 
-#### PHP Files
+### PHP Files
 - Main plugin file: `sip-plugin-name.php`
 - AJAX handler shell: `{plugin-prefix}-ajax-shell.php` (e.g., `printify-ajax-shell.php`)
 - Function files: `{functionality}-functions.php` (e.g., `shop-functions.php`, `image-functions.php`)
@@ -74,28 +68,22 @@ sip-printify-manager/
 - Functions: `sip_function_name()` (e.g., `sip_handle_product_action()`)
 - Constants: `SIP_CONSTANT_NAME` (e.g., `SIP_PLUGIN_VERSION`)
 
-#### AJAX Shell Naming Pattern
-Each plugin uses its own prefix for the AJAX shell:
-- `printify-ajax-shell.php` for SiP Printify Manager
-- `woocommerce-monitor-ajax-shell.php` for SiP WooCommerce Monitor
-- `development-tools-ajax-shell.php` for SiP Development Tools
-
-#### JavaScript Files
+### JavaScript Files
 - Module files: `{functionality}-actions.js` (e.g., `image-actions.js`, `shop-actions.js`)
 - Utility files: `utilities.js`
 - Namespaces: `SiP.ModuleName` (e.g., `SiP.PrintifyManager`)
 - Functions: `camelCase()` (e.g., `handleProductSubmit()`)
 - Constants: `UPPER_CASE` (e.g., `MAX_FILE_SIZE`)
 
-#### CSS Files
+### CSS Files
 - Main stylesheet: `sip-plugin-name.css`
 - Component styles: `{component}.css` (e.g., `modals.css`, `tables.css`)
 - Classes: `sip-component-name` (e.g., `sip-modal-dialog`)
 - IDs: `sip-specific-element` (e.g., `sip-product-table`)
 
-## Step 2: Create Main Plugin File
+## Main Plugin File
 
-Create `sip-your-plugin-name.php` with this structure:
+Create `sip-your-plugin-name.php`:
 
 ```php
 <?php
@@ -155,9 +143,6 @@ class SiP_Your_Plugin_Name {
         
         // Hook for admin scripts and styles
         add_action('admin_enqueue_scripts', array($this, 'enqueue_admin_assets'));
-        
-        // Storage initialization is handled by the storage manager
-        // No activation hooks needed
     }
     
     // Singleton pattern
@@ -211,27 +196,15 @@ class SiP_Your_Plugin_Name {
         ));
     }
     
-    // Plugin activation
-    public function activate() {
-        // The storage manager handles database table creation
-        // and folder creation automatically when the plugin is registered
-        
-        // Add any plugin-specific initialization here
-        // For example, setting default options:
-        add_option('sip_your_plugin_settings', array(
-            'feature1_enabled' => true,
-            'feature2_enabled' => false
-        ));
-    }
-    
-    // Required method for SiP framework
+    // Required method for SiP framework - renders the dashboard
     public static function render_dashboard() {
-        // Render your plugin's main admin page
+        // Standard header
         sip_render_standard_header(
             'Your Plugin Name',
             admin_url('admin.php?page=sip-plugins')
         );
         
+        // Include dashboard view
         include plugin_dir_path(__FILE__) . 'views/dashboard.php';
     }
 }
@@ -267,19 +240,12 @@ sip_plugin_storage()->register_plugin('sip-your-plugin-name', array(
 ));
 ```
 
-### Plugin Header Standards
-- Plugin Name: Must start with "SiP"
-- Author: Should be "Stuff is Parts, LLC"
-- Version: Start at 1.0.0 and follow semantic versioning
+## Storage Management
 
-## Step 3: Configure Storage Management
-
-Register your plugin's storage needs with the centralized storage manager. This should be done after initializing your plugin instance.
-
-### Storage Registration Pattern
+Register your plugin's storage needs with the centralized storage manager:
 
 ```php
-// Register storage configuration with the centralized storage manager
+// Register storage configuration
 sip_plugin_storage()->register_plugin('sip-your-plugin-name', array(
     'database' => array(
         'tables' => array(
@@ -299,13 +265,7 @@ sip_plugin_storage()->register_plugin('sip-your-plugin-name', array(
 ));
 ```
 
-### Key Points:
-- **Automatic Creation**: Folders and tables are created automatically during plugin activation
-- **Version Management**: Database schema changes are tracked by version
-- **Path Access**: Use `sip_plugin_storage()->get_folder_path()` to get folder paths
-- **No Manual Creation**: Never use `wp_mkdir_p()` or manual `CREATE TABLE` queries
-
-### Example Usage in Functions:
+### Using Storage in Functions:
 
 ```php
 // Get a folder path
@@ -319,22 +279,26 @@ $export_dir = sip_plugin_storage()->get_folder_path('sip-your-plugin-name', 'exp
 file_put_contents($export_dir . '/data.json', json_encode($data));
 ```
 
-## Step 4: Create AJAX Handler Shell
+## AJAX Handler Implementation
 
-Create `includes/{plugin-prefix}-ajax-shell.php` to handle AJAX requests. For comprehensive AJAX implementation details, see the [AJAX Guide](./sip-plugin-ajax.md):
+Create `includes/{plugin-prefix}-ajax-shell.php`:
 
 ```php
 <?php
 if (!defined('ABSPATH')) exit;
 
 // Register with central SiP AJAX handler
-function sip_your_plugin_register_ajax_handler() {
-    add_action('sip_plugin_handle_action', 'sip_your_plugin_route_action');
-}
-add_action('init', 'sip_your_plugin_register_ajax_handler');
+add_action('init', function() {
+    add_action('sip_plugin_handle_action', 'sip_your_plugin_route_action', 10, 2);
+});
 
 // Route actions to specific handlers
-function sip_your_plugin_route_action($action_type) {
+function sip_your_plugin_route_action($plugin_id, $action_type) {
+    // Only handle our plugin
+    if ($plugin_id !== 'sip-your-plugin-name') {
+        return;
+    }
+    
     switch ($action_type) {
         case 'feature1_action':
             sip_handle_feature1_action();
@@ -347,39 +311,248 @@ function sip_your_plugin_route_action($action_type) {
         default:
             SiP_AJAX_Response::error(
                 'sip-your-plugin-name',
-                'Invalid action type: ' . $action_type,
-                'invalid_action'
+                $action_type,
+                'unknown',
+                'Invalid action type: ' . $action_type
             );
             break;
     }
 }
 ```
 
-### AJAX Routing Standards
-- Register handler with `sip_plugin_handle_action` hook (note: no plugin name in hook)
-- Use switch statement for action routing
-- Always include default case with error response
-- Use `SiP_AJAX_Response` class for all responses
-- Follow the error response signature: `error($plugin, $message, $action)`
+## Dashboard Implementation
 
-### AJAX Routing Standards
-- Register handler with `sip_{plugin}_handle_action` hook
-- Use switch statement for action routing
-- Always include default case with error response
-- Use `SiP_AJAX_Response` class for all responses
+### Dashboard Structure Overview
 
-## Step 5: Create Feature Functions
+SiP plugin dashboards follow a consistent pattern:
 
-### Utility Functions (Optional)
-For functionality shared across multiple components, you may create `includes/utility-functions.php`:
+1. **Standard Header** - Uses `sip_render_standard_header()` with optional action buttons
+2. **Main Content Area** - Contains tables, forms, and controls
+3. **Data Tables** - For displaying plugin data with actions
+4. **Action Forms** - Dropdown menus with execute buttons
+5. **Modals/Dialogs** - For complex interactions
 
-Use utility functions when:
-- Functionality spans multiple tables or components
-- Managing shared constants or enums
-- Implementing cross-cutting concerns
-- Centralizing business logic used in multiple places
+### Creating the Dashboard View
+
+Create `views/dashboard.php`:
+
+```php
+<?php
+// Prevent direct access
+if (!defined('ABSPATH')) exit;
+
+// Get necessary data
+$settings = get_option('sip_your_plugin_settings', []);
+$data = sip_get_your_plugin_data();
+?>
+
+<div class="wrap sip-dashboard-wrapper">
+    
+    <!-- Optional spinner overlay -->
+    <div id="overlay">
+        <img id="spinner" src="<?php echo esc_url(plugins_url('sip-plugins-core/assets/images/spinner.webp')); ?>" alt="Loading...">
+    </div>
+    
+    <!-- Main dashboard content -->
+    <div id="dashboard-container">
+        
+        <!-- Section with header and actions -->
+        <div class="sip-section">
+            <div class="section-header">
+                <h2><?php esc_html_e('Section Title', 'your-text-domain'); ?></h2>
+                
+                <!-- Action form -->
+                <form id="section-action-form" class="action-form">
+                    <label for="section_action" class="screen-reader-text">
+                        <?php esc_html_e('Actions', 'your-text-domain'); ?>
+                    </label>
+                    
+                    <select name="section_action" id="section_action">
+                        <option value="action1"><?php esc_html_e('Action 1', 'your-text-domain'); ?></option>
+                        <option value="action2"><?php esc_html_e('Action 2', 'your-text-domain'); ?></option>
+                        <option value="reload_data"><?php esc_html_e('Reload Data', 'your-text-domain'); ?></option>
+                    </select>
+                    
+                    <input type="submit" value="<?php esc_attr_e('Execute', 'your-text-domain'); ?>" 
+                           class="button button-secondary" />
+                </form>
+            </div>
+            
+            <!-- Data table container -->
+            <div id="table-container" class="table-container">
+                <table id="data-table" class="wp-list-table widefat fixed striped">
+                    <thead>
+                        <tr>
+                            <th><?php esc_html_e('ID', 'your-text-domain'); ?></th>
+                            <th><?php esc_html_e('Name', 'your-text-domain'); ?></th>
+                            <th><?php esc_html_e('Status', 'your-text-domain'); ?></th>
+                            <th><?php esc_html_e('Actions', 'your-text-domain'); ?></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Table content populated via JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+    </div>
+    
+    <!-- Toast container for notifications -->
+    <div id="toast-container"></div>
+    
+</div>
+```
+
+### Standard Headers with Custom Actions
+
+```php
+// Add custom buttons to the header
+$right_content = '<div id="button-container">
+    <button id="help-button" class="button button-secondary" title="Get Help">
+        <span class="dashicons dashicons-editor-help"></span> Help
+    </button>
+    <button id="settings-button" class="button button-primary">
+        ' . esc_html__('Settings', 'your-text-domain') . '
+    </button>
+</div>';
+
+sip_render_standard_header('Your Plugin Name', $right_content);
+```
+
+### Dashboard JavaScript Implementation
+
+The dashboard requires JavaScript for interactivity. Create appropriate modules following the module organization principle.
+
+#### Module Organization Principle
+
+**Code should be associated with the interface where it's called.**
+
+- **Product Table Actions**: If a "Create Template" button exists in the product table, the `createTemplate()` function belongs in `product-actions.js`
+- **Template Table Actions**: Actions executed from the template table interface go in `template-actions.js`
+- **Cross-Table Actions**: The Product Creation Table initialization is in `template-actions.js` because it's triggered from the template table
+
+### Initial Data Loading Patterns
+
+#### Pattern 1: Server-Side Data Loading (Recommended)
+
+```php
+// In your enqueue_admin_scripts method
+public function enqueue_admin_scripts() {
+    // Get the data once in PHP
+    $dashboard_data = $this->get_dashboard_data();
+    
+    // Pass to JavaScript
+    wp_localize_script('your-plugin-script', 'yourPluginData', [
+        'dashboardData' => $dashboard_data,
+        'settings' => get_option('your_plugin_settings', [])
+    ]);
+}
+```
+
+```javascript
+// JavaScript: Use localized data
+let dashboardData = {};
+let pluginSettings = {};
+
+function init(serverData, serverSettings) {
+    dashboardData = serverData || {};
+    pluginSettings = serverSettings || {};
+    
+    $(document).ready(function() {
+        renderDashboard();
+        attachEventHandlers();
+    });
+}
+
+// Initialize with localized data
+if (typeof yourPluginData !== 'undefined') {
+    init(yourPluginData.dashboardData, yourPluginData.settings);
+}
+```
+
+#### Pattern 2: Client-Side AJAX Loading
+
+Use when data must be fetched dynamically:
+
+```javascript
+jQuery(document).ready(function($) {
+    loadDashboardData();
+    
+    function loadDashboardData() {
+        const formData = SiP.Core.utilities.createFormData(
+            'sip-your-plugin',
+            'load_dashboard',
+            'get_all'
+        );
+        
+        SiP.Core.ajax.handleAjaxAction(
+            'sip-your-plugin',
+            'load_dashboard',
+            formData
+        )
+        .then(function(response) {
+            updateDashboard(response.data);
+        })
+        .catch(function(error) {
+            SiP.Core.utilities.toast.show('Failed to load dashboard data', 5000);
+        });
+    }
+});
+```
+
+### Dashboard Refresh Strategies
+
+#### Local State Update + Re-render (Recommended)
+
+Best for instant response:
+
+```javascript
+// Module scope storage
+let availableData = {};
+let localState = {};
+
+// Initial load - store server data
+function loadDashboard() {
+    SiP.Core.ajax.handleAjaxAction('plugin', 'get_data', formData)
+        .then(response => {
+            availableData = response.data; // Store for reuse
+            renderDashboard(response.data);
+        });
+}
+
+// Re-render using existing data + updated local state
+function refreshDashboard() {
+    renderDashboard(availableData); // Uses updated localState
+}
+
+// After successful operation
+function handleOperationSuccess(response) {
+    // Update local state with response data
+    if (response.data.newVersion) {
+        localState.installedItems[itemId].version = response.data.newVersion;
+    }
+    
+    // Re-render immediately
+    refreshDashboard();
+}
+```
+
+#### Page Reload (Fallback)
+
+When local state update isn't feasible:
+
+```javascript
+// After successful operation
+setTimeout(function() {
+    window.location.reload();
+}, 1000); // Brief delay for user feedback
+```
+
+## Feature Implementation
 
 ### Feature-Specific Functions
+
 Create `includes/feature1-functions.php`:
 
 ```php
@@ -443,90 +616,23 @@ function sip_create_item() {
         'Item created successfully'
     );
 }
-
-// Update item function
-function sip_update_item() {
-    // Similar pattern: validate, process, respond
-}
-
-// Delete item function  
-function sip_delete_item() {
-    // Similar pattern: validate, process, respond
-}
 ```
 
-### Function Standards
-- Function names: `sip_handle_{feature}_action()`
-- Operation functions: `sip_{operation}_{item}()`
-- Always sanitize input data
-- Always validate required parameters
-- Always use `SiP_AJAX_Response` for responses
-
-## Step 6: Create JavaScript Module
+### JavaScript Module Structure
 
 Create `assets/js/modules/feature1-actions.js`:
-
-### Module Organization Principle
-
-**Code should be associated with the interface where it's called.**
-
-This principle guides how functionality is distributed across modules:
-
-- **Product Table Actions**: If a "Create Template" button exists in the product table, the `createTemplate()` function belongs in `product-actions.js`, not `template-actions.js`
-- **Template Table Actions**: Actions executed from the template table interface go in `template-actions.js`
-- **Cross-Table Actions**: The Product Creation Table initialization is in `template-actions.js` because it's triggered from the template table's "Load Into Creation Table" action
-
-Example:
-```javascript
-// In product-actions.js - because the action originates from product table
-function createTemplateFromProduct(productId) {
-    // Creates a template from selected product
-}
-
-// In template-actions.js - because the action originates from template table  
-function createProductsFromTemplate(templateId) {
-    // Initializes Product Creation Table with template
-}
-
-// In creation-table-actions.js - because these actions happen within that interface
-function saveCreationTable() {
-    // Saves creation table changes
-}
-```
-
-### Component Architecture
-
-SiP plugins are built on these core components provided by SiP Plugins Core:
-
-- **Core Libraries**:
-  - `ajax.js`: Standardized AJAX request/response handling
-  - `utilities.js`: Common utility functions used across plugins
-  - `state.js`: Client-side state management
-  
-- **UI Components**:
-  - Standardized headers via `sip_render_standard_header()`
-  - Common CSS/styling system
-  - Progress dialog system for batch operations
-
-- **Update System**:
-  - Custom plugin updater connecting to Stuff is Parts server
-  - Centralized version checking via `init_plugin_updater()`
-  - Plugin self-registration pattern for update checks
-
-### Standard Module Structure:
 
 ```javascript
 var SiP = SiP || {};
 window.SiP = window.SiP || {};
 SiP.YourPlugin = SiP.YourPlugin || {};
 
-console.log('▶ feature1-actions.js Loading...');
-
 SiP.YourPlugin.feature1Actions = (function($, ajax, utilities) {
+    const debug = SiP.Core.debug;
     
     // Initialize module
     function init() {
-        console.log('         🟡 feature1-actions.js:init()');
+        debug.log('▶ feature1-actions.js Loading...');
         attachEventListeners();
     }
     
@@ -559,23 +665,12 @@ SiP.YourPlugin.feature1Actions = (function($, ajax, utilities) {
         )
         .then(function(response) {
             utilities.toast.show('Item created successfully', 3000);
-            // Update UI as needed
             return response;
         })
         .catch(function(error) {
             utilities.toast.show('Error: ' + error.message, 5000);
             throw error;
         });
-    }
-    
-    // Handle update item
-    function handleUpdateItem(e) {
-        // Similar pattern
-    }
-    
-    // Handle delete item
-    function handleDeleteItem(e) {
-        // Similar pattern
     }
     
     // Handle successful responses
@@ -586,7 +681,6 @@ SiP.YourPlugin.feature1Actions = (function($, ajax, utilities) {
         
         switch(response.action) {
             case 'create_item':
-                // Handle create response
                 $('#items-table').DataTable().ajax.reload();
                 break;
                 
@@ -599,7 +693,7 @@ SiP.YourPlugin.feature1Actions = (function($, ajax, utilities) {
                 break;
                 
             default:
-                console.warn('Unhandled action:', response.action);
+                debug.warn('Unhandled action:', response.action);
         }
         
         return response;
@@ -621,97 +715,9 @@ SiP.Core.ajax.registerSuccessHandler(
 );
 ```
 
-### JavaScript Standards
-- Namespace: `SiP.YourPlugin.moduleName`
-- Module pattern with IIFE
-- Always use `SiP.Core.utilities.createFormData()`
-- Always use `SiP.Core.ajax.handleAjaxAction()`
-- Register success handler for each action type
+## DataTables Integration
 
-### Module Organization Best Practices (2025-01-21)
-- **Consolidate Related Functionality**: Group all operations for a single interface (e.g., dashboard table) in one module
-- **Avoid Cross-Module Dependencies**: Each module should be self-contained
-- **Use Proper Data Passing**: Pass data via module initialization, not global variables
-- **Example**: All plugin table operations (render, update, install, delete) belong in `plugin-dashboard.js`, not separate files
-
-## Step 7: Create Main JavaScript File
-
-Create `assets/js/main.js`:
-
-```javascript
-var SiP = SiP || {};
-window.SiP = window.SiP || {};
-SiP.YourPlugin = SiP.YourPlugin || {};
-
-jQuery(document).ready(function($) {
-    console.log('▶ SiP Your Plugin Main JS Loading...');
-    
-    // Initialize all modules
-    if (SiP.YourPlugin.feature1Actions) {
-        SiP.YourPlugin.feature1Actions.init();
-    }
-    
-    if (SiP.YourPlugin.feature2Actions) {
-        SiP.YourPlugin.feature2Actions.init();
-    }
-    
-    // Add more module initializations as needed
-    
-    console.log('✅ SiP Your Plugin Main JS Loaded');
-});
-```
-
-## Step 8: Create Dashboard View
-
-Create `views/dashboard.php`:
-
-```php
-<?php if (!defined('ABSPATH')) exit; ?>
-
-<div class="wrap sip-your-plugin-dashboard">
-    <!-- Your plugin interface here -->
-    <div class="sip-panel">
-        <h2>Feature 1</h2>
-        <button class="button create-item-btn">Create New Item</button>
-        
-        <table id="items-table" class="wp-list-table widefat fixed striped">
-            <!-- Table content -->
-        </table>
-    </div>
-</div>
-```
-
-## Step 9: Add CSS Styling
-
-Create `assets/css/admin.css`:
-
-```css
-/* Use SiP standard classes */
-.sip-your-plugin-dashboard {
-    /* Dashboard styles */
-}
-
-.sip-panel {
-    background: #fff;
-    border: 1px solid #ccd0d4;
-    box-shadow: 0 1px 1px rgba(0,0,0,.04);
-    margin: 20px 0;
-    padding: 20px;
-}
-
-/* Follow SiP naming conventions */
-.sip-btn {
-    /* Button styles */
-}
-
-.sip-dialog {
-    /* Dialog styles */
-}
-```
-
-## Step 10: Implement DataTables (if needed)
-
-For server-side data tables. Follow the [DataTables Integration Guide](./sip-feature-datatables.md) for detailed configuration options:
+For server-side data tables:
 
 ```javascript
 $('#items-table').DataTable({
@@ -727,117 +733,72 @@ $('#items-table').DataTable({
             data.feature1_action = 'get_items';
             data.nonce = sipCoreAjax.nonce;
             return data;
-        },
-        dataSrc: function(response) {
-            return response.data.items;
         }
     },
     columns: [
         { data: 'id', title: 'ID' },
         { data: 'name', title: 'Name' },
-        // Add more columns
+        { 
+            data: 'status',
+            render: function(data) {
+                return '<span class="status-' + data + '">' + data + '</span>';
+            }
+        }
     ]
 });
 ```
 
-And in PHP:
+## CSS Architecture
 
-```php
-function sip_get_items() {
-    // Get DataTables parameters
-    $draw = isset($_POST['draw']) ? intval($_POST['draw']) : 1;
-    $start = isset($_POST['start']) ? intval($_POST['start']) : 0;
-    $length = isset($_POST['length']) ? intval($_POST['length']) : 10;
-    
-    // Get your data
-    $items = []; // Fetch from database
-    $total = 100; // Total records
-    $filtered = 100; // Filtered records
-    
-    // Return DataTables response
-    SiP_AJAX_Response::datatable(
-        'sip-your-plugin-name',
-        'feature1_action',
-        'get_items',
-        $items,
-        $total,
-        $filtered,
-        'Items retrieved successfully'
-    );
+Create `assets/css/admin.css`:
+
+```css
+/* Dashboard wrapper */
+.sip-dashboard-wrapper {
+    width: 100%;
+    max-width: 1200px;
+    margin: 20px 0;
+}
+
+/* Section styling */
+.sip-section {
+    background: #fff;
+    border: 1px solid #ccd0d4;
+    box-shadow: 0 1px 1px rgba(0,0,0,.04);
+    margin-bottom: 20px;
+    padding: 20px;
+}
+
+/* Section header with actions */
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+/* Action forms */
+.action-form {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+/* Follow SiP naming conventions */
+.sip-panel {
+    background: #fff;
+    border: 1px solid #ccd0d4;
+    box-shadow: 0 1px 1px rgba(0,0,0,.04);
+    margin: 20px 0;
+    padding: 20px;
+}
+
+.sip-dialog {
+    /* Dialog styles */
 }
 ```
 
-## Step 11: Test Your Plugin
-
-1. Check plugin activation
-2. Verify menu appears under SiP Plugins
-3. Test AJAX functionality
-4. Check console for JavaScript errors
-5. Verify responses follow standard format
-
-## Step 12: Final Checklist
-
-Before releasing your plugin, review these additional resources:
-- For dashboard implementation, review the [Dashboards Guide](./sip-plugin-dashboards.md)
-
-Use this checklist before considering your plugin complete:
-
-### PHP Integration
-- [ ] Main plugin file includes includes/plugin-framework.php
-- [ ] AJAX shell is included and properly configured
-- [ ] All functionality-specific files are included
-- [ ] AJAX response methods use SiP_AJAX_Response class:
-  - [ ] SiP_AJAX_Response::success() for successful responses
-  - [ ] SiP_AJAX_Response::error() for error responses
-  - [ ] SiP_AJAX_Response::datatable() for server-side DataTables (when using server-side pagination/filtering/sorting)
-- [ ] Never use WordPress's wp_send_json functions
-- [ ] All handlers follow the switch-case pattern for routing
-- [ ] Plugin is registered with core via SiP_Plugin_Framework::init_plugin()
-- [ ] The plugin implements a static render_dashboard() method
-- [ ] Standard headers use sip_render_standard_header() function
-- [ ] Error handling is consistent with appropriate error messages
-
-### JavaScript Integration
-- [ ] All modules follow the recommended module pattern
-- [ ] All AJAX requests use SiP.Core.utilities.createFormData
-- [ ] All AJAX requests use SiP.Core.ajax.handleAjaxAction
-- [ ] Success handlers are registered for all action types
-- [ ] Event handlers are properly attached and managed
-- [ ] UI interactions use the standard SiP Core utilities
-- [ ] Progress dialog is used for batch operations
-- [ ] No direct use of jQuery.ajax or XMLHttpRequest
-- [ ] Console.log statements use DEBUG_MODE flags or are removed in production
-
-### File Structure
-- [ ] Directory structure matches the standard
-- [ ] File and directory structure matches the standard
-- [ ] Naming conventions are consistent
-- [ ] Code style is consistent (indentation, brackets, etc.)
-- [ ] Plugin name starts with 'sip-'
-- [ ] AJAX shell follows plugin-specific naming pattern
-
-### UI Standards
-- [ ] Standard CSS classes are used (sip-panel, sip-btn, sip-dialog)
-- [ ] DataTables initialization follows the standard pattern
-- [ ] Dialog boxes use the sip-dialog class
-- [ ] Toast notifications use SiP.Core.utilities.toast.show
-- [ ] Spinners are managed through SiP.Core.utilities.spinner
-
-### General Standards
-- [ ] Comments are present for complex operations
-- [ ] No unnecessary dependencies
-- [ ] Proper error handling throughout
-- [ ] Follows the module organization principle (code with interface)
-
-## Common Pitfalls to Avoid
-
-1. **Don't use WordPress's `wp_send_json()` functions** - Always use `SiP_AJAX_Response`
-2. **Don't create custom AJAX endpoints** - Use the centralized handler
-3. **Don't skip parameter validation** - Always validate and sanitize
-4. **Don't forget to register your plugin** - Use `SiP_Plugin_Framework::init_plugin()`
-5. **Don't use custom spinners** - Use `SiP.Core.utilities.spinner`
-
-## Dependency Management Standards
+## Dependency Management
 
 ### Plugin Headers
 
@@ -856,7 +817,6 @@ Requires Plugins: sip-plugins-core
 Child plugins must check for minimum core version compatibility:
 
 ```php
-// Check for minimum core version compatibility
 $required_core_version = '2.8.9';
 $core_plugin_data = get_plugin_data(WP_PLUGIN_DIR . '/sip-plugins-core/sip-plugins-core.php', false, false);
 $current_core_version = $core_plugin_data['Version'] ?? '0.0.0';
@@ -869,45 +829,74 @@ if (version_compare($current_core_version, $required_core_version, '<')) {
 }
 ```
 
-### Automated Dependency Management
+## Architecture Checklist
 
-The SiP release system automatically:
+### PHP Integration
+- [ ] Main plugin file includes plugin-framework.php
+- [ ] AJAX shell properly configured with two-parameter hook
+- [ ] All functionality-specific files included
+- [ ] AJAX responses use SiP_AJAX_Response class
+- [ ] Plugin registered with SiP_Plugin_Framework::init_plugin()
+- [ ] render_dashboard() method implemented
+- [ ] Standard headers use sip_render_standard_header()
+- [ ] Storage registered with sip_plugin_storage()
+- [ ] Version compatibility checked
 
-1. **Detects current core version** during child plugin releases
-2. **Updates `Requires Plugins` header** with version requirement (e.g., `sip-plugins-core (2.8.9+)`)
-3. **Prevents version conflicts** by ensuring child plugins require the appropriate core version
+### JavaScript Integration
+- [ ] Modules follow standard pattern
+- [ ] AJAX requests use SiP.Core utilities
+- [ ] Success handlers registered
+- [ ] Event handlers properly attached
+- [ ] Debug logging uses SiP.Core.debug
+- [ ] Module organization follows interface principle
+- [ ] Data stored in module scope for reuse
 
-### Release Workflow
+### Dashboard Implementation
+- [ ] Dashboard view in views/ directory
+- [ ] Action forms with dropdowns
+- [ ] DataTables for data display
+- [ ] Loading indicators present
+- [ ] Toast notifications for feedback
+- [ ] Proper data loading pattern chosen
+- [ ] Refresh strategy appropriate
 
-**For Breaking Changes:**
-1. Release core plugin with breaking changes first
-2. Child plugin releases automatically require the new core version
-3. Users must update core before child plugins will activate
+### File Structure
+- [ ] Directory structure matches standard
+- [ ] Naming conventions consistent
+- [ ] Plugin name starts with 'sip-'
+- [ ] AJAX shell follows naming pattern
 
-**For Compatible Updates:**
-- Core patches (2.8.9 → 2.8.10) don't require child plugin updates
-- Existing version requirements remain valid
+### UI Standards
+- [ ] Standard CSS classes used
+- [ ] Responsive layout
+- [ ] Accessibility labels included
+- [ ] Separation of PHP/JavaScript maintained
 
-### WordPress Standards Compliance
+## Best Practices
 
-This approach follows WordPress 6.5+ dependency management standards:
+1. **Code Organization** - Keep code associated with its interface
+2. **State Management** - Store server data in module scope
+3. **Refresh Strategy** - Prefer local updates over page reload
+4. **Error Handling** - Always handle errors gracefully
+5. **User Feedback** - Provide clear feedback for all actions
+6. **Documentation** - Follow patterns, don't create variations
+7. **Module Consolidation** - Group related functionality
+8. **Separation of Concerns** - Keep PHP and JavaScript separate
 
-- Uses official `Requires Plugins` header
-- Provides graceful failure with admin notices
-- Prevents fatal errors through version checking
-- Enforces proper update sequencing
+## Common Pitfalls to Avoid
 
-## Next Steps
+1. **Don't use wp_send_json()** - Always use SiP_AJAX_Response
+2. **Don't create custom AJAX endpoints** - Use centralized handler
+3. **Don't embed JavaScript in PHP** - Use wp_localize_script()
+4. **Don't skip loading indicators** - Users need feedback
+5. **Don't create redundant refresh endpoints** - Use local state
+6. **Don't forget storage registration** - Use storage manager
+7. **Don't mix concerns** - Keep PHP/JS responsibilities separate
 
-After creating your basic plugin structure:
+## Related Documentation
 
-1. Add more features following the same patterns
-2. Implement settings pages if needed
-3. Add update mechanism support
-4. Create documentation for your specific functionality
-
-## Need Help?
-
-- Review existing SiP plugins for examples
-- Check the SiP Code Standards documentation
-- Follow the established patterns consistently
+- [SiP Plugin Platform](./sip-plugin-platform.md) - Platform architecture
+- [AJAX Implementation](./sip-plugin-ajax.md) - AJAX patterns and implementation
+- [DataTables Guide](./sip-feature-datatables.md) - Table implementation
+- [Debug Logging](./sip-development-testing-debug.md) - Debug system
+- [Data Storage](./sip-plugin-data-storage.md) - Storage patterns

@@ -397,7 +397,7 @@ plugins/
 
 ## Debugging Tips
 
-Use the [Debug Logging System](./sip-development-debug-logging.md) for more advanced debugging.
+Use the [Testing, Debugging & Logging Guide](./sip-development-testing-debug.md) for more advanced debugging.
 
 1. **Check Network Tab:**
    - Look for `admin-ajax.php` requests

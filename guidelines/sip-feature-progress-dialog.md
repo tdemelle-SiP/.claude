@@ -1073,6 +1073,6 @@ processBatch({...}).then(() => {
    - Solution: Dialog automatically cleans up on close via jQuery UI
 
 ## Related Guides
-- For testing batch operations, refer to the [Testing Guide](./sip-development-testing.md)
+- For testing batch operations, refer to the [Testing, Debugging & Logging Guide](./sip-development-testing-debug.md)
 - For AJAX integration patterns, see the [AJAX Guide](./sip-plugin-ajax.md)
 - For UI component standards, see the [UI Components Guide](./sip-feature-ui-components.md)

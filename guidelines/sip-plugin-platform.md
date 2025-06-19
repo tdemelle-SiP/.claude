@@ -214,7 +214,7 @@ See [Third-Party Library Integration](./sip-feature-third-party-libraries.md) fo
 
 ### JavaScript Usage
 
-In child plugin JavaScript files, core features are directly accessible through the global namespace. Learn more about utilizing SiP Core debug logging in the [Debug Logging Guide](./sip-development-debug-logging.md):
+In child plugin JavaScript files, core features are directly accessible through the global namespace. Learn more about utilizing SiP Core debug logging in the [Testing, Debugging & Logging Guide](./sip-development-testing-debug.md):
 
 ```javascript
 // Namespace setup

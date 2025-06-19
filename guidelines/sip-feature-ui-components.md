@@ -1,10 +1,11 @@
 # SiP Feature - UI Components
 
-This guide documents the UI components and browser storage patterns used in SiP plugins.
+This guide documents the UI components and browser storage patterns used in SiP plugins, including modals, toast notifications, spinners, and form elements.
 
 ## Table of Contents
 
 - [Component Design Principles](#component-design-principles)
+- [UI Component Hierarchy](#ui-component-hierarchy)
 - [UI State Management with Local Storage](#ui-state-management-with-local-storage)
 - [Toast Notifications](#toast-notifications)
 - [Spinner and Overlay](#spinner-and-overlay)
@@ -436,49 +437,193 @@ function riskyOperation() {
 }
 ```
 
-### Related Documentation
-- [AJAX Implementation](sip-plugin-ajax.md) - Automatic spinner handling
-- [Progress Dialog](sip-feature-progress-dialog.md) - For operations with progress tracking
-- [Toast Notifications](#toast-notifications) - User feedback messages
-
 ## Modals and Dialogs
 
+For dashboard integration examples, see the [Dashboards Guide](./sip-plugin-dashboards.md#step-6-add-modal-dialogs).
+
 ### jQuery UI Dialog
+
+#### Basic Modal
 ```javascript
-$('#my-dialog').dialog({
-    title: 'Confirm Action',
-    width: 400,
-    height: 'auto',
+const $dialog = $('<div>Content</div>').dialog({
     modal: true,
+    width: 400,
+    title: 'Dialog Title',
     dialogClass: 'sip-dialog',
     buttons: {
-        'Confirm': function() {
-            // Handle confirm
+        'OK': function() { $(this).dialog('close'); },
+        'Cancel': function() { $(this).dialog('close'); }
+    },
+    close: function() { $(this).dialog('destroy').remove(); }
+});
+```
+
+#### Standard Classes
+- `sip-dialog` - Base class (required)
+- `progress-dialog` - For progress dialogs
+- `log-dialog` - For log viewers
+
+### Progress Dialog Pattern
+
+For complete progress dialog implementation, see the [Progress Dialog Guide](./sip-feature-progress-dialog.md).
+
+#### Structure
+```javascript
+const dialogContent = `
+    <div class="sip-dialog progress-dialog">
+        <div class="initial-message">
+            <p>Ready to proceed?</p>
+            <div class="dialog-buttons">
+                <button class="continue-button">Continue</button>
+                <button class="cancel-button">Cancel</button>
+            </div>
+        </div>
+        <div class="progress-content" style="display: none;">
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: 0%"></div>
+            </div>
+            <div class="current-step">Starting...</div>
+            <div class="status-log"></div>
+        </div>
+    </div>
+`;
+```
+
+#### Controller Pattern
+```javascript
+function createProgressDialog() {
+    const $dialog = $(dialogContent).dialog({
+        modal: false,
+        width: 600,
+        dialogClass: 'sip-dialog progress-dialog',
+        closeOnEscape: false
+    });
+    
+    const controller = {
+        onContinue: (callback) => { /* store callback */ },
+        onCancel: (callback) => { /* store callback */ },
+        startProcess: () => {
+            $dialog.find('.initial-message').hide();
+            $dialog.find('.progress-content').show();
+        },
+        updateProgress: (percent) => {
+            $dialog.find('.progress-fill').css('width', `${percent}%`);
+        },
+        updateStatus: (message) => {
+            $dialog.find('.current-step').text(message);
+            $dialog.find('.status-log').append(`<div>${message}</div>`);
+        },
+        showError: (message) => {
+            $dialog.find('.status-log').append(
+                `<div class="error-message">${message}</div>`
+            );
+        },
+        close: () => $dialog.dialog('destroy').remove()
+    };
+    
+    return controller;
+}
+```
+
+### Common Modal Patterns
+
+#### Confirmation Dialog
+```javascript
+const $dialog = $('<div>Are you sure?</div>').dialog({
+    modal: true,
+    title: 'Confirm',
+    dialogClass: 'sip-dialog',
+    buttons: {
+        'Yes': function() {
+            performAction();
             $(this).dialog('close');
         },
-        'Cancel': function() {
+        'No': function() {
             $(this).dialog('close');
         }
     }
 });
 ```
 
-### Custom Modal Pattern
+#### Save Dialog with Options
 ```javascript
-// Show modal
-$('#modal-backdrop').fadeIn();
-$('#custom-modal').fadeIn();
+const content = `
+    <div class="sip-dialog">
+        <p>Save changes?</p>
+        <div class="dialog-buttons">
+            <button class="push-close">Save & Close</button>
+            <div class="button-group">
+                <button class="save-button">Save</button>
+                <button class="cancel-button">Cancel</button>
+            </div>
+        </div>
+    </div>
+`;
 
-// Hide modal
-$('#modal-backdrop').fadeOut();
-$('#custom-modal').fadeOut();
-
-// Close on backdrop click
-$('#modal-backdrop').on('click', function() {
-    $(this).fadeOut();
-    $('#custom-modal').fadeOut();
+const $dialog = $(content).dialog({
+    modal: true,
+    dialogClass: 'sip-dialog',
+    create: function() {
+        $(this).find('.save-button').on('click', () => {
+            save();
+            $dialog.dialog('close');
+        });
+    }
 });
 ```
+
+### Key CSS
+
+#### Dialog Z-Index
+```css
+:root {
+    --z-overlay: 9998;
+    --z-spinner: 9999;
+    --z-dialog: 10000;
+    --z-toast: 10001;
+}
+```
+
+#### Toast Container
+```css
+#toast-container {
+    position: fixed;
+    top: 35%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: var(--z-toast);
+}
+```
+
+### Required Actions
+
+#### Always Clean Up Dialogs
+```javascript
+close: function() {
+    $(this).dialog('destroy').remove();
+}
+```
+
+#### Use Custom Overlay
+```javascript
+$('#overlay').show();  // Instead of jQuery UI modal overlay
+```
+
+#### Error Handling
+```javascript
+dialog.showError(error.message);
+SiP.Core.utilities.toast.show('Error: ' + error.message, 5000);
+```
+
+### Modal Checklist
+
+- [ ] Use `sip-dialog` class on all dialogs
+- [ ] Clean up with `destroy().remove()` 
+- [ ] Use `SiP.Core.utilities.toast.show()` for notifications
+- [ ] Progress dialogs follow controller pattern
+- [ ] Custom overlay for non-modal dialogs
+- [ ] Error messages longer duration (5000ms)
+- [ ] Success messages standard duration (3000ms)
 
 ## Progress Indicators
 
@@ -636,10 +781,6 @@ For selecting all related items in a group:
 ### Selection Hierarchy
 
 The selection system supports three levels:
-
-1. **Header Level**: Selects all items in a column or all rows
-2. **Group Level**: Selects all items within a specific group
-3. **Item Level**: Individual item selection
 
 ```
 Header Checkbox (all rows/columns)
@@ -1131,3 +1272,5 @@ toggleUIControls(hasDataInMemory());
 8. **Component Stacking**: Use the standardized z-index system (see [CSS Development](sip-development-css.md#z-index-management))
 9. **Consistent Class Names**: Use `normalizeForClass()` for all dynamic CSS class generation
 10. **Conditional Visibility**: Hide UI controls when no data is available to manipulate
+11. **Modal Cleanup**: Always clean up dialogs with `destroy().remove()`
+12. **Toast Duration**: Use 3000ms for success, 5000ms for errors

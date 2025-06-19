@@ -271,7 +271,7 @@ $('#products-table').DataTable({
 
 ### Client-Server Synchronized State
 
-This pattern combines the previous two approaches and is used for settings that need to be accessible both in PHP and JavaScript. This pattern is used extensively in the [Debug Logging System](./sip-development-debug-logging.md).
+This pattern combines the previous two approaches and is used for settings that need to be accessible both in PHP and JavaScript. This pattern is used extensively in the [Testing, Debugging & Logging Guide](./sip-development-testing-debug.md).
 
 Some configuration options need to exist in both client and server storage. For these cases, a dual-storage approach is used. An excellent example is the debug toggle functionality which exists in both localStorage for UI state and WordPress options for server-side behavior.
 
@@ -342,7 +342,7 @@ When implementing features that require dual storage:
 - Synchronize localStorage when server-side changes occur
 - Include helper methods for direct synchronization
 
-For more details on implementing debug functionality, see the [Debug Logging Guide](./sip-development-debug-logging.md).
+For more details on implementing debug functionality, see the [Testing, Debugging & Logging Guide](./sip-development-testing-debug.md).
 
 ## 2. Session Storage (Client-Side)
 

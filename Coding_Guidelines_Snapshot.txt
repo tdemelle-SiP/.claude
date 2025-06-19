@@ -1,4 +1,10 @@
- Here is the message I will send at the beginning of a task that should lead to this documentation.
+═══════════════════════════════════════════════════════════════════════════════
+                          SIP PLUGIN SUITE CODING GUIDELINES
+═══════════════════════════════════════════════════════════════════════════════
+
+## PRE-TASK MESSAGE
+
+Here is the message I will send at the beginning of a task that should lead to this documentation.
 
 ----
 
@@ -17,12 +23,14 @@ Then please review the documentation for the plugin suite at
 /mnt/c/Users/tdeme/Local
   Sites/faux-stained-glass-panes/app/public/wp-content/plugins/.claude/guidelines/sip-printify-manager-extension-widget.md
   
-  After looking over the documentation, please look over the relevant code and then respond in the chat with a summary of the task including WHY the work is being done and any questions you may have. state which guidelines primarily apply to this specific task and how you'll follow them. Once we've discussed the correct approach, I'll ask you to make the necessary updates adhering to the documented guidelines and standards.
+After looking over the documentation, please look over the relevant code and then respond in the chat with a summary of the task including WHY the work is being done and any questions you may have. State which documentation files you've identified as relevant to this specific task. Once we've discussed the correct approach, I'll ask you to make the necessary updates adhering to the documented guidelines and standards.
 
 Do not forget; you must code according to Coding_Guidelines_Snapshot.txt  Do not forget; No Task Agent Delegation.
 ----
 
- Here is the message that I will send at the end of a task to ensure we are following through correctly
+## POST-TASK MESSAGE
+
+Here is the message that I will send at the end of a task to ensure we are following through correctly
 
 ----
  Great! Can you please look over the code that you just updated and make sure it adheres to the guidelines /mnt/c/Users/tdeme/Local
@@ -39,38 +47,74 @@ And can you please look over the documentation files to make sure that they are 
 Start by reviewing /mnt/c/Users/tdeme/Local
   Sites/faux-stained-glass-panes/app/public/wp-content/plugins/.claude/index.md to refresh yourself with the overall structure and the principles behind it.  Then Please make sure to check on related documentation in the /guidelines/ directory to ensure that relevant files reflect updated standards correctly where appropriate and don't retain any deprecated references.  If there were aspects of the code that were unclear to you as you worked, carefully adhering to the documentation guidelines, please update the documentation to reflect the patterns, principles and structures that were needed to correctly implement your solution.    When you're done, can you please give me a commit message to include when I submit the changes in source control?
 ----
- 
- -- PLANNING --
+
+═══════════════════════════════════════════════════════════════════════════════
+                               PLANNING PROCESS
+═══════════════════════════════════════════════════════════════════════════════
+
+## PLANNING REQUIREMENTS
 
  Do not code without explicit direction to do so.  Do not make changes beyond those clearly stated in a request to change code made by the user.
 
  Images shared by the user will be uploaded here: /mnt/c/Users/tdeme/Documents/VSCode_Images_Repo/. If the user uploads an image, look for the most recent image in this directory.
 
- Before doing work, refer to the index.md file in the .claude folder and make sure that you are familiar with any relevant utilities and standards outlined in the documentation.
+## DOCUMENTATION COMPLIANCE PROCESS
 
-When coding, only use the methods and standards in the sip plugin suite documentation.  If there is cause to code using methods or standards that are not detailed in the documentatio, stop what you are doing and explain the situation in chat so that the new approach can be discussed and validated before you implement it with explicit direction to do so.
+Before doing work, you must:
 
- If in the course of review or implementation you have ideas for additions or alternate approaches, stop what you're doing and mention them in a chat message so that we can discuss them, decide upon the best path forward and you can proceed with coding with explicit direction.
+1. **Read the index.md file** in the .claude folder to understand the documentation structure
+2. **Review the Complete Documentation Assessment** section to identify which guidelines apply to your task
+3. **Read ALL identified relevant documentation completely** - do not skim or read only first sections
+4. **Create a Pre-Work Report** with the following structure:
 
- If you are analyzing code in order to understand how it functions or to understand why a bug is occurring, please don't be satisfied basing your analysis and recommendation on what a superficial read of the immediate code suggests, what it seems like or what it "might" be; look at the actual code context when you have a theory and replace your speculation with a definitive understanding of the actual situation.  
+### Pre-Work Report Structure
+```
+Task Understanding:
+- [Describe the task in your own words]
+- [Explain WHY this work is being done]
+
+Relevant Documentation Identified:
+- [ ] Coding_Guidelines_Snapshot.txt (always required)
+- [ ] index.md (always required)
+- [ ] [List each additional guideline file identified as relevant]
+
+Applicable Standards:
+- [List specific patterns/standards from the documentation that apply]
+
+Questions/Clarifications:
+- [Any uncertainties about which guidelines apply]
+- [Any gaps in documentation for this task]
+```
+
+When coding, only use the methods and standards in the sip plugin suite documentation.  If there is cause to code using methods or standards that are not detailed in the documentation, stop what you are doing and explain the situation in chat so that the new approach can be discussed and validated before you implement it with explicit direction to do so.
+
+If in the course of review or implementation you have ideas for additions or alternate approaches, stop what you're doing and mention them in a chat message so that we can discuss them, decide upon the best path forward and you can proceed with coding with explicit direction.
+
+## CODE ANALYSIS REQUIREMENTS
+
+If you are analyzing code in order to understand how it functions or to understand why a bug is occurring, please don't be satisfied basing your analysis and recommendation on what a superficial read of the immediate code suggests, what it seems like or what it "might" be; look at the actual code context when you have a theory and replace your speculation with a definitive understanding of the actual situation.  
  
- Systematically follow through the whole code sequence in question from beginning to end without making any leaps in logic based on assumptions so that you understand the structure of the entire contextual framework before drilling into details speculatively.
+Systematically follow through the whole code sequence in question from beginning to end without making any leaps in logic based on assumptions so that you understand the structure of the entire contextual framework before drilling into details speculatively.
 
-   BEFORE drawing conclusions from or modifying code:
-  REQUIRE verification = {
-      data_structure: INSPECT actual runtime data,        
-      css_classes: INSPECT actual DOM elements,
-      field_names: MATCH exact property names,
-      assumptions: COUNT must equal 0
-  }
+BEFORE drawing conclusions from or modifying code:
+REQUIRE verification = {
+    data_structure: INSPECT actual runtime data,        
+    css_classes: INSPECT actual DOM elements,
+    field_names: MATCH exact property names,
+    assumptions: COUNT must equal 0
+}
 
-  IF assumption_needed THEN {
-      STOP;
-      ASK user for verification;
-      WAIT for response;
-  }
+IF assumption_needed THEN {
+    STOP;
+    ASK user for verification;
+    WAIT for response;
+}
 
- -- WORKING --
+═══════════════════════════════════════════════════════════════════════════════
+                              WORKING PROCESS
+═══════════════════════════════════════════════════════════════════════════════
+
+## CRITICAL DIRECTIVES
 
 Critical non-negotiable directive: No Task Agent Delegation
 
@@ -83,18 +127,19 @@ Critical non-negotiable directive: No Task Agent Delegation
 
   Use file reading, editing, and searching tools directly rather than invoking any "Task" agents or similar delegation mechanisms.
 
- Keep code simple, clean and straightforward. Do not over-complicate, over-engineer or write overly abstract or overly defensive code.
+## CODE QUALITY PRINCIPLES
 
- Do not take shortcuts to prioritize speed. Always prioritize being thorough, careful, doing the job right and working from definitive understanding instead of speculation.
+Keep code simple, clean and straightforward. Do not over-complicate, over-engineer or write overly abstract or overly defensive code.
+
+Do not take shortcuts to prioritize speed. Always prioritize being thorough, careful, doing the job right and working from definitive understanding instead of speculation.
  
 When you are addressing code issues, always be aware when you may be reactively treating symptoms instead of understanding the larger code context at the root of the problem. Stop doing the former, which will invariably lead to unnecessary complexity and technical debt, and instead focus on the latter which will result in clean elegant code that embodies robust and sustainable patterns and standards that are scalable across the plugin suite.
 
-Before writing any code, explain WHY the problem exists, then solve THAT problem. code from first principles, not from pattern matched hacks.
+Before writing any code, explain WHY the problem exists, then solve THAT problem. Code from first principles, not from pattern matched hacks.
 
-Implementation Checkpoint Requirements
+## IMPLEMENTATION CHECKPOINT REQUIREMENTS
 
-  Before writing ANY code, you MUST complete
-  this analysis:
+Before writing ANY code, you MUST complete this analysis:
 
   1. Root Cause Analysis (Required)
 
@@ -146,6 +191,48 @@ Implementation Checkpoint Requirements
   the symptom, do not proceed with
   implementation.
 
+## PATTERN IMPLEMENTATION VERIFICATION
+
+When implementing ANY established pattern:
+
+1. STATE YOUR INTENT
+   - Before coding: "Implementing [pattern] following [document.md:section]"
+   - Quote the exact implementation requirement from documentation
+   - Code exactly as documented, no variations
+
+2. COMMON COMPLIANCE FAILURES TO AVOID
+   - Parameter naming variations (e.g., action_name vs action_type)
+   - Hook timing differences from documented patterns  
+   - Response format deviations from standard structures
+   - JavaScript utility usage that bypasses documented methods
+
+3. VERIFICATION CHECKPOINTS
+   - After implementation, confirm it matches documentation exactly
+   - Test that the pattern works as documented
+   - If any deviations were necessary, explain why
+
+If documentation is unclear or incomplete, STOP and request clarification rather than making assumptions about correct implementation.
+
+### Specific Pattern Checkpoints
+
+**AJAX IMPLEMENTATION:**
+- Read sip-plugin-ajax.md completely before any AJAX work
+- Verify parameter naming: $_POST[$action_type] matches JavaScript createFormData() second parameter
+- Test AJAX call with browser dev tools before considering complete
+- Check that response routing follows documented three-level structure
+
+**DATATABLES IMPLEMENTATION:**
+- Read sip-feature-datatables.md for table patterns
+- Follow client-side processing standards
+- Implement proper cleanup before destroy()
+
+**UI COMPONENTS:**
+- Read sip-feature-ui-components.md for UI patterns
+- Use SiP.Core utilities for all UI operations
+- Follow the three-layer visibility structure for tables
+
+## WORKFLOW PRACTICES
+
 When you are familiarizing yourself with code, read the code instead of searching for specific parts; understanding the full context that targetted searches may miss is critical.
 
 When searching and replacing to update code, do not rely on your saved context for your search string; check the actual code to ensure your search string is accurate.
@@ -154,10 +241,15 @@ Never use write to file to make code updates.
  
  Do not preserve legacy code.  Clean up all remnants of unused or deprecated code thoroughly.  Do not implement or ignore backward compatibility code. Backward combatibility is unnecessary complexity that creates confusion and masks errors that should be fixed.  If we're in transition, we don't handle that with backward compatibility code. We handle that by letting the code throw errors and using those errors as cues to get all the code up to the correct standard.
 
- Do not create custom test tools or instructions unless explicitly asked to do so.  Testing will take place in the actual code.
+Do not create custom test tools or instructions unless explicitly asked to do so.  Testing will take place in the actual code.
 
--- SYMPTOM VS ROOT CAUSE DISTINCTION --
-  Symptom vs. Root Cause: A Critical Distinction
+═══════════════════════════════════════════════════════════════════════════════
+                           SPECIFIC GUIDANCE
+═══════════════════════════════════════════════════════════════════════════════
+
+## SYMPTOM VS ROOT CAUSE DISTINCTION
+
+Symptom vs. Root Cause: A Critical Distinction
 
   The Problem Pattern:
   When encountering an error, there are two paths:
@@ -226,8 +318,9 @@ Never use write to file to make code updates.
 
   The goal is code that CAN'T fail because it's structurally correct, not code that's defended against failure.
 
--- LEGITIMATE setTimeout USAGE --
-  When setTimeout IS Appropriate (Industry Standard Patterns)
+## LEGITIMATE setTimeout USAGE
+
+When setTimeout IS Appropriate (Industry Standard Patterns)
 
   setTimeout is NOT always a symptom. There are legitimate, industry-standard uses where it's the correct solution:
 
@@ -322,10 +415,10 @@ Never use write to file to make code updates.
   Ask yourself: "Am I using setTimeout because I WANT a delay, or because I'm HOPING something 
   will be ready?" If it's hope, fix the root cause.
 
--- MULTIPLE REDUNDANT STORAGE ("Belt and Suspenders") --
+## MULTIPLE REDUNDANT STORAGE ("Belt and Suspenders")
   
-  The Problem Pattern:
-  Creating multiple ways to store/recover the same data "just in case" something fails.
+The Problem Pattern:
+Creating multiple ways to store/recover the same data "just in case" something fails.
   
   Example of Multiple Redundant Storage (WRONG):
   // Shop authorization - creating multiple recovery paths
@@ -365,22 +458,32 @@ Never use write to file to make code updates.
   - Fix that root cause
   - Trust your data flow
 
- 
- -- REVIEWING --
- If you have implemented changes to the code, carefully review your changes and any code that may be affected by those changes to ensure that all code adheres to the prevailing sip plugin suite coding standard, and that there is no legacy code or remnants of deprecated code.
+═══════════════════════════════════════════════════════════════════════════════
+                            REVIEWING PROCESS
+═══════════════════════════════════════════════════════════════════════════════
 
-   Would a seasoned senior enterprise developer approve of this clean, simple solution that makes the right thing automatic and the wrong thing difficult if not impossible?
+## CODE REVIEW REQUIREMENTS
 
- Upon completion, review the sip plugin suite documentation in the .claude folder and ensure that it is up to date, clear and complete and that it reflects both any changes or additions to code standards and addresses any issues that may have arisen in implementation from documentation clarity or organization.
+If you have implemented changes to the code, carefully review your changes and any code that may be affected by those changes to ensure that all code adheres to the prevailing sip plugin suite coding standard, and that there is no legacy code or remnants of deprecated code.
+
+Would a seasoned senior enterprise developer approve of this clean, simple solution that makes the right thing automatic and the wrong thing difficult if not impossible?
+
+## DOCUMENTATION UPDATE REQUIREMENTS
+
+Upon completion, review the sip plugin suite documentation in the .claude folder and ensure that it is up to date, clear and complete and that it reflects both any changes or additions to code standards and addresses any issues that may have arisen in implementation from documentation clarity or organization.
 
 If you are adding or supplementing documentation, please make sure that you are adding it correctly according to the pattern used to document other sip plugins, core features or development tools and methods and that it is correctly referenced and linked in all expected and useful contexts.
 
- Code changes do not need to be recorded in a file.  Please simply provide a brief summary of changes suitable to be included in the source control commit message.
+## COMMIT MESSAGE
+
+Code changes do not need to be recorded in a file.  Please simply provide a brief summary of changes suitable to be included in the source control commit message.
 
 
- -----------
+═══════════════════════════════════════════════════════════════════════════════
+                    ADDITIONAL GUIDANCE TO INCORPORATE
+═══════════════════════════════════════════════════════════════════════════════
 
- Incorporate this into guidelnes...
+## CODE TRACING METHODOLOGY
 
 
  Please trace the logical sequence of events that the code follows incremental step by incremental logical step through all paths that extend from the user executing the Load Into Creation Table action in the template table in /plugins/sip-printify-manager/. Follow the logic making no leaps other than those explicitly described in the actual code all the way through to their conclusion when the events following the Load Into Creation Table action conclude. This is a complex multi-step process that spans nearly all the sip printify manager plugin files and all elements of the dashboard. The files that you must refer to will be in the /plugins/sip-printify-manager/ directory and may also be in the plugins/sip-plugins-core/ directory. I am asking you to follow the logic of the code uncompromisingly taking no leap that is not explicit in the actual code.

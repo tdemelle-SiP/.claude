@@ -33,7 +33,12 @@
       "Bash(jq:*)",
       "Bash(touch:*)",
       "Bash(zip:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(for file in *.md)",
+      "Bash(do if ! grep -q \"$file\" ../index.md)",
+      "Bash(then echo \"Not in index.md: $file\")",
+      "Bash(fi)",
+      "Bash(done)"
     ],
     "deny": []
   },
