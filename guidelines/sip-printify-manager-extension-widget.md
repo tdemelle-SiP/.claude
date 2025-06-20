@@ -1577,22 +1577,24 @@ array(
 
 ### 11.4 File Browser Integration
 
-The repository management system can now use the SiP Core file browser for adding extension repositories:
+The repository management system now uses simple text input fields for adding extension repositories:
 
 ```javascript
 // In release-actions.js - Add Repository button handler
 $('#add-repository-btn').on('click', function() {
-    SiP.Core.fileBrowser.browse({
-        title: 'Select Repository Directory',
-        onSelect: function(path) {
-            // Validate and add repository
-            validateAndAddRepository(path);
-        }
-    });
+    // Show dialog with text input for path
+    const dialogHtml = `
+        <div class="sip-modal">
+            <input type="text" id="repository-path" class="widefat" 
+                   placeholder="Enter repository path">
+            <button id="validate-path" class="button">Add Repository</button>
+        </div>
+    `;
+    // User enters path directly, validation done server-side
 });
 ```
 
-This replaces any manual path input with the standardized cross-platform file browser.
+This approach uses simple text input fields following WordPress standards for path entry.
 
 ## 12. Conflicts and Standards Clarification
 

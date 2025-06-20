@@ -13,6 +13,9 @@ This guide documents the UI components and browser storage patterns used in SiP 
 - [Progress Indicators](#progress-indicators)
 - [Buttons and Controls](#buttons-and-controls)
 - [Form Elements](#form-elements)
+  - [Enhanced Select](#enhanced-select)
+  - [Toggle Switches](#toggle-switches)
+  - [Folder/Directory Selection](#folderdirectory-selection)
 - [Checkbox Selection Patterns](#checkbox-selection-patterns)
 - [Responsive Tables](#responsive-tables)
 - [Session Lifecycle](#session-lifecycle)
@@ -745,6 +748,70 @@ $('.enhanced-select').select2({
     <span class="toggle-slider"></span>
     <span class="toggle-label">Enable Feature</span>
 </label>
+```
+
+### Folder/Directory Selection
+
+Due to browser security limitations, web applications cannot access the full file system path when using folder selection dialogs. The SiP Plugin Suite uses text input fields for directory paths, following WordPress standards.
+
+#### Implementation Pattern
+
+```javascript
+// Create path input dialog
+const dialogHtml = `
+    <div id="add-repository-dialog" class="sip-modal" style="display: block;">
+        <div class="sip-modal-content" style="max-width: 500px;">
+            <div class="sip-modal-header">
+                <h2>Add Repository</h2>
+                <span class="sip-modal-close">&times;</span>
+            </div>
+            <div class="sip-modal-body">
+                <label for="repository-path-input">Repository Path:</label>
+                <input type="text" 
+                       id="repository-path-input" 
+                       class="widefat" 
+                       placeholder="e.g., C:\\Users\\name\\repos\\my-plugin or /home/user/repos/my-plugin"
+                       style="margin: 10px 0;">
+                <p class="description">Enter the full path to your Git repository directory.</p>
+                <div id="path-validation-message" style="margin-top: 10px;"></div>
+            </div>
+            <div class="sip-modal-footer">
+                <button id="validate-repository-btn" class="button button-primary">Add Repository</button>
+                <button id="cancel-repository-btn" class="button">Cancel</button>
+            </div>
+        </div>
+    </div>
+`;
+```
+
+#### Path Validation
+
+Always validate directory paths server-side:
+
+```php
+function validate_directory_path($path) {
+    // Normalize the path for cross-platform compatibility
+    $path = str_replace('/', DIRECTORY_SEPARATOR, $path);
+    $path = str_replace('\\', DIRECTORY_SEPARATOR, $path);
+    
+    // Check if directory exists and is readable
+    if (!is_dir($path) || !is_readable($path)) {
+        return new WP_Error('invalid_path', 'Directory does not exist or is not readable');
+    }
+    
+    return true;
+}
+```
+
+#### User Guidance
+
+Provide clear instructions for different platforms:
+
+```html
+<p class="description">
+    Windows: Copy path from Explorer address bar (e.g., C:\Users\name\projects)<br>
+    Mac/Linux: Use full path (e.g., /home/user/projects)
+</p>
 ```
 
 ## Checkbox Selection Patterns

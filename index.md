@@ -273,7 +273,6 @@ Guides for implementing specific SiP Core features in your plugins.
 | [CodeMirror](./guidelines/sip-feature-codemirror.md) | Code editor integration | ✅ Complete |
 | [PhotoSwipe](./guidelines/sip-feature-photoswipe.md) | Image lightbox functionality | ✅ Complete |
 | [Third-Party Libraries](./guidelines/sip-feature-third-party-libraries.md) | Standards for integrating external libraries | ✅ Complete |
-| [File Browser](./guidelines/sip-feature-file-browser.md) | Cross-platform directory browser dialog | ✅ Complete |
 
 ### Development Tools (sip-development-*)
 Guides for using the SiP Development Tools plugin for automated workflows.
@@ -471,7 +470,6 @@ This section provides a complete listing of all documentation files in the guide
 - **sip-feature-codemirror.md** - Code editor integration and configuration
 - **sip-feature-photoswipe.md** - Image lightbox gallery implementation
 - **sip-feature-third-party-libraries.md** - Standards for integrating external JavaScript and CSS libraries
-- **sip-feature-file-browser.md** - Cross-platform directory browser dialog implementation
 
 ### UI Component Documentation
 - **sip-feature-ui-components.md** - UI hierarchy, modals, toast notifications, spinners, form elements, checkbox patterns, responsive tables, local storage for UI state

@@ -510,7 +510,7 @@ Implements standard SiP AJAX patterns:
 **File**: `sip-development-tools/assets/js/modules/repository-manager.js`
 
 Follows SiP module pattern:
-- Uses `SiP.Core.fileBrowser` for directory selection
+- Uses simple text input fields for directory selection
 - Uses `SiP.Core.ajax.handleAjaxAction` for AJAX requests
 - Uses `SiP.Core.utilities.createFormData` for request preparation
 - Implements event delegation for dynamic UI elements
@@ -972,16 +972,13 @@ add_action('admin_init', 'sip_migrate_to_repository_manager');
 #### Step 10: SiP Core File Browser Integration
 **Note**: This requires coordination with SiP Core team to add a cross-platform file browser component.
 
-**Specification for SiP Core**:
+**Directory Selection**:
 ```javascript
-// API for file browser component
-SiP.Core.fileBrowser = {
-    /**
-     * Open a directory browser dialog
-     * @param {Object} options Browser options
-     * @param {string} options.title - Dialog title
-     * @param {string} options.startPath - Initial directory path
-     * @param {string} options.mode - 'directory' or 'file'
+// Directory selection now uses simple text input fields
+// No file browser component - users type or paste paths directly
+// Example:
+const pathInput = '<input type="text" class="widefat" placeholder="Enter directory path">';
+// Validation is done server-side after submission
      * @param {Function} options.onSelect - Callback with selected path
      */
     browse: function(options) {

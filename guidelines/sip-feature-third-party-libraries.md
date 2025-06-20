@@ -4,7 +4,7 @@ This guide explains how to properly integrate third-party JavaScript and CSS lib
 
 ## Overview
 
-Third-party libraries extend the functionality of SiP plugins by providing specialized features like data tables (DataTables), image galleries (PhotoSwipe), and file browsing (jsTree). These libraries must be integrated consistently to ensure proper dependency management, security, and WordPress.org compliance.
+Third-party libraries extend the functionality of SiP plugins by providing specialized features like data tables (DataTables) and image galleries (PhotoSwipe). These libraries must be integrated consistently to ensure proper dependency management, security, and WordPress.org compliance.
 
 ## Integration Standards
 
@@ -62,11 +62,6 @@ sip-plugins-core/
         │   ├── select.dataTables.min.css
         │   ├── datatables.rowGroup.min.js
         │   └── rowGroup.dataTables.min.css
-        ├── jstree/
-        │   ├── jstree.min.js
-        │   ├── jstree.min.css
-        │   ├── 32px.png
-        │   └── throbber.gif
         └── codemirror/
             ├── codemirror.min.js
             ├── codemirror.min.css
@@ -155,7 +150,7 @@ add_filter('script_loader_tag', function($tag, $handle, $src) {
 
 All libraries are stored locally as per WordPress.org requirements.
 
-**Total size of all third-party libraries: ~644KB**
+**Total size of all third-party libraries: ~464KB**
 
 This includes:
 
@@ -182,30 +177,6 @@ This includes:
   - `rowGroup.dataTables.min.css` (RowGroup styles)
 - **Dependencies**: jQuery
 - **Size**: ~150KB total
-
-### jsTree (v3.3.16)
-- **Storage**: `/assets/lib/jstree/`
-- **Purpose**: File/directory browser
-- **Files**:
-  - `jstree.min.js`
-  - `jstree.min.css`
-  - `32px.png` (icon sprite)
-  - `throbber.gif` (loading animation)
-- **Theme**: Default theme with SiP customizations
-- **Dependencies**: jQuery
-- **Size**: ~180KB total
-- **SiP Wrapper**: `SiP.Core.fileBrowser` module provides simplified API
-- **Usage Example**:
-  ```javascript
-  SiP.Core.fileBrowser.browse({
-      title: 'Select Directory',
-      selectFolders: true,
-      selectFiles: false,
-      onSelect: function(path) {
-          // Handle selected path
-      }
-  });
-  ```
 
 ### CodeMirror (v5.65.13)
 - **Storage**: `/assets/lib/codemirror/`
@@ -259,12 +230,12 @@ public function enqueue_admin_scripts($hook) {
 Override library styles using SiP CSS variables:
 
 ```css
-/* file-browser.css */
-.jstree-default .jstree-anchor {
-    color: var(--sip-color-text-primary);
+/* Example: datatables.css */
+.dataTables_wrapper .dataTables_filter input {
+    border-color: var(--sip-color-border);
 }
 
-.jstree-default .jstree-clicked {
+.dataTables_wrapper .dataTables_paginate .paginate_button.current {
     background-color: var(--sip-color-primary);
     color: var(--sip-color-bg-white);
 }
@@ -338,7 +309,7 @@ SiP.Core.libraryWrapper = (function($) {
 ```javascript
 // In browser console
 console.log('jQuery loaded:', typeof jQuery);
-console.log('jsTree loaded:', typeof $.fn.jstree);
+console.log('DataTables loaded:', typeof $.fn.DataTable);
 console.log('SiP modules:', Object.keys(SiP.Core));
 ```
 

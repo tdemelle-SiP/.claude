@@ -187,7 +187,6 @@ The following core features are always available to child plugins. For details o
 | Network Filter Helper | `SiP.Core.networkFilterHelper` | Network request filtering utilities |
 | Direct Updater | `SiP.Core.directUpdater` | Plugin update utilities |
 | PhotoSwipe Lightbox | `SiP.Core.photoswipeLightbox` | Image lightbox functionality |
-| File Browser | `SiP.Core.fileBrowser` | Cross-platform directory browser dialog |
 
 ### Server-Side Features
 
