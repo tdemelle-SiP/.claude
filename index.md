@@ -22,7 +22,7 @@ This document serves as a central reference point and navigation guide for the S
 
 >Your mission is twofold: (1) work on the specific code that is the focus of the session, and (2) maintain this document as a map of the overall SiP Plugin Suite codebase. Use this document to orient yourself to where the specific code being worked on resides within the larger framework. Ensure that new code conforms to the patterns described here. If it doesn't, either reconsider the approach to the immediate code task or extend/clarify this documentation to maintain alignment between the map and the terrain.
 >
->This document serves as a critical bridge between human and AI collaborators, preserving context that would otherwise be lost between sessions. Documentation updates should correlate with versioning logic: minor changes (1.2.6 → 1.2.7) may require no updates, structural refactors (1.2.7 → 1.3.0) should be reflected here, and substantial additions (1.3.0 → 2.0.0) require significant documentation updates. For significant architectural decisions, include a dated entry in the appropriate section to create a lightweight architectural decision record.
+>This document serves as a critical bridge between human and AI collaborators, preserving context that would otherwise be lost between sessions. 
 >
 >Update this document when:
 - Making architectural changes affecting multiple components
@@ -38,7 +38,7 @@ Do NOT update for routine code changes, bug fixes, or implementation details tha
 
 ```
 ┌────────────────────────────────────────────────────────────────┐
-│              SiP Plugin Suite Documentation Map                 │
+│              SiP Plugin Suite Documentation Map                │
 └────────────────────────────────────────────────────────────────┘
 
 📋 Coding_Guidelines_Snapshot.txt ← START HERE (Required Reading)
@@ -346,14 +346,6 @@ These files contain reference information and detailed specifications:
 | [SiP Plugin File Structure](./sip_plugin_file_structure.md) | File organization and naming | ✅ Exists |
 | [SiP Plugin Suite Hierarchy](./sip_plugin_suite_hierarchy.md) | Complete file hierarchy | ✅ Exists |
 
-## To Be Integrated
-
-Legacy documentation that needs to be reorganized into the task-oriented structure:
-
-| Document | Integration Target | Status |
-|----------|-------------------|--------|
-| [Progress Dialog Step by Step](./to be integrated into documentation/!Progress-Dialog Step by Step.md) | Progress Dialog guide | ✅ Integrated |
-| [Plugin Setup Guide](./to be integrated into documentation/sip-plugin-setup-guide.md) | Creating New Plugin guide | ✅ Integrated |
 
 ## Plugin Development Workflow
 

@@ -1,15 +1,17 @@
 ═══════════════════════════════════════════════════════════════════════════════
-                          SIP PLUGIN SUITE CODING GUIDELINES
+                          PROCEDURAL FRAMEWORK MESSAGE REFERENCE
 ═══════════════════════════════════════════════════════════════════════════════
 
-## PLAN STAGE
+Tasks will follow a plan->work->review procedural framework.
 
-Here is the message I will send at the beginning of a task that should lead to this documentation.
+## PLAN STAGE MESSAGE
+
+Here is the message I will send at the beginning of a task after explaining the goals of the task and other relevant details.
 
 ----
 
 Before you begin, 
-It is absolutely critical that you read the guidelines at /mnt/c/Users/tdeme/Local Sites/faux-stained-glass-panes/app/public/wp-content/plugins/.claude/Coding_Guidelines_Snapshot.txt. This document contains behavioral requirements for the three stages that all tasks will follow: the Plan Stage, the Work Stage and the Review Stage.  Again, these are behavioral requirements; this is not reference material.   All resources that you apply to this task must adhere to these behavioral requirements.  Read this entire document.
+It is absolutely critical that you read the guidelines at /mnt/c/Users/tdeme/Local Sites/faux-stained-glass-panes/app/public/wp-content/plugins/.claude/Coding_Guidelines_Snapshot.txt. it contains a process overview and behavioral requirements for the three stages that all tasks will follow: the Plan Stage, the Work Stage and the Review Stage.  Again, these are behavioral requirements; this is not reference material.   All resources that you apply to this task must adhere to these behavioral requirements.  Read the entire document and carefully follow all steps.
 
 Begin by carefully reviewing the details of the task that the user is asking for your help with.   Images shared by the user will be uploaded here: /mnt/c/Users/tdeme/Documents/VSCode_Images_Repo/. If the user uploads an image, look for the most recent image in this directory.
 
@@ -17,9 +19,48 @@ When you have reviewed the task details, create a task document in /work/ using 
 
 /mnt/c/Users/tdeme/Local Sites/faux-stained-glass-panes/app/public/wp-content/plugins/.claude/working-task-template.md.
 
-Proceed to work through the steps outlined in this document. As you work through the steps outlined below, you will fill this template out so that when you have finished the planning steps, your context will consist of an informed understanding and plan for accomplishing the specified task.  
+Proceed to work through the steps outlined in the Coding Guidelines Snapshot document. As you work through the steps you will fill the template out so that when you have finished the planning steps, your context will consist of an informed understanding and plan for accomplishing the specified task.
 
-When you are done reading this document, read the main file of the documentation that describes what all the more detailed guidelines contain so that you can assess which are relevant to the current task and include that information in your template.
+----
+
+This commences the work stage details about which follow below.  The completion of the work stage leads to the review stage.
+
+## REVIEW STAGE MESSAGE
+
+Here is the message I will send after reviewing the completed task.
+
+----
+
+ Please look over the documentation files to make sure that they are accurate and reflect the current functioning of the code.   
+ 
+ Start by reviewing /mnt/c/Users/tdeme/Local Sites/faux-stained-glass-panes/app/public/wp-content/plugins/.claude/index.md to refresh yourself with the overall structure and the principles behind it.  
+ 
+ Then Please make sure to check on all related documentation in the /guidelines/ directory to ensure that relevant files reflect updated standards correctly where appropriate and don't retain any deprecated references.
+
+ If you are adding or supplementing documentation, please make sure that you are adding it correctly according to the pattern used to document other sip plugins, core features or development tools and methods and that it is correctly referenced and linked in all expected and useful contexts.
+ 
+ If there were aspects of the code that were unclear to you as you worked, carefully adhering to the documentation guidelines, please update the documentation to reflect the patterns, principles and structures that were needed to correctly implement your solution.
+ 
+ Please review the documentation from the perspective of a developer and ensure that if faced with understanding and working with the established standards, you could confidently refer to the documentation and come away with a complete clear understanding of how to work with the principles and patterns of the codebase.  Don't forget the rules...
+
+<!-- DOCUMENTATION RULES:
+1. ARCHITECTURAL WHY - Document WHY each component exists (constraints/requirements that necessitate it)
+2. NO HISTORY - Current state only, not how we got here  
+3. NO DUPLICATION - Each fact appears exactly once
+4. EXAMPLES OVER EXPLANATIONS - Show, don't tell
+5. UPDATE THE RIGHT SECTION - Check if info already exists before adding
+   
+When you're done, please provide a commit message to include when I submit the changes in source control.
+
+----
+
+═══════════════════════════════════════════════════════════════════════════════
+                          SIP PLUGIN SUITE CODING GUIDELINES
+═══════════════════════════════════════════════════════════════════════════════
+
+Begin by reading this document in its entirety.
+
+When you are done reading this document, read the main file of the documentation that describes what all the more detailed guidelines contain so that you can assess which are relevant to the current task and include that information in your working-task document.
 
 /mnt/c/Users/tdeme/Local
   Sites/faux-stained-glass-panes/app/public/wp-content/plugins/.claude/index.md
@@ -56,41 +97,14 @@ When you've finished the work, please confirm that you're work is done in the ch
 
 ## REVIEW STAGE
 
-At this point I will review the output of the work stage. 
+At this point I will review the output of the work stage as described above in the post work message. 
 
-When I have reviewed your work and your review of your work, I will respond with the following message.
-
-## POST-TASK MESSAGE
-
-----
- Please look over the documentation files to make sure that they are accurate and reflect the current functioning of the code.   
- 
- Start by reviewing /mnt/c/Users/tdeme/Local Sites/faux-stained-glass-panes/app/public/wp-content/plugins/.claude/index.md to refresh yourself with the overall structure and the principles behind it.  
- 
- Then Please make sure to check on all related documentation in the /guidelines/ directory to ensure that relevant files reflect updated standards correctly where appropriate and don't retain any deprecated references.
-
- If you are adding or supplementing documentation, please make sure that you are adding it correctly according to the pattern used to document other sip plugins, core features or development tools and methods and that it is correctly referenced and linked in all expected and useful contexts.
- 
- If there were aspects of the code that were unclear to you as you worked, carefully adhering to the documentation guidelines, please update the documentation to reflect the patterns, principles and structures that were needed to correctly implement your solution.
- 
- Please review the documentation from the perspective of a developer and ensure that if faced with understanding and working with the established standards, you could confidently refer to the documentation and come away with a complete clear understanding of how to work with the principles and patterns of the codebase.  Don't forget the rules...
-
-<!-- DOCUMENTATION RULES:
-1. ARCHITECTURAL WHY - Document WHY each component exists (constraints/requirements that necessitate it)
-2. NO HISTORY - Current state only, not how we got here  
-3. NO DUPLICATION - Each fact appears exactly once
-4. EXAMPLES OVER EXPLANATIONS - Show, don't tell
-5. UPDATE THE RIGHT SECTION - Check if info already exists before adding
-   
-When you're done, please provide a commit message to include when I submit the changes in source control.
-----
+That will lead to potential revision, documentation updates and commit message creation.
 
 If the commit checks out, I will let you know that the task is complete at which timeoutId
 **Move the working file** to `/work/archived_tasks/` folder
    - Keep the same filename for reference
    - This preserves task history and decisions made
-
-
 
 ═══════════════════════════════════════════════════════════════════════════════
                                WORK REQUIREMENTS
@@ -125,84 +139,38 @@ Do not take shortcuts to prioritize speed. Always prioritize being thorough, car
  
 When you are addressing code issues, always be aware when you may be reactively treating symptoms instead of understanding the larger code context at the root of the problem. Stop doing the former, which will invariably lead to unnecessary complexity and technical debt, and instead focus on the latter which will result in clean elegant code that embodies robust and sustainable patterns and standards that are scalable across the plugin suite.
 
-Before writing any code, explain WHY the problem exists, then solve THAT problem. Code from first principles, not from pattern matched hacks.
-
+When coding, stay focused on WHY the problem exists and solving THAT problem. Code from first principles, not from pattern matched hacks.
 
 ## Anti-Pattern Check (Required)
 
-  If your solution involves ANY of these, STOP       
-  and reconsider:
-  - setTimeout / setInterval (timing
-  workarounds) - See "Legitimate setTimeout Usage" below
-  - try-catch blocks (for errors that shouldn't      
-  exist)
-  - Defensive checks (if exists, if defined,
-  hasOwnProperty)
-  - Event handler workarounds
-  - State management to track framework behavior
-  - inline css styles not being used legitimately for dynamic values.
-  - Multiple redundant storage/recovery mechanisms ("belt and suspenders")
+### CODE REVIEW CHECKLIST
 
-  These are symptom treatments. Return to root       
-  cause analysis.
+Review your code against this checklist. If your solution involves ANY of these patterns, STOP and reconsider:
 
- Common Anti-Patterns Reference
+**❌ Timing & Defensive Patterns**
+□ setTimeout/setInterval for waiting (vs. intentional delays)
+□ try-catch blocks for errors that shouldn't exist
+□ Defensive checks (function_exists, class_exists, isset, hasOwnProperty)
+□ Event handler workarounds
+□ State management to track framework behavior
 
-  - Symptom: setTimeout, defensive checks,
-  workarounds
-  - Root Cause: Configuration-based solutions,       
-  proper event handling, correct API usage
+**❌ UI & Storage Patterns**
+□ Inline CSS styles (when not for dynamic values)
+□ Multiple redundant storage/recovery mechanisms
+□ Multiple truth sources for same data
 
-  If you cannot clearly explain why your
-  solution addresses the root cause rather than      
-  the symptom, do not proceed with
-  implementation.
+**❌ Implementation Standards**
+□ Parameter naming variations (e.g., action_name vs action_type)
+□ Hook timing differences from documented patterns
+□ Response format deviations from standard structures
+□ JavaScript utility usage that bypasses documented methods
 
-COMMON COMPLIANCE FAILURES TO AVOID
-   - Parameter naming variations (e.g., action_name vs action_type)
-   - Hook timing differences from documented patterns  
-   - Response format deviations from standard structures
-   - JavaScript utility usage that bypasses documented methods
+**📋 Pattern-Specific Checkpoints**
+□ AJAX: Parameter naming matches between PHP/JS
+□ DataTables: Proper cleanup before destroy()
+□ UI Components: Using SiP.Core utilities
 
-### Specific Pattern Checkpoints
-
-**AJAX IMPLEMENTATION:**
-- Read sip-plugin-ajax.md completely before any AJAX work
-- Verify parameter naming: $_POST[$action_type] matches JavaScript createFormData() second parameter
-- Test AJAX call with browser dev tools before considering complete
-- Check that response routing follows documented three-level structure
-
-**DATATABLES IMPLEMENTATION:**
-- Read sip-feature-datatables.md for table patterns
-- Follow client-side processing standards
-- Implement proper cleanup before destroy()
-
-**UI COMPONENTS:**
-- Read sip-feature-ui-components.md for UI patterns
-- Use SiP.Core utilities for all UI operations
-- Follow the three-layer visibility structure for tables
-
-When searching and replacing to update code, do not rely on your saved context for your search string; check the actual code to ensure your search string is accurate.
-
-Never use write to file to make code updates.
-
-## No Legacy Code
- 
-Do not preserve legacy code.  Clean up all remnants of unused or deprecated code thoroughly.  Do not implement backward compatibility code. Backward combatibility is unnecessary complexity that creates confusion and masks errors that should be fixed.  If we're in transition, we don't handle that with backward compatibility code. We handle that by letting the code throw errors and using those errors as cues to get all the code up to the correct standard.
-
-Do not create custom test tools or instructions unless explicitly asked to do so.  Testing will take place in the actual code.
-
-## WORK COMPLETION REQUIREMENT
-
-Before reporting that implementation is complete:
-1. **Update the Task Working File** - Mark all completed items in the Work Checkpoint section
-2. **Verify all planned tasks are complete** - Check that nothing was missed
-3. **Run through the Standards Compliance Verification** checklist
-4. **Report completion status** referencing the working file
-
-═══════════════════════════════════════════════════════════════════════════════
-                           SPECIFIC GUIDANCE
-═══════════════════════════════════════════════════════════════════════════════
+### DETAILED ANTI-PATTERN GUIDANCE
 
 ## SYMPTOM VS ROOT CAUSE DISTINCTION
 
@@ -414,6 +382,62 @@ Creating multiple ways to store/recover the same data "just in case" something f
   - Find out why the primary storage isn't working
   - Fix that root cause
   - Trust your data flow
+
+## SPECIFIC PATTERN COMPLIANCE
+
+**AJAX IMPLEMENTATION:**
+- Read sip-plugin-ajax.md completely before any AJAX work
+- Verify parameter naming: $_POST[$action_type] matches JavaScript createFormData() second parameter
+- Test AJAX call with browser dev tools before considering complete
+- Check that response routing follows documented three-level structure
+
+**DATATABLES IMPLEMENTATION:**
+- Read sip-feature-datatables.md for table patterns
+- Follow client-side processing standards
+- Implement proper cleanup before destroy()
+
+**UI COMPONENTS:**
+- Read sip-feature-ui-components.md for UI patterns
+- Use SiP.Core utilities for all UI operations
+- Follow the three-layer visibility structure for tables
+
+## CODE ANALYSIS REQUIREMENTS
+
+When searching and replacing to update code, do not rely on your saved context for your search string; check the actual code to ensure your search string is accurate.
+
+Never use write to file to make code updates.
+
+BEFORE drawing conclusions from or modifying code:
+REQUIRE verification = {
+    data_structure: INSPECT actual runtime data,        
+    css_classes: INSPECT actual DOM elements,
+    field_names: MATCH exact property names,
+    assumptions: COUNT must equal 0
+}
+
+IF assumption_needed THEN {
+    STOP;
+    ASK user for verification;
+    WAIT for response;
+}
+
+## No Legacy Code
+ 
+Do not preserve legacy code.  Clean up all remnants of unused or deprecated code thoroughly.  Do not implement backward compatibility code. Backward combatibility is unnecessary complexity that creates confusion and masks errors that should be fixed.  If we're in transition, we don't handle that with backward compatibility code. We handle that by letting the code throw errors and using those errors as cues to get all the code up to the correct standard.
+
+Do not create custom test tools or instructions unless explicitly asked to do so.  Testing will take place in the actual code.
+
+## WORK COMPLETION REQUIREMENT
+
+Before reporting that implementation is complete:
+1. **Update the Task Working File** - Mark all completed items in the Work Checkpoint section
+2. **Verify all planned tasks are complete** - Check that nothing was missed
+3. **Run through the Standards Compliance Verification** checklist
+4. **Report completion status** referencing the working file
+
+═══════════════════════════════════════════════════════════════════════════════
+                           CODE TRACING METHODOLOGY
+═══════════════════════════════════════════════════════════════════════════════
 
 ## CODE TRACING METHODOLOGY
 
