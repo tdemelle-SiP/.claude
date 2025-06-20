@@ -2,82 +2,33 @@
                           SIP PLUGIN SUITE CODING GUIDELINES
 ═══════════════════════════════════════════════════════════════════════════════
 
-## PRE-TASK MESSAGE
+## PLAN STAGE
 
 Here is the message I will send at the beginning of a task that should lead to this documentation.
 
 ----
 
 Before you begin, 
-It is absolutely critical that you read the guidelines at /mnt/c/Users/tdeme/Local
-  Sites/faux-stained-glass-panes/app/public/wp-content/plugins/.claude/Coding_Guidelines_Snapshot.txt. These are behavioral requirements, not reference material.   The code you write must adhere to these behavioral requirements.
+It is absolutely critical that you read the guidelines at /mnt/c/Users/tdeme/Local Sites/faux-stained-glass-panes/app/public/wp-content/plugins/.claude/Coding_Guidelines_Snapshot.txt. This document contains behavioral requirements for the three stages that all tasks will follow: the Plan Stage, the Work Stage and the Review Stage.  Again, these are behavioral requirements; this is not reference material.   All resources that you apply to this task must adhere to these behavioral requirements.  Read this entire document.
 
-Then please review the documentation for the plugin suite at 
+Begin by carefully reviewing the details of the task that the user is asking for your help with.   Images shared by the user will be uploaded here: /mnt/c/Users/tdeme/Documents/VSCode_Images_Repo/. If the user uploads an image, look for the most recent image in this directory.
+
+When you have reviewed the task details, create a task document in /work/ using the working-task-template found here:
+
+/mnt/c/Users/tdeme/Local Sites/faux-stained-glass-panes/app/public/wp-content/plugins/.claude/working-task-template.md.
+
+Proceed to work through the steps outlined in this document. As you work through the steps outlined below, you will fill this template out so that when you have finished the planning steps, your context will consist of an informed understanding and plan for accomplishing the specified task.  
+
+When you are done reading this document, read the main file of the documentation that describes what all the more detailed guidelines contain so that you can assess which are relevant to the current task and include that information in your template.
 
 /mnt/c/Users/tdeme/Local
   Sites/faux-stained-glass-panes/app/public/wp-content/plugins/.claude/index.md
   
-/mnt/c/Users/tdeme/Local
-  Sites/faux-stained-glass-panes/app/public/wp-content/plugins/.claude/guidelines/sip-printify-manager-architecture.md
-
-/mnt/c/Users/tdeme/Local
-  Sites/faux-stained-glass-panes/app/public/wp-content/plugins/.claude/guidelines/sip-printify-manager-extension-widget.md
-  
-After looking over the documentation, create a Task Working File in /work/ following the template. Then look over the relevant code and respond in the chat with a summary of the task including WHY the work is being done and any questions you may have. State which documentation files you've identified as relevant to this specific task. Once we've discussed the correct approach, I'll ask you to make the necessary updates adhering to the documented guidelines and standards. The work step must conclude with completing the Work Checkpoint section of your working file to verify all planned tasks are complete.
-
-Do not forget; you must code according to Coding_Guidelines_Snapshot.txt  Do not forget; No Task Agent Delegation.
-----
-
-## POST-TASK MESSAGE
-
-Here is the message that I will send at the end of a task to ensure we are following through correctly
-
-----
- Great! Can you please look over the code that you just updated and make sure it adheres to the guidelines /mnt/c/Users/tdeme/Local
-  Sites/faux-stained-glass-panes/app/public/wp-content/plugins/.claude/Coding_Guidelines_Snapshot.txt?
-
-And can you please look over the documentation files to make sure that they are accurate and reflect the current functioning of the code?   Please review the documentation from the perspective of a developer and ensure that if faced with understanding and working with the established standards, a developer could confidently refer to the documentation and come away with a complete clear understanding of how to work with the principles and patterns of the codebase.  Don't forget the rules...
-<!-- DOCUMENTATION RULES:
-1. ARCHITECTURAL WHY - Document WHY each component exists (constraints/requirements that necessitate it)
-2. NO HISTORY - Current state only, not how we got here  
-3. NO DUPLICATION - Each fact appears exactly once
-4. EXAMPLES OVER EXPLANATIONS - Show, don't tell
-5. UPDATE THE RIGHT SECTION - Check if info already exists before adding
-   
-Start by reviewing /mnt/c/Users/tdeme/Local
-  Sites/faux-stained-glass-panes/app/public/wp-content/plugins/.claude/index.md to refresh yourself with the overall structure and the principles behind it.  Then Please make sure to check on related documentation in the /guidelines/ directory to ensure that relevant files reflect updated standards correctly where appropriate and don't retain any deprecated references.  If there were aspects of the code that were unclear to you as you worked, carefully adhering to the documentation guidelines, please update the documentation to reflect the patterns, principles and structures that were needed to correctly implement your solution.    When you're done, can you please give me a commit message to include when I submit the changes in source control?
-----
-
-═══════════════════════════════════════════════════════════════════════════════
-                               PLANNING PROCESS
-═══════════════════════════════════════════════════════════════════════════════
-
-## PLANNING REQUIREMENTS
-
- Do not code without explicit direction to do so.  Do not make changes beyond those clearly stated in a request to change code made by the user.
-
- Images shared by the user will be uploaded here: /mnt/c/Users/tdeme/Documents/VSCode_Images_Repo/. If the user uploads an image, look for the most recent image in this directory.
-
-## DOCUMENTATION COMPLIANCE PROCESS
-
-Before doing work, you must:
-
-1. **Read the index.md file** in the .claude folder to understand the documentation structure
-2. **Review the Complete Documentation Assessment** section to identify which guidelines apply to your task
-3. **Read ALL identified relevant documentation completely** - do not skim or read only first sections
-4. **Create a Task Working File** using the template at `/guidelines/task-working-file-template.md`
-   - Save as: `/work/YYYY-MM-DD-task-description.md` (e.g., `/work/2024-01-15-repository-manager-integration.md`)
-   - Complete the Planning Checkpoint section before any implementation
-   - Update throughout the task to track progress
-   - This file serves as your external memory for the task
-
-When coding, only use the methods and standards in the sip plugin suite documentation.  If there is cause to code using methods or standards that are not detailed in the documentation, stop what you are doing and explain the situation in chat so that the new approach can be discussed and validated before you implement it with explicit direction to do so.
-
-If in the course of review or implementation you have ideas for additions or alternate approaches, stop what you're doing and mention them in a chat message so that we can discuss them, decide upon the best path forward and you can proceed with coding with explicit direction.
+When you have finished reviewing the index.md and the relevant guidelines, (**Read ALL identified relevant documentation completely** - do not skim or read only first sections) look over the relevant code files. Identify the patterns that they follow and how they relate to the documentation you've read.  If there are patterns present that you haven't encountered in the documentation you've reviewed, return to the documentation to familiarize yourself with those patterns.  If there are patterns that are not documented, mention them in the questions section of your working-task document.  If documentation is unclear or incomplete, request clarification rather than making assumptions about correct implementation.
 
 ## CODE ANALYSIS REQUIREMENTS
 
-If you are analyzing code in order to understand how it functions or to understand why a bug is occurring, please don't be satisfied basing your analysis and recommendation on what a superficial read of the immediate code suggests, what it seems like or what it "might" be; look at the actual code context when you have a theory and replace your speculation with a definitive understanding of the actual situation.  
+When you are analyzing code in order to understand how it functions or to understand why a bug is occurring, please don't be satisfied basing your analysis and recommendation on what a superficial read of the immediate code suggests, what it seems like or what it "might" be; look at the actual code context when you have a theory and replace your speculation with a definitive understanding of the actual situation.  
  
 Systematically follow through the whole code sequence in question from beginning to end without making any leaps in logic based on assumptions so that you understand the structure of the entire contextual framework before drilling into details speculatively.
 
@@ -95,9 +46,63 @@ IF assumption_needed THEN {
     WAIT for response;
 }
 
+When you have finished the document and code review steps and completed the working-task file, post its contents in the chat and we will discuss your proposed approach. When we've agreed on a final approach, I will explicitly intruct you to begin coding.
+
+## WORK STAGE
+
+Execute the task following your plan and adhering to the Coding Guidelines outlined below.
+
+When you've finished the work, please confirm that you're work is done in the chat and conduct a methodical assessement of the completed work against the coding guidelines outlined below.  Conclude by assessing how well your work adhered to the coding guidelines. Would a seasoned senior enterprise developer approve of this clean, simple solution that makes the right thing automatic and the wrong thing difficult if not impossible?
+
+## REVIEW STAGE
+
+At this point I will review the output of the work stage. 
+
+When I have reviewed your work and your review of your work, I will respond with the following message.
+
+## POST-TASK MESSAGE
+
+----
+ Please look over the documentation files to make sure that they are accurate and reflect the current functioning of the code.   
+ 
+ Start by reviewing /mnt/c/Users/tdeme/Local Sites/faux-stained-glass-panes/app/public/wp-content/plugins/.claude/index.md to refresh yourself with the overall structure and the principles behind it.  
+ 
+ Then Please make sure to check on all related documentation in the /guidelines/ directory to ensure that relevant files reflect updated standards correctly where appropriate and don't retain any deprecated references.
+
+ If you are adding or supplementing documentation, please make sure that you are adding it correctly according to the pattern used to document other sip plugins, core features or development tools and methods and that it is correctly referenced and linked in all expected and useful contexts.
+ 
+ If there were aspects of the code that were unclear to you as you worked, carefully adhering to the documentation guidelines, please update the documentation to reflect the patterns, principles and structures that were needed to correctly implement your solution.
+ 
+ Please review the documentation from the perspective of a developer and ensure that if faced with understanding and working with the established standards, you could confidently refer to the documentation and come away with a complete clear understanding of how to work with the principles and patterns of the codebase.  Don't forget the rules...
+
+<!-- DOCUMENTATION RULES:
+1. ARCHITECTURAL WHY - Document WHY each component exists (constraints/requirements that necessitate it)
+2. NO HISTORY - Current state only, not how we got here  
+3. NO DUPLICATION - Each fact appears exactly once
+4. EXAMPLES OVER EXPLANATIONS - Show, don't tell
+5. UPDATE THE RIGHT SECTION - Check if info already exists before adding
+   
+When you're done, please provide a commit message to include when I submit the changes in source control.
+----
+
+If the commit checks out, I will let you know that the task is complete at which timeoutId
+**Move the working file** to `/work/archived_tasks/` folder
+   - Keep the same filename for reference
+   - This preserves task history and decisions made
+
+
+
 ═══════════════════════════════════════════════════════════════════════════════
-                              WORKING PROCESS
+                               WORK REQUIREMENTS
 ═══════════════════════════════════════════════════════════════════════════════
+
+ Do not code without explicit direction to do so.  Do not make changes beyond those clearly stated in the working task file.
+
+  Update the working-task-template throughout the task to track progress - This file serves as your external memory for the task
+
+If there is cause to code using methods or standards that are not detailed in the documentation or in the task goals themselves, stop what you are doing and explain the situation in chat so that the new approach can be discussed and validated before you implement it with explicit direction to do so.
+
+If in the course of review or implementation you have ideas for additions or alternate approaches, stop what you're doing and mention them in a chat message so that we can discuss them, decide upon the best path forward and you can proceed with coding with explicit direction.
 
 ## CRITICAL DIRECTIVES
 
@@ -122,21 +127,8 @@ When you are addressing code issues, always be aware when you may be reactively 
 
 Before writing any code, explain WHY the problem exists, then solve THAT problem. Code from first principles, not from pattern matched hacks.
 
-## IMPLEMENTATION CHECKPOINT REQUIREMENTS
 
-Before writing ANY code, you MUST complete this analysis:
-
-  1. Root Cause Analysis (Required)
-
-  Write out:
-  - WHY does this problem exist? (Not what the       
-  error is, but why it occurs)
-  - What is the root cause? (The structural
-  issue, not the symptom)
-  - Which guideline section applies? (Reference      
-  specific line numbers)
-
-  2. Anti-Pattern Check (Required)
+## Anti-Pattern Check (Required)
 
   If your solution involves ANY of these, STOP       
   and reconsider:
@@ -154,17 +146,7 @@ Before writing ANY code, you MUST complete this analysis:
   These are symptom treatments. Return to root       
   cause analysis.
 
-  3. Solution Validation (Required)
-
-  Before implementing, state:
-  - "I am about to use [specific
-  pattern/approach]"
-  - "This is/isn't symptom treatment because
-  [specific reason]"
-  - "This addresses the root cause by
-  [explanation]"
-
-  4. Common Patterns Reference
+ Common Anti-Patterns Reference
 
   - Symptom: setTimeout, defensive checks,
   workarounds
@@ -176,27 +158,11 @@ Before writing ANY code, you MUST complete this analysis:
   the symptom, do not proceed with
   implementation.
 
-## PATTERN IMPLEMENTATION VERIFICATION
-
-When implementing ANY established pattern:
-
-1. STATE YOUR INTENT
-   - Before coding: "Implementing [pattern] following [document.md:section]"
-   - Quote the exact implementation requirement from documentation
-   - Code exactly as documented, no variations
-
-2. COMMON COMPLIANCE FAILURES TO AVOID
+COMMON COMPLIANCE FAILURES TO AVOID
    - Parameter naming variations (e.g., action_name vs action_type)
    - Hook timing differences from documented patterns  
    - Response format deviations from standard structures
    - JavaScript utility usage that bypasses documented methods
-
-3. VERIFICATION CHECKPOINTS
-   - After implementation, confirm it matches documentation exactly
-   - Test that the pattern works as documented
-   - If any deviations were necessary, explain why
-
-If documentation is unclear or incomplete, STOP and request clarification rather than making assumptions about correct implementation.
 
 ### Specific Pattern Checkpoints
 
@@ -216,15 +182,13 @@ If documentation is unclear or incomplete, STOP and request clarification rather
 - Use SiP.Core utilities for all UI operations
 - Follow the three-layer visibility structure for tables
 
-## WORKFLOW PRACTICES
-
-When you are familiarizing yourself with code, read the code instead of searching for specific parts; understanding the full context that targetted searches may miss is critical.
-
 When searching and replacing to update code, do not rely on your saved context for your search string; check the actual code to ensure your search string is accurate.
 
 Never use write to file to make code updates.
+
+## No Legacy Code
  
-Do not preserve legacy code.  Clean up all remnants of unused or deprecated code thoroughly.  Do not implement or ignore backward compatibility code. Backward combatibility is unnecessary complexity that creates confusion and masks errors that should be fixed.  If we're in transition, we don't handle that with backward compatibility code. We handle that by letting the code throw errors and using those errors as cues to get all the code up to the correct standard.
+Do not preserve legacy code.  Clean up all remnants of unused or deprecated code thoroughly.  Do not implement backward compatibility code. Backward combatibility is unnecessary complexity that creates confusion and masks errors that should be fixed.  If we're in transition, we don't handle that with backward compatibility code. We handle that by letting the code throw errors and using those errors as cues to get all the code up to the correct standard.
 
 Do not create custom test tools or instructions unless explicitly asked to do so.  Testing will take place in the actual code.
 
@@ -451,44 +415,7 @@ Creating multiple ways to store/recover the same data "just in case" something f
   - Fix that root cause
   - Trust your data flow
 
-═══════════════════════════════════════════════════════════════════════════════
-                            REVIEWING PROCESS
-═══════════════════════════════════════════════════════════════════════════════
-
-## CODE REVIEW REQUIREMENTS
-
-If you have implemented changes to the code, carefully review your changes and any code that may be affected by those changes to ensure that all code adheres to the prevailing sip plugin suite coding standard, and that there is no legacy code or remnants of deprecated code.
-
-Would a seasoned senior enterprise developer approve of this clean, simple solution that makes the right thing automatic and the wrong thing difficult if not impossible?
-
-## DOCUMENTATION UPDATE REQUIREMENTS
-
-Upon completion, review the sip plugin suite documentation in the .claude folder and ensure that it is up to date, clear and complete and that it reflects both any changes or additions to code standards and addresses any issues that may have arisen in implementation from documentation clarity or organization.
-
-If you are adding or supplementing documentation, please make sure that you are adding it correctly according to the pattern used to document other sip plugins, core features or development tools and methods and that it is correctly referenced and linked in all expected and useful contexts.
-
-## COMMIT MESSAGE
-
-Code changes do not need to be recorded in a file.  Please simply provide a brief summary of changes suitable to be included in the source control commit message.
-
-## TASK COMPLETION AND ARCHIVAL
-
-After review is complete:
-1. **Update the Task Working File** with:
-   - Review Checkpoint section completed
-   - Documentation updates listed
-   - Commit message added
-2. **Move the working file** to `/work/archived_tasks/` folder
-   - Keep the same filename for reference
-   - This preserves task history and decisions made
-
-
-═══════════════════════════════════════════════════════════════════════════════
-                    ADDITIONAL GUIDANCE TO INCORPORATE
-═══════════════════════════════════════════════════════════════════════════════
-
 ## CODE TRACING METHODOLOGY
-
 
  Please trace the logical sequence of events that the code follows incremental step by incremental logical step through all paths that extend from the user executing the Load Into Creation Table action in the template table in /plugins/sip-printify-manager/. Follow the logic making no leaps other than those explicitly described in the actual code all the way through to their conclusion when the events following the Load Into Creation Table action conclude. This is a complex multi-step process that spans nearly all the sip printify manager plugin files and all elements of the dashboard. The files that you must refer to will be in the /plugins/sip-printify-manager/ directory and may also be in the plugins/sip-plugins-core/ directory. I am asking you to follow the logic of the code uncompromisingly taking no leap that is not explicit in the actual code.
 
