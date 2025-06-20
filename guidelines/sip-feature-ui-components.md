@@ -18,6 +18,8 @@ This guide documents the UI components and browser storage patterns used in SiP 
   - [Folder/Directory Selection](#folderdirectory-selection)
 - [Checkbox Selection Patterns](#checkbox-selection-patterns)
 - [Responsive Tables](#responsive-tables)
+  - [Non-DataTables Table Refresh](#non-datatables-table-refresh)
+  - [Collapsible Rows](#collapsible-rows)
 - [Session Lifecycle](#session-lifecycle)
 - [Standard Headers](#standard-headers)
 - [Utility Functions](#utility-functions)
@@ -1085,6 +1087,66 @@ function updateGroupCheckboxState(groupId) {
 - ❌ Create circular dependencies between state updates
 
 ## Responsive Tables
+
+### Non-DataTables Table Refresh
+
+For simple tables that don't use DataTables (see [DataTables Integration](sip-feature-datatables.md) for complex data tables), use server-side rendering for clean updates:
+
+#### Why This Pattern Exists
+- **Avoids duplication**: HTML structure exists only in PHP
+- **Leverages strengths**: PHP renders HTML, JavaScript updates DOM
+- **Maintains simplicity**: No client-side templating or string concatenation
+
+#### Implementation
+
+```javascript
+// JavaScript - Clean and simple
+function updateRepositoryTable(repositories) {
+    // Get fresh table rows from server
+    const formData = SiP.Core.utilities.createFormData(PLUGIN_ID, ACTION_TYPE, 'get_table_rows');
+    
+    SiP.Core.ajax.handleAjaxAction(PLUGIN_ID, ACTION_TYPE, formData)
+        .then(response => {
+            if (response.success && response.data && response.data.html) {
+                // Replace table body with server-rendered HTML
+                $('.my-table tbody').html(response.data.html);
+                
+                // Re-initialize any JavaScript behaviors
+                initializeTableBehaviors();
+            }
+        });
+}
+```
+
+```php
+// PHP - Server renders the HTML
+function sip_ajax_get_table_rows() {
+    $data = get_my_data();
+    
+    ob_start();
+    foreach ($data as $item) {
+        ?>
+        <tr>
+            <td><?php echo esc_html($item['name']); ?></td>
+            <td><?php echo esc_html($item['status']); ?></td>
+            <td>
+                <button class="button action-button" data-id="<?php echo esc_attr($item['id']); ?>">
+                    Action
+                </button>
+            </td>
+        </tr>
+        <?php
+    }
+    $html = ob_get_clean();
+    
+    SiP_AJAX_Response::success(
+        'my-plugin',
+        'table_action',
+        'get_table_rows',
+        array('html' => $html)
+    );
+}
+```
 
 ### Collapsible Rows
 ```javascript

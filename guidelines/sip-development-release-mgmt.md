@@ -12,7 +12,7 @@ The SiP plugin suite uses an automated release system that handles version updat
 - **PHP Backend** (`release-functions.php`): Handles AJAX requests and launches PowerShell script
 - **PowerShell Script** (`release-plugin.ps1` / `release-extension.ps1`): Executes release process
 - **JavaScript Frontend** (`release-actions.js`): Real-time status monitoring and UI updates
-- **File Browser Component**: Cross-platform directory selector (part of SiP Core platform tools)
+- **Repository Manager Module** (`repository-manager.js`): Handles client-side repository management
 
 ## Repository Management
 
@@ -20,11 +20,12 @@ The SiP plugin suite uses an automated release system that handles version updat
 The release manager uses a flexible repository registration system that allows management of repositories located anywhere on the file system. This replaces the previous auto-detection system that was limited to the WordPress plugins directory.
 
 ### Key Features
-- **Manual Repository Addition**: Users explicitly add repositories via UI
-- **Flexible Locations**: Supports repositories outside WordPress directory
+- **Manual Repository Addition**: Users explicitly add repositories via UI using text input
+- **Flexible Locations**: Supports repositories anywhere on the file system
 - **Multiple Types**: Handles both WordPress plugins and browser extensions
 - **Persistent Storage**: Repository paths stored in WordPress options
 - **Cross-Platform**: Works on Windows, Mac, and Linux
+- **Path-Based Operations**: All Git and file operations use actual repository paths from Repository Manager
 
 ### Repository Storage Structure
 Repository information is stored in WordPress options following SiP data storage standards:
@@ -63,9 +64,10 @@ Minimal validation ensures only essential requirements:
 4. **Clear Error Messages**: Specific feedback on validation failures
 
 ### UI Elements
-- **Add Repository Button**: Located above the release table, right-aligned with title
-- **Repository Path Column**: Shows truncated path with full path on hover
-- **Remove Repository**: Option to remove from management
+- **Add Repository Button**: Located in release table header, shows modal dialog with text input
+- **Repository Table**: No longer shows repository path column (removed for cleaner UI)
+- **Remove Repository**: × button in actions column to remove from management
+- **Table Refresh**: Automatic refresh via AJAX when repositories are added/removed
 
 ### Disconnected Repository Handling
 When a repository cannot be found at its stored path:
@@ -86,6 +88,36 @@ When a repository cannot be found at its stored path:
    - System checks repository availability on each page load
    - When missing repository becomes available again (e.g., drive remounted), full functionality automatically restored
    - No manual intervention required if repository returns to original location
+
+## Branch Status Checking
+
+### Overview
+The branch status system checks Git repository state for all registered repositories, regardless of their location on the file system.
+
+### Implementation Details
+- **No Plugin Directory Assumptions**: Uses Repository Manager paths instead of `WP_PLUGIN_DIR`
+- **Universal Support**: Works for both plugins and extensions in any location
+- **Repository-Based Queries**: All functions accept repository path as parameter
+- **Clean Architecture**: No `get_plugins()` calls or WordPress plugin scanning
+
+### Key Functions
+```php
+// Check branch changes for all repositories
+function sip_check_branch_changes() {
+    $repositories = SiP_Repository_Manager::get_repositories();
+    foreach ($repositories as $repo) {
+        if ($repo['status'] === 'active') {
+            $results[$repo['slug']] = sip_get_branch_changes($repo['path'], $repo['slug']);
+        }
+    }
+}
+
+// Get branch changes using repository path
+function sip_get_branch_changes($repo_path, $repo_slug) {
+    // Uses $repo_path directly for all Git commands
+    // No assumptions about plugin directory structure
+}
+```
 
 ## Release Process Workflow
 
@@ -188,6 +220,8 @@ The release process creates ZIP files using 7-Zip through a PHP function that ca
 ## Implementation Details
 
 ### AJAX Actions
+
+#### Release Actions
 ```php
 // Main release action handler
 function sip_handle_release_action() {
@@ -201,10 +235,42 @@ function sip_handle_release_action() {
             sip_check_release_status();
             break;
         case 'check_uncommitted_changes':
-            sip_check_uncommitted_changes();
+            sip_check_uncommitted_changes();  // Uses Repository Manager
             break;
         case 'check_branch_changes':
-            sip_check_branch_changes();
+            sip_check_branch_changes();  // Uses Repository Manager
+            break;
+        case 'commit_changes':
+            sip_commit_changes();  // Uses Repository Manager
+            break;
+        case 'get_plugin_data':
+            sip_get_plugin_data();  // Uses Repository Manager
+            break;
+    }
+}
+```
+
+#### Repository Actions
+```php
+// Repository management handler
+function sip_handle_repository_action() {
+    $action = $_POST['repository_action'];
+    
+    switch ($action) {
+        case 'validate_repository':
+            sip_ajax_validate_repository();
+            break;
+        case 'add_repository':
+            sip_ajax_add_repository();
+            break;
+        case 'remove_repository':
+            sip_ajax_remove_repository();
+            break;
+        case 'reconnect_repository':
+            sip_ajax_reconnect_repository();
+            break;
+        case 'get_repository_table_rows':
+            sip_ajax_get_repository_table_rows();
             break;
     }
 }
@@ -467,563 +533,3 @@ powershell -Command "Get-ExecutionPolicy"
    - Verify ZIP integrity
    - Test auto-update system
    - Monitor error logs
-- Implements established SiP patterns consistently
-
-### System Features
-- **Manual Repository Registration**: Add/remove repositories via UI (no in-place path updates)
-- **Flexible Repository Locations**: Support for repositories anywhere on file system
-- **Multi-Type Support**: Handles both WordPress plugins and browser extensions
-- **Persistent Storage**: Repository paths stored in WordPress options following SiP patterns
-- **Cross-Platform File Browser**: Uses SiP Core file browser component for directory selection
-- **Disconnected Repository Handling**: Shows missing repositories with reconnection capability
-- **Unified Release Process**: Single release system for plugins and extensions with type-specific scripts
-
-### Technical Architecture
-- **Storage**: WordPress options table (`sip_development_tools_repositories`)
-- **AJAX Actions**: Standard SiP AJAX pattern with dedicated action handlers
-- **Repository Detection**: Automatic type detection (plugin vs extension) based on files
-- **Migration Support**: One-time automatic migration of existing WordPress plugins
-
-### Key Components
-
-#### SiP_Repository_Manager Class
-**File**: `sip-development-tools/includes/repository-manager.php`
-
-**Core Methods:**
-- `get_repositories()` - Get all repositories with status checking
-- `add_repository($path)` - Add new repository with validation
-- `remove_repository($id)` - Remove repository by ID
-- `reconnect_repository($old_id, $new_path)` - Reconnect missing repository
-- `validate_repository($path)` - Validate repository structure
-- `migrate_existing_plugins()` - One-time migration from old system
-
-#### Repository AJAX Handlers
-**File**: `sip-development-tools/includes/repository-ajax-handlers.php`
-
-Implements standard SiP AJAX patterns:
-- `sip_ajax_add_repository()` - Handle add repository requests
-- `sip_ajax_remove_repository()` - Handle remove repository requests
-- `sip_ajax_reconnect_repository()` - Handle reconnect repository requests
-- `sip_ajax_get_repositories()` - Return all repositories with status
-
-#### JavaScript Repository Manager
-**File**: `sip-development-tools/assets/js/modules/repository-manager.js`
-
-Follows SiP module pattern:
-- Uses simple text input fields for directory selection
-- Uses `SiP.Core.ajax.handleAjaxAction` for AJAX requests
-- Uses `SiP.Core.utilities.createFormData` for request preparation
-- Implements event delegation for dynamic UI elements
-
-#### Release Function Updates
-**File**: `sip-development-tools/includes/release-functions.php`
-
-Enhanced `sip_create_release()` function:
-- Accepts `repo_path` and `repo_type` parameters
-- Supports both plugin and extension releases
-- Automatically selects appropriate PowerShell script
-
-### Usage
-
-#### Adding a Repository
-1. Click "Add Repository" button in release management interface
-2. Use file browser to select repository directory
-3. System validates repository structure automatically
-4. Repository appears in release table if valid
-
-#### Managing Disconnected Repositories
-When a repository is moved or becomes unavailable:
-1. Row appears greyed out with "Repository not found" message
-2. Two options available:
-   - **Delete**: Remove from management permanently
-   - **Reconnect**: Use file browser to select new location
-3. Reconnection performs full validation like adding new repository
-
-#### Releasing Projects
-Release process works identically for plugins and extensions:
-1. Select version number and log level
-2. Click "Create Release" button  
-3. System automatically uses appropriate PowerShell script based on repository type
-4. Progress tracked in real-time log viewer
-    
-    function init() {
-        attachEventListeners();
-        
-        // Register success handler
-        SiP.Core.ajax.registerSuccessHandler(PLUGIN_ID, 'repository_action', handleRepositoryResponse);
-    }
-    
-    function attachEventListeners() {
-        // Add repository button
-        $(document).on('click', '#add-repository', handleAddRepository);
-        
-        // Repository path click (edit)
-        $(document).on('click', '.repository-path', handleEditPath);
-        
-        // Remove repository
-        $(document).on('click', '.remove-repository', handleRemoveRepository);
-        
-        // Type toggle for add dialog
-        $(document).on('change', '#repository-type', handleTypeChange);
-    }
-    
-    function handleAddRepository(e) {
-        e.preventDefault();
-        
-        // Show file browser or input dialog
-        showRepositoryDialog('add');
-    }
-    
-    function showRepositoryDialog(mode, repository) {
-        // Create modal dialog
-        var dialogHtml = `
-            <div id="repository-dialog" class="sip-modal">
-                <div class="sip-modal-content">
-                    <div class="sip-modal-header">
-                        <span class="sip-modal-close">&times;</span>
-                        <h2>${mode === 'add' ? 'Add Repository' : 'Edit Repository'}</h2>
-                    </div>
-                    <div class="sip-modal-body">
-                        <div class="form-field">
-                            <label for="repository-type">Type:</label>
-                            <select id="repository-type" ${mode === 'edit' ? 'disabled' : ''}>
-                                <option value="plugin">WordPress Plugin</option>
-                                <option value="extension">Browser Extension</option>
-                            </select>
-                        </div>
-                        <div class="form-field">
-                            <label for="repository-path">Path:</label>
-                            <div class="path-input-group">
-                                <input type="text" id="repository-path" 
-                                       value="${repository ? repository.path : ''}" 
-                                       placeholder="C:/path/to/repository">
-                                <button id="browse-path" class="button">Browse...</button>
-                            </div>
-                        </div>
-                        <div id="validation-messages" class="notice notice-error" style="display:none;"></div>
-                    </div>
-                    <div class="sip-modal-footer">
-                        <button id="save-repository" class="button button-primary">Save</button>
-                        <button id="cancel-repository" class="button">Cancel</button>
-                    </div>
-                </div>
-            </div>
-        `;
-        
-        // Add dialog to page
-        $('body').append(dialogHtml);
-        $('#repository-dialog').show();
-        
-        // Attach dialog event handlers
-        attachDialogHandlers(mode, repository);
-    }
-    
-    function attachDialogHandlers(mode, repository) {
-        // Browse button
-        $('#browse-path').on('click', function(e) {
-            e.preventDefault();
-            browseForRepository();
-        });
-        
-        // Save button
-        $('#save-repository').on('click', function(e) {
-            e.preventDefault();
-            saveRepository(mode, repository);
-        });
-        
-        // Cancel/close
-        $('#cancel-repository, .sip-modal-close').on('click', function(e) {
-            e.preventDefault();
-            $('#repository-dialog').remove();
-        });
-        
-        // Path change validation
-        $('#repository-path').on('change', validatePath);
-    }
-    
-    function browseForRepository() {
-        // Use SiP Core file browser when available
-        // For now, fallback to manual input
-        var currentPath = $('#repository-path').val();
-        
-        SiP.Core.ajax.post({
-            plugin_id: PLUGIN_ID,
-            ajax_action: 'repository_action',
-            repository_action: 'browse',
-            current_path: currentPath
-        }, function(response) {
-            if (response.path) {
-                $('#repository-path').val(response.path).trigger('change');
-            }
-        });
-    }
-    
-    function validatePath() {
-        var path = $('#repository-path').val();
-        var type = $('#repository-type').val();
-        
-        if (!path) return;
-        
-        SiP.Core.ajax.post({
-            plugin_id: PLUGIN_ID,
-            ajax_action: 'repository_action',
-            repository_action: 'validate',
-            path: path,
-            type: type
-        }, function(response) {
-            if (response.errors) {
-                showValidationErrors(response.errors);
-            } else {
-                hideValidationErrors();
-            }
-        });
-    }
-    
-    function saveRepository(mode, originalRepository) {
-        var path = $('#repository-path').val();
-        var type = $('#repository-type').val();
-        
-        var data = {
-            plugin_id: PLUGIN_ID,
-            ajax_action: 'repository_action',
-            repository_action: mode,
-            path: path,
-            type: type
-        };
-        
-        if (mode === 'update' && originalRepository) {
-            data.index = originalRepository.index;
-        }
-        
-        SiP.Core.ajax.post(data, function(response) {
-            if (response.success) {
-                $('#repository-dialog').remove();
-                // Reload the release management table
-                location.reload();
-            }
-        });
-    }
-    
-    function handleRepositoryResponse(response, requestData) {
-        // Handle various repository action responses
-        console.log('Repository action response:', response);
-    }
-    
-    return {
-        init: init
-    };
-})(jQuery);
-
-// Initialize when ready
-jQuery(document).ready(function() {
-    SiP.DevTools.repositoryManager.init();
-});
-```
-
-**Action**: 
-1. Create this new JavaScript file
-2. Enqueue it in `sip-development-tools.php`:
-```php
-wp_enqueue_script(
-    'sip-dev-tools-repository-manager', 
-    plugin_dir_url(__FILE__) . 'assets/js/modules/repository-manager.js', 
-    array('jquery', 'sip-core-ajax'), 
-    filemtime(plugin_dir_path(__FILE__) . 'assets/js/modules/repository-manager.js'), 
-    true
-);
-```
-
-#### Step 4: Update UI to Add Repository Management
-**File**: `sip-development-tools.php` (update `render_dashboard` method)
-
-Replace the existing plugin table header with:
-```php
-<!-- Plugin Release Management Section -->
-<div class="release-management-header">
-    <h2>Plugin Release Management</h2>
-    <button id="add-repository" class="button button-primary">Add Repository</button>
-</div>
-```
-
-Update the table to show repository path:
-```php
-<th class="column-plugin">Plugin</th>
-<th class="column-path">Repository Path</th>
-<th class="column-version">Current Version</th>
-```
-
-Add repository path column:
-```php
-<td class="column-path">
-    <span class="repository-path" data-index="<?php echo $index; ?>" 
-          title="<?php echo esc_attr($repository['path']); ?>">
-        <?php echo esc_html($this->truncate_path($repository['path'], 40)); ?>
-    </span>
-</td>
-```
-
-#### Step 5: Update get_sip_plugins to Use Repository Manager
-**File**: `sip-development-tools.php` (replace `get_sip_plugins` method)
-
-```php
-private function get_sip_plugins() {
-    $repositories = SiP_Repository_Manager::get_repositories();
-    $sip_plugins = array();
-    
-    // Get release dates from README.md
-    $release_dates = $this->get_release_dates_from_readme();
-    
-    foreach ($repositories as $index => $repository) {
-        // Get current status
-        $repository = SiP_Repository_Manager::get_repository_status($repository);
-        $repository['index'] = $index;
-        
-        // Add release date if available
-        if (isset($release_dates[$repository['slug']])) {
-            $repository['release_date'] = $release_dates[$repository['slug']]['date'];
-            // If README version is different, use README version
-            if (isset($release_dates[$repository['slug']]['version']) && 
-                version_compare($release_dates[$repository['slug']]['version'], $repository['version'], '>=')) {
-                $repository['version'] = $release_dates[$repository['slug']]['version'];
-            }
-        }
-        
-        $sip_plugins[] = $repository;
-    }
-    
-    return $sip_plugins;
-}
-
-/**
- * Truncate path for display
- */
-private function truncate_path($path, $max_length = 40) {
-    if (strlen($path) <= $max_length) {
-        return $path;
-    }
-    
-    // Try to intelligently truncate
-    $parts = explode('/', str_replace('\\', '/', $path));
-    $filename = array_pop($parts);
-    
-    if (strlen($filename) >= $max_length - 3) {
-        return '...' . substr($filename, -(max_length - 3));
-    }
-    
-    $remaining = $max_length - strlen($filename) - 4; // 4 for '.../'
-    $start = substr($path, 0, $remaining);
-    
-    return $start . '.../' . $filename;
-}
-```
-
-#### Step 6: Create PowerShell Script for Extensions
-**File**: `sip-development-tools/tools/release-extension.ps1` (already created)
-
-This was already implemented in the conversation. The script follows the same pattern as `release-plugin.ps1` but:
-- Works with `manifest.json` instead of PHP files
-- Creates packages in `extensions/` subdirectory
-- Adds 'v' prefix to version tags
-- Updates Chrome Web Store ID in README
-
-#### Step 7: Update Release Functions to Support Extensions
-**File**: `sip-development-tools/includes/release-functions.php` (update)
-
-Modify `sip_create_release()` to handle both plugins and extensions:
-```php
-function sip_create_release() {
-    // ... existing validation ...
-    
-    // Get repository details
-    $repositories = SiP_Repository_Manager::get_repositories();
-    $repository = null;
-    
-    foreach ($repositories as $repo) {
-        if ($repo['slug'] === $plugin_slug) {
-            $repository = $repo;
-            break;
-        }
-    }
-    
-    if (!$repository) {
-        SiP_AJAX_Response::error('Repository not found');
-        return;
-    }
-    
-    // Determine script to use
-    $script_name = $repository['type'] === 'extension' ? 'release-extension.ps1' : 'release-plugin.ps1';
-    $ps_script = plugin_dir_path(dirname(__FILE__)) . 'tools/' . $script_name;
-    
-    // ... rest of the function remains similar ...
-}
-```
-
-#### Step 8: Add CSS for Repository Management UI
-**File**: `sip-development-tools/assets/css/release-actions.css` (update)
-
-```css
-/* Repository Management Header */
-.release-management-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1em;
-}
-
-.release-management-header h2 {
-    margin: 0;
-}
-
-/* Repository Path Column */
-.column-path {
-    max-width: 300px;
-}
-
-.repository-path {
-    cursor: pointer;
-    text-decoration: underline;
-    color: #0073aa;
-    display: inline-block;
-    max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.repository-path:hover {
-    color: #005a87;
-}
-
-/* Repository Dialog */
-#repository-dialog .path-input-group {
-    display: flex;
-    gap: 10px;
-}
-
-#repository-dialog #repository-path {
-    flex: 1;
-}
-
-#repository-dialog .form-field {
-    margin-bottom: 15px;
-}
-
-#repository-dialog label {
-    display: block;
-    margin-bottom: 5px;
-    font-weight: 600;
-}
-```
-
-#### Step 9: Migration Script for Existing Installations
-**File**: `sip-development-tools/includes/migration.php` (new)
-
-```php
-/**
- * Migrate existing plugins to repository manager
- */
-function sip_migrate_to_repository_manager() {
-    // Check if migration has been run
-    if (get_option('sip_repository_migration_complete', false)) {
-        return;
-    }
-    
-    // Get existing SiP plugins
-    $all_plugins = get_plugins();
-    $repositories = array();
-    
-    foreach ($all_plugins as $plugin_file => $plugin_data) {
-        if (strpos($plugin_file, 'sip-') === 0 || strpos($plugin_data['Name'], 'SiP ') === 0) {
-            $plugin_slug = dirname($plugin_file);
-            if (empty($plugin_slug)) {
-                $plugin_slug = basename($plugin_file, '.php');
-            }
-            
-            $repository = array(
-                'path' => WP_PLUGIN_DIR . '/' . $plugin_slug,
-                'type' => 'plugin',
-                'name' => $plugin_data['Name'],
-                'slug' => $plugin_slug,
-                'main_file' => basename($plugin_file),
-                'version' => $plugin_data['Version']
-            );
-            
-            $repositories[] = $repository;
-        }
-    }
-    
-    // Save repositories
-    if (!empty($repositories)) {
-        update_option('sip_development_tools_repositories', $repositories);
-    }
-    
-    // Mark migration complete
-    update_option('sip_repository_migration_complete', true);
-}
-
-// Run migration on plugin activation or admin init
-add_action('admin_init', 'sip_migrate_to_repository_manager');
-```
-
-**Action**: 
-1. Create this migration file
-2. Include it in `sip-development-tools.php`
-
-#### Step 10: SiP Core File Browser Integration
-**Note**: This requires coordination with SiP Core team to add a cross-platform file browser component.
-
-**Directory Selection**:
-```javascript
-// Directory selection now uses simple text input fields
-// No file browser component - users type or paste paths directly
-// Example:
-const pathInput = '<input type="text" class="widefat" placeholder="Enter directory path">';
-// Validation is done server-side after submission
-     * @param {Function} options.onSelect - Callback with selected path
-     */
-    browse: function(options) {
-        // Implementation would use native OS file dialogs where possible
-        // or provide a server-side directory tree browser
-    }
-};
-```
-
-### Testing Plan
-
-1. **Migration Testing**
-   - Verify existing plugins are auto-migrated to repository system
-   - Check that all plugin data is preserved
-
-2. **Repository Management**
-   - Test adding plugin repositories
-   - Test adding extension repositories
-   - Verify path validation works correctly
-   - Test editing repository paths
-   - Test removing repositories
-
-3. **Release Process**
-   - Test plugin releases work as before
-   - Test extension releases use correct script
-   - Verify README updates include extensions
-   - Check central repository structure
-
-4. **UI/UX Testing**
-   - Verify Add Repository button placement
-   - Test modal dialogs work correctly
-   - Check path truncation displays properly
-   - Test repository path editing
-
-### Rollback Plan
-
-If issues arise:
-1. The old `get_sip_plugins()` code is preserved in git history
-2. Repository data is stored separately from existing plugin detection
-3. Migration can be reversed by clearing the option and removing migration flag
-
-### Future Enhancements
-
-1. **Bulk Import**: Add ability to scan a directory for multiple repositories
-2. **Repository Templates**: Pre-configured settings for common repository types
-3. **Remote Repositories**: Support for managing repositories on remote servers
-4. **Repository Health Checks**: Automated validation of repository state
-5. **Integration with CI/CD**: Hooks for automated testing before release
