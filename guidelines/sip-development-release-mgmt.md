@@ -51,6 +51,8 @@ Repository information is stored in WordPress options following SiP data storage
 ]
 ```
 
+Note: The `get_release_repositories()` method adds computed fields like `release_date` from the central repository README for display purposes.
+
 ### Repository Validation
 Minimal validation ensures only essential requirements:
 1. **Git Repository**: Directory must contain `.git` folder
@@ -465,16 +467,6 @@ powershell -Command "Get-ExecutionPolicy"
    - Verify ZIP integrity
    - Test auto-update system
    - Monitor error logs
-
-## Repository Management System Implementation
-
-### Overview
-The repository management system provides flexible support for both WordPress plugins and browser extensions located anywhere on the file system, replacing the previous auto-detection system that was limited to the WordPress plugins directory.
-
-**Implementation follows SiP coding standards:**
-- Uses SiP AJAX patterns with standard request/response flow
-- Follows SiP file structure conventions
-- Uses SiP Core utilities and components (file browser, AJAX, debug logging)
 - Implements established SiP patterns consistently
 
 ### System Features

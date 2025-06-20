@@ -482,6 +482,7 @@ This section provides a complete listing of all documentation files in the guide
 - **sip-development-testing-debug.md** - Testing strategies, debugging workflows, debug logging system for JavaScript and PHP
 - **sip-development-documentation.md** - JSDoc/PHPDoc standards, interface documentation requirements
 - **sip-development-release-mgmt.md** - Git workflow, versioning standards, 16-step automated release process
+- **task-working-file-template.md** - Template for tracking task progress and maintaining context during implementation
 
 ### Data Analysis Documentation
 - **mockup-map-analysis.md** - Mockup data structure analysis and visualization guide

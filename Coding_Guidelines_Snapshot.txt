@@ -23,7 +23,7 @@ Then please review the documentation for the plugin suite at
 /mnt/c/Users/tdeme/Local
   Sites/faux-stained-glass-panes/app/public/wp-content/plugins/.claude/guidelines/sip-printify-manager-extension-widget.md
   
-After looking over the documentation, please look over the relevant code and then respond in the chat with a summary of the task including WHY the work is being done and any questions you may have. State which documentation files you've identified as relevant to this specific task. Once we've discussed the correct approach, I'll ask you to make the necessary updates adhering to the documented guidelines and standards.
+After looking over the documentation, create a Task Working File in /work/ following the template. Then look over the relevant code and respond in the chat with a summary of the task including WHY the work is being done and any questions you may have. State which documentation files you've identified as relevant to this specific task. Once we've discussed the correct approach, I'll ask you to make the necessary updates adhering to the documented guidelines and standards. The work step must conclude with completing the Work Checkpoint section of your working file to verify all planned tasks are complete.
 
 Do not forget; you must code according to Coding_Guidelines_Snapshot.txt  Do not forget; No Task Agent Delegation.
 ----
@@ -65,26 +65,11 @@ Before doing work, you must:
 1. **Read the index.md file** in the .claude folder to understand the documentation structure
 2. **Review the Complete Documentation Assessment** section to identify which guidelines apply to your task
 3. **Read ALL identified relevant documentation completely** - do not skim or read only first sections
-4. **Create a Pre-Work Report** with the following structure:
-
-### Pre-Work Report Structure
-```
-Task Understanding:
-- [Describe the task in your own words]
-- [Explain WHY this work is being done]
-
-Relevant Documentation Identified:
-- [ ] Coding_Guidelines_Snapshot.txt (always required)
-- [ ] index.md (always required)
-- [ ] [List each additional guideline file identified as relevant]
-
-Applicable Standards:
-- [List specific patterns/standards from the documentation that apply]
-
-Questions/Clarifications:
-- [Any uncertainties about which guidelines apply]
-- [Any gaps in documentation for this task]
-```
+4. **Create a Task Working File** using the template at `/guidelines/task-working-file-template.md`
+   - Save as: `/work/YYYY-MM-DD-task-description.md` (e.g., `/work/2024-01-15-repository-manager-integration.md`)
+   - Complete the Planning Checkpoint section before any implementation
+   - Update throughout the task to track progress
+   - This file serves as your external memory for the task
 
 When coding, only use the methods and standards in the sip plugin suite documentation.  If there is cause to code using methods or standards that are not detailed in the documentation, stop what you are doing and explain the situation in chat so that the new approach can be discussed and validated before you implement it with explicit direction to do so.
 
@@ -239,9 +224,17 @@ When searching and replacing to update code, do not rely on your saved context f
 
 Never use write to file to make code updates.
  
- Do not preserve legacy code.  Clean up all remnants of unused or deprecated code thoroughly.  Do not implement or ignore backward compatibility code. Backward combatibility is unnecessary complexity that creates confusion and masks errors that should be fixed.  If we're in transition, we don't handle that with backward compatibility code. We handle that by letting the code throw errors and using those errors as cues to get all the code up to the correct standard.
+Do not preserve legacy code.  Clean up all remnants of unused or deprecated code thoroughly.  Do not implement or ignore backward compatibility code. Backward combatibility is unnecessary complexity that creates confusion and masks errors that should be fixed.  If we're in transition, we don't handle that with backward compatibility code. We handle that by letting the code throw errors and using those errors as cues to get all the code up to the correct standard.
 
 Do not create custom test tools or instructions unless explicitly asked to do so.  Testing will take place in the actual code.
+
+## WORK COMPLETION REQUIREMENT
+
+Before reporting that implementation is complete:
+1. **Update the Task Working File** - Mark all completed items in the Work Checkpoint section
+2. **Verify all planned tasks are complete** - Check that nothing was missed
+3. **Run through the Standards Compliance Verification** checklist
+4. **Report completion status** referencing the working file
 
 ═══════════════════════════════════════════════════════════════════════════════
                            SPECIFIC GUIDANCE
@@ -477,6 +470,17 @@ If you are adding or supplementing documentation, please make sure that you are 
 ## COMMIT MESSAGE
 
 Code changes do not need to be recorded in a file.  Please simply provide a brief summary of changes suitable to be included in the source control commit message.
+
+## TASK COMPLETION AND ARCHIVAL
+
+After review is complete:
+1. **Update the Task Working File** with:
+   - Review Checkpoint section completed
+   - Documentation updates listed
+   - Commit message added
+2. **Move the working file** to `/work/archived_tasks/` folder
+   - Keep the same filename for reference
+   - This preserves task history and decisions made
 
 
 ═══════════════════════════════════════════════════════════════════════════════
