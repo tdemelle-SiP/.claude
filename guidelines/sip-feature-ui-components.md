@@ -271,6 +271,8 @@ $('#image-table').DataTable({
 
 ## Toast Notifications
 
+**Why**: Browser alerts block user interaction and don't match WordPress admin styling. Toast notifications provide non-intrusive feedback that integrates with the dashboard aesthetic.
+
 SiP Core provides a unified toast system for user feedback.
 
 ### Basic Usage
@@ -289,6 +291,20 @@ SiP.Core.utilities.toast.show('<strong>Success:</strong> Files uploaded', 3000);
 - **Duration**: Time in milliseconds (default: 3000)
 - **Error Style**: Red background for errors (third parameter)
 - **HTML Content**: Supports basic HTML formatting
+
+### Best Practices
+
+**DO:**
+- ✅ Use toasts for all user notifications
+- ✅ Show errors in red with longer duration (5000ms)
+- ✅ Keep messages concise and actionable
+- ✅ Use HTML for emphasis when needed
+
+**DON'T:**
+- ❌ Use `alert()`, `confirm()`, or `prompt()`
+- ❌ Show multiple toasts simultaneously
+- ❌ Use toasts for critical decisions (use modals instead)
+- ❌ Make duration too short for error messages
 
 ## Spinner and Overlay
 
@@ -610,7 +626,7 @@ function showCustomModal(title, content, onConfirm, onCancel) {
 .sip-modal {
     display: none;
     position: fixed;
-    z-index: 10000;
+    z-index: var(--sip-pm-z-modal, 2000); /* Use CSS variable, fallback to 2000 */
     left: 0;
     top: 0;
     width: 100%;

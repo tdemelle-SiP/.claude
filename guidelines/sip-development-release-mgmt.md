@@ -384,6 +384,22 @@ pclose(popen($command, 'r'));
 exec($command, $output, $return_var);
 ```
 
+### PowerShell Script Output
+**Why**: PowerShell's default behavior outputs return values to console, which pollutes logs when redirected to file.
+
+```powershell
+# Suppress return value output to prevent log pollution
+$null = @{
+    Success = $success
+    Errors = $errors
+    Logs = $logEntries
+    ZipFile = if ($success) { $zipFile } else { $null }
+}
+
+# Add explicit completion marker instead
+Write-LogEntry "[COMPLETE] Release process finished" "INFO"
+```
+
 ## Error Handling
 
 ### Pre-Release Errors
@@ -450,6 +466,21 @@ Last updated: 2024-03-15 14:30:00
 ### Update Server Integration
 The README.md is automatically uploaded to `https://updates.stuffisparts.com/` after each release, allowing other systems to check for available updates.
 
+### Extension Upload API
+The update server API accepts both 'plugin_zip' and 'extension_zip' parameters to provide flexibility for different asset types.
+
+```bash
+# Extension upload uses extension-specific parameter
+curl -X POST \
+  -F "plugin_slug=$ExtensionSlug" \
+  -F "version=$Version" \
+  -F "action=upload" \
+  -F "extension_zip=@$ZipFile" \
+  https://updates.stuffisparts.com/update-api.php
+```
+
+**Note**: The server accepts both 'plugin_zip' and 'extension_zip' parameters, automatically detecting the file type from either parameter name.
+
 ## Logging
 
 ### Log Levels
@@ -470,6 +501,24 @@ sip-development-tools/logs/
 [2024-03-15 14:30:01] [SUCCESS] Version updated in main file
 [2024-03-15 14:30:02] [INFO] Pushing develop branch to GitHub...
 [2024-03-15 14:30:05] [SUCCESS] Develop branch pushed to GitHub
+[2024-03-15 14:35:00] [SUCCESS] Plugin uploaded to update server successfully
+[2024-03-15 14:35:01] [COMPLETE] Release process finished
+```
+
+### Completion Detection
+**Why**: PHP needs to reliably detect when PowerShell scripts finish to update UI status and prevent indefinite "running" state.
+
+```php
+// PHP checks for these completion markers in log content
+if (strpos($log_content, '[COMPLETE] Release process finished') !== false) {
+    $is_complete = true;
+}
+
+// Also checks for upload success (different for plugins vs extensions)
+if (strpos($log_content, '[SUCCESS] Plugin uploaded to update server successfully') !== false ||
+    strpos($log_content, '[SUCCESS] Extension uploaded to update server successfully') !== false) {
+    $is_complete = true;
+}
 ```
 
 ## UI Features

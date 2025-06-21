@@ -362,6 +362,55 @@ sip_debug('Memory usage', 'performance', [
 ]);
 ```
 
+## Debugging Release Issues
+
+### Release Process Debugging
+**Why**: Release processes involve multiple systems (PHP, PowerShell, Git) making debugging complex. Systematic approaches help identify failure points.
+
+#### Check Release Log Files
+```bash
+# Navigate to logs directory
+cd wp-content/uploads/sip-development-tools/logs/
+
+# View latest release log
+tail -f release_sip-plugin-name_version_timestamp.log
+```
+
+#### Common Release Issues
+
+1. **Log Shows "Success True" Table**
+   - **Symptom**: Log ends with PowerShell hashtable output
+   - **Cause**: PowerShell return value not suppressed
+   - **Fix**: Ensure scripts use `$null = @{...}` instead of `return @{...}`
+
+2. **Release Stuck on "Running"**
+   - **Symptom**: UI never shows completion
+   - **Cause**: PHP not detecting completion markers
+   - **Check**: Look for `[COMPLETE]` or `[SUCCESS]` markers in log
+
+3. **Extension Upload Fails**
+   - **Symptom**: "Missing plugin parameter" error
+   - **Cause**: API expects `plugin_slug` not `extension_slug`
+   - **Fix**: Use consistent parameter names
+
+#### PowerShell Script Debugging
+```powershell
+# Run script with VERBOSE log level
+./release-plugin.ps1 -NewVersion "1.0.0" -PluginSlug "plugin-name" -MainFile "plugin.php" -LogLevel "VERBOSE"
+
+# Enable Git trace for authentication issues
+$env:GIT_TRACE = 1
+$env:GIT_CURL_VERBOSE = 1
+```
+
+#### PHP Release Status Checking
+```php
+// Add debug output to release status check
+error_log('SIP Debug - Log content length: ' . strlen($log_content));
+error_log('SIP Debug - Looking for completion markers...');
+error_log('SIP Debug - Found COMPLETE: ' . (strpos($log_content, '[COMPLETE]') !== false ? 'yes' : 'no'));
+```
+
 ## Integration with Other Systems
 
 ### Dashboard Implementation
