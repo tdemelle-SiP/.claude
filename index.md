@@ -331,8 +331,10 @@ The SiP Plugins Core provides these key components (detailed in implementation g
 - Namespace: `SiP.PluginName.moduleName`
 - Module pattern with IIFE
 - Standardized AJAX handling
-- **Module Consolidation**: Related functionality grouped in single module files (2025-01-21)
-- **Dependency Management**: Automated version requirements and compatibility validation (2025-05-22)
+- Module Consolidation: Related functionality grouped in single module files
+- Dependency Management: Automated version requirements and compatibility validation
+- Branch Recovery System: Automated branch switching and recovery for releases
+- Modal System Enhancement: Custom sip-modal pattern for user interactions
 
 ## Existing Documentation
 

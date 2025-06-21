@@ -128,11 +128,29 @@ The system automatically checks:
 3. Git identity configuration
 4. Local/remote branch synchronization
 
+### Branch Check and Recovery
+**Why**: Git workflow requires releases from `develop` branch to maintain separation between stable (`master`) and development code. Manual branch switching is error-prone and interrupts workflow.
+
+```javascript
+// Branch check triggers modal if not on develop
+checkCurrentBranch(pluginSlug).then(response => {
+    if (response.data.current_branch !== 'develop') {
+        showBranchSwitchModal(response.data.current_branch, (proceed) => {
+            if (proceed) {
+                switchToDevelopBranch(pluginSlug).then(() => {
+                    startReleaseProcess(pluginSlug, ...);
+                });
+            }
+        });
+    }
+});
+```
+
 ### 16-Step Release Process
-The PowerShell script executes these steps:
+The PowerShell script executes these steps for both plugins and extensions:
 
 1. **Safety Checks**: Verify Git branch and uncommitted changes
-2. **Update Version**: Update version in main plugin file
+2. **Update Version**: Update version in main plugin file (or manifest.json for extensions)
 3. **Update Dependencies**: Automatically set core dependency requirements for child plugins
 4. **Commit Changes**: Commit to `develop` branch
 5. **Push Develop**: Push `develop` to GitHub
@@ -155,25 +173,65 @@ The PowerShell script executes these steps:
 - Must be numeric with exactly three components
 
 ### Version Locations
+
+#### WordPress Plugins
 ```php
 // Main plugin file header
 /**
  * Version: 2.3.0
  */
+```
 
-// Central repository README.md
+#### Browser Extensions
+```json
+// manifest.json
+{
+  "version": "1.0.0"  // Note: No 'v' prefix in manifest
+}
+```
+
+#### Central Repository README.md
+```markdown
 ### sip-plugins-core
 - Version: 2.3.0
 - File: sip-plugins-core-2.3.0.zip
 - Last updated: 2024-03-15 14:30:00
+
+### sip-printify-manager-extension
+- Version: 1.0.0
+- File: extensions/sip-printify-manager-extension-v1.0.0.zip
+- Last updated: 2024-03-15 14:35:00
 ```
 
 ## Git Workflow
 
 ### Branch Strategy
-- **develop**: Active development branch
+- **develop**: Active development branch (required for releases)
 - **master**: Stable release branch
 - Tags: `v2.3.0` format for releases
+
+### Branch Switching Recovery
+```php
+// sip_switch_to_develop() implementation
+function sip_switch_to_develop() {
+    // Check for uncommitted changes
+    $status_output = shell_exec('git status --porcelain 2>&1');
+    if (!empty(trim($status_output))) {
+        SiP_AJAX_Response::error(..., 'Cannot switch branches - you have uncommitted changes.');
+    }
+    
+    // Switch to develop branch
+    shell_exec('git checkout develop 2>&1');
+    
+    // Pull latest changes
+    $pull_output = shell_exec('git pull origin develop 2>&1');
+    
+    // Set upstream if needed
+    if (strpos($pull_output, 'no tracking information') !== false) {
+        shell_exec('git branch --set-upstream-to=origin/develop develop 2>&1');
+    }
+}
+```
 
 ### Release Git Flow
 ```bash
@@ -208,8 +266,20 @@ The release process creates ZIP files using 7-Zip through a PHP function that ca
 ### Key Points
 - **7-Zip Requirement**: The system requires 7-Zip to be installed at `C:\Program Files\7-Zip\7z.exe`
 - **WordPress Independence**: The `sip_create_zip_archive()` function works without WordPress loaded
-- **Temp Directory**: Uses the WordPress uploads structure for temporary files
+- **ABSPATH Calculation**: Dynamically calculates ABSPATH from script location to support repositories anywhere on the filesystem
+- **Temp Directory**: Uses temporary directory structure for building packages
 - **Compression**: Uses store method (no compression) for faster processing
+
+### ABSPATH Calculation
+**Why**: Repository Manager allows repositories anywhere on filesystem, but PHP ZIP creation function requires WordPress constants. Script location provides reliable reference point for calculation.
+
+```php
+// PowerShell script generates PHP code that calculates ABSPATH
+$scriptDir = '$($MyInvocation.MyCommand.Path.Replace('\', '/'))';  
+$parts = explode('/', $scriptDir);
+$abspath = implode('/', array_slice($parts, 0, -5)) . '/';
+define('ABSPATH', $abspath);
+```
 
 ### Process Flow
 1. PowerShell creates a temporary directory structure
@@ -245,6 +315,12 @@ function sip_handle_release_action() {
             break;
         case 'get_plugin_data':
             sip_get_plugin_data();  // Uses Repository Manager
+            break;
+        case 'check_current_branch':
+            sip_check_current_branch();  // Check repository branch
+            break;
+        case 'switch_to_develop':
+            sip_switch_to_develop();  // Switch to develop and pull latest
             break;
     }
 }
@@ -286,6 +362,13 @@ function startStatusPolling(logFileName) {
         });
     }, 2000);
 }
+
+// Modal dialog for branch switching
+function showBranchSwitchModal(currentBranch, callback) {
+    // Creates SiP-standard modal dialog
+    // Offers to switch to develop branch
+    // Handles user response via callback
+}
 ```
 
 ### PowerShell Execution
@@ -305,8 +388,9 @@ exec($command, $output, $return_var);
 
 ### Pre-Release Errors
 - **Uncommitted Changes**: Must commit or stash before release
-- **Wrong Branch**: Must be on `develop` branch
+- **Wrong Branch**: Shows modal offering to switch to `develop` branch
 - **Git Identity**: Auto-configured if missing
+- **Repository Not Found**: Clear error when repository path invalid
 
 ### Release Process Errors
 - **Version Update Failed**: Check file permissions
@@ -405,6 +489,11 @@ if (hasChangesForRelease) {
         'color': 'white'
     });
 }
+
+// Modal dialogs for user interaction
+// - Branch switch modal with monospace branch names
+// - Uncommitted changes modal with file list
+// - Progress tracking during operations
 ```
 
 ### Progress Tracking
@@ -465,10 +554,12 @@ $timeoutSeconds = 20;  // Git add/commit
    - Check network connectivity
 
 2. **"Not on develop branch" Error**
-   ```bash
-   git checkout develop
-   git pull origin develop
-   ```
+   - Click "Switch to Develop & Continue" in the modal dialog
+   - Or manually switch:
+     ```bash
+     git checkout develop
+     git pull origin develop
+     ```
 
 3. **Authentication Failures**
    - Configure Git credentials
@@ -533,3 +624,21 @@ powershell -Command "Get-ExecutionPolicy"
    - Verify ZIP integrity
    - Test auto-update system
    - Monitor error logs
+
+## Code Standards Compliance
+
+When implementing release management features, ensure compliance with SiP standards:
+
+1. **User Notifications**: Use `SiP.Core.utilities.toast` instead of `alert()`
+   - ✅ Toast notifications for user feedback
+   - ❌ Browser alerts (poor UX and styling)
+
+2. **Modal Dialogs**: Use SiP modal patterns
+   - ✅ Custom sip-modal class structure
+   - ✅ jQuery UI dialogs with sip-dialog class
+   - ❌ Native browser confirm/prompt dialogs
+
+3. **Error Handling**: Provide clear, actionable error messages
+   - ✅ Specific error context and recovery steps
+   - ✅ Modal dialogs for user choices
+   - ❌ Generic error messages

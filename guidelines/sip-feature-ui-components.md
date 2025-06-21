@@ -530,6 +530,143 @@ function createProgressDialog() {
 }
 ```
 
+### Custom SiP Modal Pattern
+
+**Why**: jQuery UI dialogs have limited styling options and don't match WordPress admin aesthetics. Custom modals provide consistent branding and better mobile responsiveness.
+
+#### Structure
+```html
+<div id="custom-modal" class="sip-modal">
+    <div class="sip-modal-content">
+        <div class="sip-modal-header">
+            <span class="sip-modal-close">&times;</span>
+            <h2>Modal Title</h2>
+        </div>
+        <div class="sip-modal-body">
+            <!-- Content goes here -->
+        </div>
+        <div class="sip-modal-footer">
+            <button class="button button-primary">Primary Action</button>
+            <button class="button button-secondary">Cancel</button>
+        </div>
+    </div>
+</div>
+```
+
+#### Implementation Example
+```javascript
+// Create and show custom modal
+function showCustomModal(title, content, onConfirm, onCancel) {
+    var modalHtml = `
+        <div class="sip-modal-content">
+            <div class="sip-modal-header">
+                <span class="sip-modal-close">&times;</span>
+                <h2>${title}</h2>
+            </div>
+            <div class="sip-modal-body">
+                ${content}
+            </div>
+            <div class="sip-modal-footer">
+                <button id="modal-confirm" class="button button-primary">Confirm</button>
+                <button id="modal-cancel" class="button button-secondary">Cancel</button>
+            </div>
+        </div>
+    `;
+    
+    // Check if modal container exists, create if not
+    var $modal = $('#sip-custom-modal');
+    if ($modal.length === 0) {
+        $modal = $('<div id="sip-custom-modal" class="sip-modal"></div>');
+        $('body').append($modal);
+    }
+    
+    // Set content and show
+    $modal.html(modalHtml).show();
+    
+    // Attach event handlers
+    $('#modal-confirm').on('click', function() {
+        $modal.hide();
+        if (onConfirm) onConfirm();
+    });
+    
+    $('#modal-cancel, .sip-modal-close').on('click', function() {
+        $modal.hide();
+        if (onCancel) onCancel();
+    });
+    
+    // Close on outside click
+    $(window).on('click.sipModal', function(e) {
+        if ($(e.target).is('#sip-custom-modal')) {
+            $modal.hide();
+            $(window).off('click.sipModal');
+            if (onCancel) onCancel();
+        }
+    });
+}
+```
+
+#### CSS Requirements
+```css
+.sip-modal {
+    display: none;
+    position: fixed;
+    z-index: 10000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0,0,0,0.4);
+}
+
+.sip-modal-content {
+    background-color: #fefefe;
+    margin: 10% auto;
+    padding: 0;
+    border: 1px solid #888;
+    width: 80%;
+    max-width: 600px;
+    border-radius: 5px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.sip-modal-header {
+    padding: 15px 20px;
+    background-color: #f1f1f1;
+    border-bottom: 1px solid #ddd;
+    position: relative;
+}
+
+.sip-modal-close {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+    line-height: 20px;
+}
+
+.sip-modal-close:hover,
+.sip-modal-close:focus {
+    color: #000;
+}
+
+.sip-modal-body {
+    padding: 20px;
+}
+
+.sip-modal-footer {
+    padding: 15px 20px;
+    background-color: #f1f1f1;
+    border-top: 1px solid #ddd;
+    text-align: right;
+}
+
+.sip-modal-footer button {
+    margin-left: 10px;
+}
+```
+
 ### Common Modal Patterns
 
 #### Confirmation Dialog

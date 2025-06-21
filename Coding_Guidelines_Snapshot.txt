@@ -23,7 +23,51 @@ Proceed to work through the steps outlined in the Coding Guidelines Snapshot doc
 
 ----
 
-This commences the work stage details about which follow below.  The completion of the work stage leads to the review stage.
+This commences the work stage. When you have implemented the solution in the code, you should announce your completion in the chat and walk through your review of the implemented code holding it to the coding standards.
+
+---
+Please review all the code implemented in the course of your working task against the SiP Code Standards
+
+## CODE QUALITY PRINCIPLES
+
+Keep code simple, clean and straightforward. Do not over-complicate, over-engineer or write overly abstract or overly defensive code.
+
+Do not take shortcuts to prioritize speed. Always prioritize being thorough, careful, doing the job right and working from definitive understanding instead of speculation.
+ 
+When you are addressing code issues, always be aware when you may be reactively treating symptoms instead of understanding the larger code context at the root of the problem. Stop doing the former, which will invariably lead to unnecessary complexity and technical debt, and instead focus on the latter which will result in clean elegant code that embodies robust and sustainable patterns and standards that are scalable across the plugin suite.
+
+When coding, stay focused on WHY the problem exists and solving THAT problem. Code from first principles, not from pattern matched hacks.
+
+### CODE REVIEW CHECKLIST
+
+Review your code against this checklist. If your solution involves ANY of these patterns, STOP and reconsider:
+
+**❌ Timing & Defensive Patterns**
+□ setTimeout/setInterval for waiting (vs. intentional delays)
+□ try-catch blocks for errors that shouldn't exist
+□ Defensive checks (function_exists, class_exists, isset, hasOwnProperty)
+□ Event handler workarounds
+□ State management to track framework behavior
+
+**❌ UI & Storage Patterns**
+□ Inline CSS styles (when not for dynamic values)
+□ Multiple redundant storage/recovery mechanisms
+□ Multiple truth sources for same data
+
+**❌ Implementation Standards**
+□ Parameter naming variations (e.g., action_name vs action_type)
+□ Hook timing differences from documented patterns
+□ Response format deviations from standard structures
+□ JavaScript utility usage that bypasses documented methods
+
+**📋 Pattern-Specific Checkpoints**
+□ AJAX: Parameter naming matches between PHP/JS
+□ DataTables: Proper cleanup before destroy()
+□ UI Components: Using SiP.Core utilities
+
+---
+
+The completion of the work stage leads to the review stage.
 
 ## REVIEW STAGE MESSAGE
 
@@ -47,7 +91,7 @@ Here is the message I will send after reviewing the completed task.
 1. ARCHITECTURAL WHY - Document WHY each component exists (constraints/requirements that necessitate it)
 2. NO HISTORY - Current state only, not how we got here  
 3. NO DUPLICATION - Each fact appears exactly once
-4. EXAMPLES OVER EXPLANATIONS - Show, don't tell
+4. EXAMPLES OVER EXPLANATIONS - Explain briefly , but emphasize showing over telling
 5. UPDATE THE RIGHT SECTION - Check if info already exists before adding
    
 When you're done, please provide a commit message to include when I submit the changes in source control.
@@ -130,45 +174,6 @@ Critical non-negotiable directive: No Task Agent Delegation
   - Direct accountability for all code changes       
 
   Use file reading, editing, and searching tools directly rather than invoking any "Task" agents or similar delegation mechanisms.
-
-## CODE QUALITY PRINCIPLES
-
-Keep code simple, clean and straightforward. Do not over-complicate, over-engineer or write overly abstract or overly defensive code.
-
-Do not take shortcuts to prioritize speed. Always prioritize being thorough, careful, doing the job right and working from definitive understanding instead of speculation.
- 
-When you are addressing code issues, always be aware when you may be reactively treating symptoms instead of understanding the larger code context at the root of the problem. Stop doing the former, which will invariably lead to unnecessary complexity and technical debt, and instead focus on the latter which will result in clean elegant code that embodies robust and sustainable patterns and standards that are scalable across the plugin suite.
-
-When coding, stay focused on WHY the problem exists and solving THAT problem. Code from first principles, not from pattern matched hacks.
-
-## Anti-Pattern Check (Required)
-
-### CODE REVIEW CHECKLIST
-
-Review your code against this checklist. If your solution involves ANY of these patterns, STOP and reconsider:
-
-**❌ Timing & Defensive Patterns**
-□ setTimeout/setInterval for waiting (vs. intentional delays)
-□ try-catch blocks for errors that shouldn't exist
-□ Defensive checks (function_exists, class_exists, isset, hasOwnProperty)
-□ Event handler workarounds
-□ State management to track framework behavior
-
-**❌ UI & Storage Patterns**
-□ Inline CSS styles (when not for dynamic values)
-□ Multiple redundant storage/recovery mechanisms
-□ Multiple truth sources for same data
-
-**❌ Implementation Standards**
-□ Parameter naming variations (e.g., action_name vs action_type)
-□ Hook timing differences from documented patterns
-□ Response format deviations from standard structures
-□ JavaScript utility usage that bypasses documented methods
-
-**📋 Pattern-Specific Checkpoints**
-□ AJAX: Parameter naming matches between PHP/JS
-□ DataTables: Proper cleanup before destroy()
-□ UI Components: Using SiP.Core utilities
 
 ### DETAILED ANTI-PATTERN GUIDANCE
 

@@ -38,7 +38,8 @@
       "Bash(do if ! grep -q \"$file\" ../index.md)",
       "Bash(then echo \"Not in index.md: $file\")",
       "Bash(fi)",
-      "Bash(done)"
+      "Bash(done)",
+      "Bash(diff:*)"
     ],
     "deny": []
   },
