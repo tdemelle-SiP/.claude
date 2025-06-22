@@ -20,17 +20,7 @@ This document serves as a central reference point and navigation guide for the S
 
 ## Introduction for Claude
 
->Your mission is twofold: (1) work on the specific code that is the focus of the session, and (2) maintain this document as a map of the overall SiP Plugin Suite codebase. Use this document to orient yourself to where the specific code being worked on resides within the larger framework. Ensure that new code conforms to the patterns described here. If it doesn't, either reconsider the approach to the immediate code task or extend/clarify this documentation to maintain alignment between the map and the terrain.
->
->This document serves as a critical bridge between human and AI collaborators, preserving context that would otherwise be lost between sessions. 
->
->Update this document when:
-- Making architectural changes affecting multiple components
-- Establishing new coding patterns or conventions
-- Changing development environment requirements
-- Identifying recurring issues that require specific handling approaches
-
-Do NOT update for routine code changes, bug fixes, or implementation details that don't affect overall structure.
+>Your mission is twofold: (1) work on the specific code that is the focus of the session, and (2) maintain this document as a map of the overall SiP Plugin Suite codebase. Use this document to orient yourself to where the specific code being worked on resides within the larger framework. Ensure that new code conforms to the patterns described here. If it doesn't, either reconsider the approach to the immediate code task or extend/clarify this documentation to maintain alignment between the map and the terrain.  All of this should take place within the formal steps of the plan, work, review process.
 
 ## Visual Documentation Map
 
@@ -135,15 +125,35 @@ graph TD
     style Release fill:#dfe6e9
 ```
 
+## SPECIFIC PATTERN COMPLIANCE
+
+If you are working on a task that you suspect may involve any of the above systems, make sure to READ the relevant documntation fies COMPLETELY. Common examples below:
+
+**AJAX IMPLEMENTATION:**
+- Read sip-plugin-ajax.md completely before any AJAX work
+- Verify parameter naming: $_POST[$action_type] matches JavaScript createFormData() second parameter
+- Test AJAX call with browser dev tools before considering complete
+- Check that response routing follows documented three-level structure
+
+**DATATABLES IMPLEMENTATION:**
+- Read sip-feature-datatables.md for table patterns
+- Follow client-side processing standards
+- Implement proper cleanup before destroy()
+
+**UI COMPONENTS:**
+- Read sip-feature-ui-components.md for UI patterns
+- Use SiP.Core utilities for all UI operations
+- Follow the three-layer visibility structure for tables
+
 ## Getting Started with SiP Plugins
 
-New to SiP Plugin development? Follow this path to get up to speed quickly:
+New to SiP Plugin development? Much of the documentation is structured specifically to serve as an intuitive and accessible reference to use as you are executing common development tasks.  Follow this path to get up to speed quickly:
 
 1. **Understand the Platform** → Start with [SiP Plugins Platform](./guidelines/sip-plugin-platform.md)
    - Learn the key principles and architecture
    - Understand how plugins interact with the core platform
 
-2. **Create Your First Plugin** → Follow [Plugin Architecture](./guidelines/sip-plugin-architecture.md)
+2. **Create Or Extend a Plugin** → Follow [Plugin Architecture](./guidelines/sip-plugin-architecture.md)
    - Set up proper file structure
    - Register with SiP Core framework
    - Implement basic functionality

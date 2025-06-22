@@ -39,7 +39,8 @@
       "Bash(then echo \"Not in index.md: $file\")",
       "Bash(fi)",
       "Bash(done)",
-      "Bash(diff:*)"
+      "Bash(diff:*)",
+      "Bash(/mnt/c/Users/tdeme/Local Sites/faux-stained-glass-panes/app/public/wp-content/plugins/upload-readme.sh:*)"
     ],
     "deny": []
   },
