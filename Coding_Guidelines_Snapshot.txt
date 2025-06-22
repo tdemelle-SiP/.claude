@@ -303,6 +303,58 @@ You're treating a symptom. Instead:
 - Fix that root cause
 - Trust your data flow
 
+---- AVOID STRING CONCATENATION IN LOOPS ----
+
+The Problem Pattern:
+Building strings by concatenating in loops creates performance issues and memory inefficiency.
+
+Example of String Concatenation (WRONG):
+// PowerShell - Building content incrementally
+$content = ""
+foreach ($item in $items) {
+    $content += "Item: $($item.Name)`n"
+    $content += "Value: $($item.Value)`n`n"
+}
+
+// JavaScript - Similar issue
+let html = '';
+items.forEach(item => {
+    html += '<div>' + item.name + '</div>';
+    html += '<div>' + item.value + '</div>';
+});
+
+This creates problems:
+- Each concatenation creates a new string object
+- Memory usage grows quadratically with item count
+- Performance degrades significantly with large datasets
+- Difficult to see final structure during development
+
+Example of Proper String Building (CORRECT):
+// PowerShell - Collect then join
+$sections = @()
+foreach ($item in $items) {
+    $section = @"
+Item: $($item.Name)
+Value: $($item.Value)
+"@
+    $sections += $section
+}
+$content = $sections -join "`n"
+
+// JavaScript - Use array join
+const sections = items.map(item => `
+    <div>${item.name}</div>
+    <div>${item.value}</div>
+`);
+const html = sections.join('');
+
+Key Principle:
+String concatenation in loops is a performance minefield. Instead:
+- Collect content in arrays
+- Join once at the end
+- Use template strings or here-strings for structure
+- Separate data gathering from formatting
+
 --- ADDRESS CORE ISSUES NOT SYMPTOMS ---
 When you are addressing code issues, always be aware when you may be reactively treating symptoms instead of understanding the larger code context at the root of the problem. Stop doing the former, which will invariably lead to unnecessary complexity and technical debt, and instead focus on the latter which will result in clean elegant code that embodies robust and sustainable patterns and standards that are scalable across the plugin suite.
 

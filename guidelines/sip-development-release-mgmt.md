@@ -4,55 +4,235 @@
 
 The SiP plugin suite uses an automated release system that handles version updates, Git operations, and package creation. The system supports both WordPress plugins and browser extensions through a flexible repository management interface. The process follows a specific Git workflow with `develop` and `master` branches, automated versioning, and centralized release distribution.
 
-## System Architecture
+## Dual Lifecycle Architecture
 
-### Components
-- **SiP Development Tools Admin UI**: Web interface for managing repositories and triggering releases
-- **Repository Manager**: Flexible system for adding and managing both plugin and extension repositories
-- **PHP Backend** (`release-functions.php`): Handles AJAX requests and launches PowerShell script
-- **PowerShell Script** (`release-plugin.ps1` / `release-extension.ps1`): Executes release process
-- **JavaScript Frontend** (`release-actions.js`): Real-time status monitoring and UI updates
-- **Repository Manager Module** (`repository-manager.js`): Handles client-side repository management
+The release system recognizes two distinct contexts with different requirements:
+
+### Development Context (Local Environment)
+- **Purpose**: Create and manage releases
+- **Source of Truth**: Repository files (plugin headers, manifest.json)
+- **Users**: Developers creating releases
+- **Data Flow**: Repositories → Release Manager → ZIP Creation → Update Server
+
+### Production Context (Deployed Sites)
+- **Purpose**: Check for and install updates
+- **Source of Truth**: Update server README (distribution catalog)
+- **Users**: Site administrators checking for updates
+- **Data Flow**: Update Server README → Plugin Dashboard → Update Installation
+
+## Core Principles
+
+1. **Repository Files as Source of Truth**
+   - Version data comes from plugin headers or manifest.json
+   - No parsing of external files for repository metadata
+   - Dynamic reading ensures always-current information
+
+2. **No String Concatenation for Data**
+   - Data structures built as arrays/objects
+   - Content assembled in single operations
+   - Eliminates performance issues and complexity
+
+3. **Type-Specific Lifecycles**
+   - Plugins and extensions follow different paths
+   - Clear distinction maintained throughout process
+   - Type determines file structure and versioning
+
+4. **Minimal Data Storage**
+   - Store only what can't be read from files
+   - Track release history separately
+   - Reduce synchronization issues
+
+## Release Lifecycle Visualization
+
+### ASCII Flow Diagram
+```
+DEVELOPMENT CONTEXT                           PRODUCTION CONTEXT
+===================                           ==================
+
+┌─────────────────┐                          ┌──────────────────┐
+│  Repository     │                          │  Deployed Site   │
+│  Source Files   │                          │  (WordPress)     │
+├─────────────────┤                          ├──────────────────┤
+│ • plugin.php    │                          │ • Checks README  │
+│ • manifest.json │                          │ • Shows updates  │
+└────────┬────────┘                          └────────▲─────────┘
+         │                                              │
+         │ Read metadata                                │ HTTP Request
+         ▼                                              │
+┌─────────────────┐                          ┌──────────────────┐
+│ Release Manager │                          │  Update Server   │
+│    Table UI     │                          │ (stuffisparts)   │
+├─────────────────┤                          ├──────────────────┤
+│ • Shows version │                          │ • Hosts ZIPs     │
+│ • Release date  │                          │ • Serves README  │
+└────────┬────────┘                          └────────▲─────────┘
+         │                                              │
+         │ Create Release                               │ Upload
+         ▼                                              │
+┌─────────────────┐     ┌──────────────┐    ┌──────────────────┐
+│   PowerShell    │────▶│ Local ZIPs   │───▶│ README Generated │
+│    Scripts      │     │ Repository   │    │  (Not Parsed)    │
+└─────────────────┘     └──────────────┘    └──────────────────┘
+
+Plugin Path:  .php → Table → PS1 → ZIP → README → Server → Sites
+Extension Path: .json → Table → PS1 → ZIP → README → Server → Sites
+```
+
+### Mermaid Flow Diagram
+```mermaid
+graph TB
+    subgraph "Development Context"
+        RF[Repository Files<br/>plugin.php / manifest.json] 
+        RM[Release Manager<br/>Table UI]
+        PS[PowerShell Scripts<br/>release-plugin/extension.ps1]
+        LZ[Local ZIP Archive<br/>sip-plugin-suite-zips/]
+        RG[README Generation<br/>From Repository Data]
+        
+        RF -->|Read Metadata| RM
+        RM -->|Create Release| PS
+        PS -->|Build Package| LZ
+        PS -->|Update Release Info| RM
+        LZ -->|Generate from Data| RG
+    end
+    
+    subgraph "Production Context"
+        US[Update Server<br/>updates.stuffisparts.com]
+        RC[README Catalog<br/>Available Versions]
+        DS[Deployed Sites<br/>WordPress Installations]
+        PD[Plugin Dashboard<br/>Update Checker]
+        
+        RG -->|Upload| US
+        US -->|Serve| RC
+        RC -->|Check Updates| DS
+        DS -->|Display| PD
+    end
+    
+    style RF fill:#e1f5fe
+    style RM fill:#b3e5fc
+    style PS fill:#81d4fa
+    style LZ fill:#4fc3f7
+    style RG fill:#29b6f6
+    style US fill:#fff3e0
+    style RC fill:#ffe0b2
+    style DS fill:#ffcc80
+    style PD fill:#ffb74d
+```
+
+## Component Responsibilities
+
+### 1. Repository Registration (Entry Point)
+- **Input**: File path to repository
+- **Process**: Validate Git repo, detect type, extract metadata
+- **Storage**: Path, type, and last_release only
+- **Output**: Repository added to management table
+
+### 2. Release Manager Table (Display & Control)
+- **Data Source**: Fresh read from repository files + stored release info
+- **Shows**: Current version, last release date, branch status
+- **Actions**: Create release, manage repositories
+- **Updates**: Real-time from AJAX calls
+
+### 3. PowerShell Release Scripts (Execution)
+- **Plugin Script**: `release-plugin.ps1`
+- **Extension Script**: `release-extension.ps1`
+- **Process**: 16-step automated release
+- **Updates**: Calls PHP to update release info on completion
+
+### 4. README Generation (Distribution Catalog)
+- **Trigger**: After successful release
+- **Source**: Repository Manager data
+- **Method**: PHP arrays to structured text (no concatenation)
+- **Purpose**: Catalog for production sites
+
+### 5. Update Server (Distribution Point)
+- **Hosts**: ZIP files and README catalog
+- **Access**: Public HTTP endpoint
+- **Used By**: All deployed WordPress sites
+
+## Implementation Files
+
+### PHP Files
+```
+sip-development-tools/
+├── includes/
+│   ├── repository-manager.php          # Core repository management class
+│   ├── repository-ajax-handlers.php    # AJAX endpoints for repository operations
+│   └── release-functions.php           # Release process functions
+```
+
+### JavaScript Files
+```
+sip-development-tools/
+├── assets/js/modules/
+│   ├── repository-manager.js    # Client-side repository management
+│   └── release-actions.js       # Release UI and status monitoring
+```
+
+### Key Classes and Functions
+
+#### PHP (Server-Side)
+- `SiP_Repository_Manager::get_repositories()` - Get all repos with status
+- `SiP_Repository_Manager::get_fresh_repository_info()` - Read current file data
+- `SiP_Repository_Manager::update_repository_release()` - Update release tracking
+- `SiP_Repository_Manager::generate_readme_content()` - Create README from data
+- `sip_check_release_status()` - Monitor release and update on completion
+
+#### JavaScript (Client-Side)
+- `updateRepositoryTable()` - Refresh table display via AJAX
+- `handleAddRepository()` - UI for adding new repositories
+- `startStatusPolling()` - Monitor release progress
+- `checkReleaseStatus()` - Poll for completion and trigger updates
 
 ## Repository Management
 
 ### Overview
 The release manager uses a flexible repository registration system that allows management of repositories located anywhere on the file system. This replaces the previous auto-detection system that was limited to the WordPress plugins directory.
 
-### Key Features
-- **Manual Repository Addition**: Users explicitly add repositories via UI using text input
-- **Flexible Locations**: Supports repositories anywhere on the file system
-- **Multiple Types**: Handles both WordPress plugins and browser extensions
-- **Persistent Storage**: Repository paths stored in WordPress options
-- **Cross-Platform**: Works on Windows, Mac, and Linux
-- **Path-Based Operations**: All Git and file operations use actual repository paths from Repository Manager
+### Data Architecture
 
-### Repository Storage Structure
-Repository information is stored in WordPress options following SiP data storage standards:
-
+#### What Gets Stored
 ```php
-// Option name: sip_development_tools_repositories
+// WordPress Option: sip_development_tools_repositories
 [
-    [
-        'path' => 'C:/Users/tdeme/Local Sites/.../plugins/sip-plugins-core',
-        'type' => 'plugin',
-        'name' => 'SiP Plugins Core',
-        'slug' => 'sip-plugins-core',
-        'main_file' => 'sip-plugins-core.php',
-        'version' => '2.3.0'
-    ],
-    [
-        'path' => 'C:/Users/tdeme/Repositories/sip-printify-manager-extension',
-        'type' => 'extension',
-        'name' => 'SiP Printify Manager Extension',
-        'slug' => 'sip-printify-manager-extension',
-        'main_file' => 'manifest.json',
-        'version' => '1.0.0'
+    'md5-hash-of-path' => [
+        'path' => '/absolute/path/to/repository',
+        'type' => 'plugin|extension',
+        'last_release' => [
+            'version' => '2.3.0',
+            'date' => '2024-03-15 14:30:00'
+        ]
     ]
 ]
 ```
 
-Note: The `get_release_repositories()` method adds computed fields like `release_date` from the central repository README for display purposes.
+#### What Gets Read Dynamically
+- **From Plugin Files**: Name, version, text domain, description
+- **From manifest.json**: Name, version, permissions, Chrome ID
+- **From Git**: Branch status, uncommitted changes, remote sync
+
+#### Data Flow Sequence
+```
+1. User adds repository path
+   └─> Validate Git repo
+   └─> Detect type (plugin/extension)
+   └─> Store minimal data
+
+2. Table displays repository
+   └─> Read fresh metadata from files
+   └─> Merge with stored release info
+   └─> Show in UI
+
+3. User creates release
+   └─> PowerShell updates version
+   └─> Creates ZIP package
+   └─> Updates last_release in storage
+   └─> Generates README from all repos
+
+4. Production site checks updates
+   └─> Fetches README from server
+   └─> Compares versions
+   └─> Shows available updates
+```
 
 ### Repository Validation
 Minimal validation ensures only essential requirements:
@@ -146,6 +326,28 @@ checkCurrentBranch(pluginSlug).then(response => {
 });
 ```
 
+## Type-Specific Release Lifecycles
+
+### Plugin Release Lifecycle
+1. **Repository Add**: Detect WordPress plugin via PHP headers
+2. **Version Source**: Read from main PHP file header
+3. **Release Process**: 
+   - Update version in PHP file
+   - Create ZIP with plugin folder structure
+   - File naming: `plugin-name-X.Y.Z.zip`
+4. **Distribution**: Upload to plugins section of update server
+5. **Update Check**: WordPress sites check via SiP Plugins Core
+
+### Extension Release Lifecycle  
+1. **Repository Add**: Detect Chrome extension via manifest.json
+2. **Version Source**: Read from manifest.json
+3. **Release Process**:
+   - Update version in manifest.json
+   - Create ZIP with direct file structure (no wrapper folder)
+   - File naming: `extension-name-vX.Y.Z.zip`
+4. **Distribution**: Upload to extensions section of update server
+5. **Future**: Chrome Web Store integration (pending approval)
+
 ### 16-Step Release Process
 The PowerShell script executes these steps for both plugins and extensions:
 
@@ -161,10 +363,11 @@ The PowerShell script executes these steps for both plugins and extensions:
 10. **Ensure Directories**: Create `previous_releases` folder
 11. **Archive Old ZIPs**: Move existing ZIPs to previous releases
 12. **Build Package**: Create clean release ZIP using 7-Zip via PHP
-13. **Update README**: Create/update central repository README
+13. **Update README**: Generate from repository data (no parsing)
 14. **Commit Central**: Commit changes to central repository
 15. **Push Central**: Push central repository to GitHub
 16. **Return to Develop**: Checkout `develop` branch
+17. **Update Repository**: Store release date/version in repository manager
 
 ## Version Numbering
 
@@ -463,6 +666,100 @@ Last updated: 2024-03-15 14:30:00
 - Last updated: 2024-03-15 14:35:00
 ```
 
+### README Generation
+
+**Why**: The central repository README serves as a distribution catalog for deployed sites to check for updates. It's generated from repository data, not parsed for data.
+
+#### Generation Process
+
+1. **Data Source**: Repository Manager maintains release information
+2. **Generation Trigger**: README is regenerated after each successful release
+3. **PHP Function**: `SiP_Repository_Manager::generate_readme_content()` creates the content
+4. **No Parsing**: README is write-only from the release manager's perspective
+
+#### README Structure
+```markdown
+# SiP Plugin Releases
+
+This directory contains the latest releases of all SiP plugins.
+
+Last updated: 2024-03-15 14:30:00
+
+## Available Plugins
+
+### sip-plugins-core
+- Version: 2.3.0
+- File: [sip-plugins-core-2.3.0.zip](./sip-plugins-core-2.3.0.zip)
+- Last updated: 2024-03-15 14:30:00
+
+## Available Extensions
+
+### sip-printify-manager-extension
+- Version: 1.0.0
+- File: [extensions/sip-printify-manager-extension-v1.0.0.zip](./extensions/sip-printify-manager-extension-v1.0.0.zip)
+- Chrome Web Store ID: ikgbhdaibkmehpeipbcooebkgpfegdbg
+- Last updated: 2024-03-15 14:35:00
+```
+
+### PowerShell String Building Best Practices
+
+**Why**: String concatenation in PowerShell creates new string objects repeatedly, leading to memory inefficiency and performance degradation. Building content all at once is cleaner and more maintainable.
+
+The PowerShell scripts use a two-phase approach to avoid concatenation:
+
+1. **Data Collection Phase**
+```powershell
+# Gather all repository data into structured objects
+function Get-PluginReleaseData {
+    $pluginData = @()
+    foreach ($plugin in $sipPlugins) {
+        $pluginInfo = @{
+            Name = $plugin.Name
+            Version = ""
+            FileName = ""
+            LastUpdated = ""
+            HasRelease = $false
+        }
+        # Populate data...
+        $pluginData += $pluginInfo
+    }
+    return $pluginData
+}
+```
+
+2. **Content Generation Phase**
+```powershell
+# Generate complete README from data structure
+function New-ReadmeContent {
+    param ([array]$PluginData)
+    
+    # Build sections in array
+    $sections = @()
+    foreach ($plugin in $PluginData) {
+        $section = @"
+### $($plugin.Name)
+- Version: $($plugin.Version)
+- File: [$($plugin.FileName)](./$($plugin.FileName))
+"@
+        $sections += $section
+    }
+    
+    # Join all at once
+    $fullContent = @"
+# SiP Plugin Releases
+$($sections -join "`n`n")
+"@
+    return $fullContent
+}
+```
+
+**Key Points**:
+- No string concatenation (`+=` on strings)
+- Data gathered first, then formatted
+- Sections collected in arrays, joined once
+- PowerShell here-strings for clean multi-line content
+- Same approach used in both `release-plugin.ps1` and `release-extension.ps1`
+
 ### Update Server Integration
 The README.md is automatically uploaded to `https://updates.stuffisparts.com/` after each release, allowing other systems to check for available updates.
 
@@ -673,6 +970,89 @@ powershell -Command "Get-ExecutionPolicy"
    - Verify ZIP integrity
    - Test auto-update system
    - Monitor error logs
+
+## Implementation Summary
+
+### Key Changes from Previous System
+
+1. **Eliminated README Parsing**
+   - Old: Parse README with regex to extract release dates
+   - New: Generate README from stored repository data
+   - Benefit: No brittle pattern matching
+
+2. **Repository Files as Source**
+   - Old: Multiple sources of truth (README, stored data, file versions)
+   - New: Single source - repository files for metadata
+   - Benefit: Always current, no sync issues
+
+3. **Automatic Release Tracking**
+   - Old: Manual README updates required
+   - New: Release info updated automatically on completion
+   - Benefit: Accurate release history
+
+4. **Type-Specific Handling**
+   - Old: Plugins and extensions treated similarly
+   - New: Clear distinction with different paths
+   - Benefit: Proper support for both types
+
+### Critical Implementation Details
+
+1. **No String Concatenation**: All data assembly uses arrays/objects
+2. **Dynamic Metadata**: Version/name always read fresh from files
+3. **Minimal Storage**: Only store what can't be read
+4. **Release History**: Separate option tracks all releases
+5. **README Generation**: One-way process (write only, no parse)
+
+## Troubleshooting Repository Management
+
+### Common Issues and Solutions
+
+#### Repository Not Showing in Table
+**Symptom**: Added repository doesn't appear or shows "Not released"
+**Cause**: Repository data stored but not displaying correctly
+**Solution**:
+1. Verify repository type detection worked correctly
+2. Check `last_release` field exists in stored data
+3. Ensure `get_fresh_repository_info()` can read version
+
+#### Extension Release Dates Missing
+**Symptom**: Extensions always show "Not released" even after releases
+**Cause**: Release tracking not updating for extension type
+**Solution**:
+1. Check PowerShell script detects extension type correctly
+2. Verify `update_repository_release()` called with correct type
+3. Ensure manifest.json has valid version field
+
+#### Version Mismatch
+**Symptom**: Table shows old version after plugin update
+**Cause**: Cached data or incorrect source
+**Solution**:
+1. Version should come from repository files, not stored data
+2. Check `get_fresh_repository_info()` reads current file
+3. Clear any transient caches
+
+### Key Functions for Debugging
+
+```php
+// Get raw stored repository data
+$repos = get_option('sip_development_tools_repositories');
+
+// Get repository with fresh file data
+$fresh = SiP_Repository_Manager::get_fresh_repository_info($repo);
+
+// Check release history
+$history = get_option('sip_development_tools_release_history');
+
+// Force README regeneration
+$readme = SiP_Repository_Manager::generate_readme_content();
+```
+
+### Data Flow Debugging
+
+1. **Add Repository**: Check `extract_repository_info()` detects type
+2. **Display Table**: Verify `get_release_repositories()` merges data correctly  
+3. **Create Release**: Ensure `sip_check_release_status()` updates on completion
+4. **View Updates**: Confirm README generation includes all active repos
 
 ## Code Standards Compliance
 
