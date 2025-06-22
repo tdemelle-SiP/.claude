@@ -64,6 +64,21 @@ REVIEW I - DOCUMENTATION
                                     PLAN DETAILS
 ═══════════════════════════════════════════════════════════════════════════════
 
+## PLAN COMPLIANCE CHECKLIST
+
+When completing PLAN II - IMPLEMENTATION PLAN SUMMARY, verify and report on the following in your chat response:
+
+□ Read Coding_Guidelines_Snapshot.txt in its entirety
+□ Read index.md to understand documentation structure
+□ Read working-task-planning-template.md and completed template
+□ Reviewed all relevant documentation files completely (not skimmed)
+□ Analyzed existing code patterns and their relation to documentation
+□ Identified WHY the work is needed in the larger plugin context
+□ Made zero assumptions - all uncertainties listed in Questions section
+□ Traced code sequences systematically without logical leaps
+□ Inspected actual runtime data, DOM elements, and property names where relevant
+□ All proposed changes follow documented patterns OR have explicit justification
+
 Here is the message I will send at the beginning of a task after explaining the goals of the task and other relevant details.
 
 ----
@@ -112,6 +127,25 @@ When you have finished the document and code review steps and completed the work
                                     WORK DETAILS
 ═══════════════════════════════════════════════════════════════════════════════
 
+## WORK COMPLIANCE CHECKLIST
+
+When completing WORK I - CODE and WORK II - ITERATE, verify and report on the following in your chat confirmation:
+
+□ Used file reading/editing tools directly (no Task agent delegation)
+□ Verified search strings against actual code (not saved context)
+□ Used Edit/MultiEdit for code updates (never Write for existing files)
+□ Stayed within specified scope of working task file
+□ All implementations follow documented patterns OR have explicit approval
+□ No defensive code added to prevent errors (fixed root causes instead)
+□ No redundant storage mechanisms (single source of truth)
+□ No setTimeout for waiting (only for intentional delays)
+□ No try-catch for errors that shouldn't exist
+□ No function_exists/class_exists/isset defensive checks
+□ Made zero assumptions (verified all data structures and field names)
+□ Code would pass senior developer review for simplicity and clarity
+□ No backward compatibility code or legacy remnants preserved
+□ All anti-patterns from CODE REVIEW CHECKLIST avoided
+
 Please carry out the work detailed in the plan step following the work guidelines laid out below.
 
 Do not code without explicit direction to do so.  
@@ -133,9 +167,9 @@ Never use write to file to make code updates.
 
 --- STAY WITHIN THE SPECIFIED SCOPE OF THE WORK ---
 Do not make changes beyond those clearly stated in the working task file.
-All systems that you implemnent in the course of your work should either be 
+All systems that you implement in the course of your work should either be 
     1. Following patterns outlined in the guidelines documentation
-    2. Following instructions explicityl laid out in the task goals
+    2. Following instructions explicitly laid out in the task goals
 
 If there is cause to code using methods or standards that are not detailed in the documentation or in the task goals themselves, stop what you are doing and explain the situation in chat so that the new approach can be discussed and validated and explicit approval can be obtained before you implement it.
 
@@ -269,7 +303,7 @@ You're treating a symptom. Instead:
 - Fix that root cause
 - Trust your data flow
 
---- ADDRESS CORE ISSUES NOT SYPMTOMS ---
+--- ADDRESS CORE ISSUES NOT SYMPTOMS ---
 When you are addressing code issues, always be aware when you may be reactively treating symptoms instead of understanding the larger code context at the root of the problem. Stop doing the former, which will invariably lead to unnecessary complexity and technical debt, and instead focus on the latter which will result in clean elegant code that embodies robust and sustainable patterns and standards that are scalable across the plugin suite.
 
 Symptom vs. Root Cause: A Critical Distinction
@@ -433,7 +467,7 @@ When coding, stay focused on WHY the problem exists and solving THAT problem. Co
 
 --- NEVER ADD BACKWARD COMPATIBILITY CODE ---
 
-Do not preserve legacy code.  Clean up all remnants of unused or deprecated code thoroughly.  Do not implement backward compatibility code. Backward combatibility is unnecessary complexity that creates confusion and masks errors that should be fixed.  If we're in transition, we don't handle that with backward compatibility code. We handle that by letting the code throw errors and using those errors as cues to get all the code up to the correct standard.
+Do not preserve legacy code.  Clean up all remnants of unused or deprecated code thoroughly.  Do not implement backward compatibility code. Backward compatibility is unnecessary complexity that creates confusion and masks errors that should be fixed.  If we're in transition, we don't handle that with backward compatibility code. We handle that by letting the code throw errors and using those errors as cues to get all the code up to the correct standard.
 
 ### CODE REVIEW CHECKLIST
 
@@ -466,7 +500,24 @@ Review your code against this checklist or anti-patterns. If your solution invol
                                 DOCUMENTATION DETAILS
 ═══════════════════════════════════════════════════════════════════════════════
 
-The documentation referended in the index.md file and stored in the files in the /guidelines/ directory serves as a critical bridge between human and AI collaborators, preserving context that would otherwise be lost between sessions. 
+## DOCUMENTATION COMPLIANCE CHECKLIST
+
+When completing REVIEW I - DOCUMENTATION, verify and report on the following in your chat summary:
+
+□ Re-read index.md to understand documentation structure
+□ Reviewed all documentation files affected by changes
+□ Updated documentation reflects current code functionality
+□ No deprecated references remain in documentation
+□ New patterns/principles properly documented
+□ Documentation follows established patterns for similar features
+□ All cross-references and links are correct and useful
+□ Documentation provides complete understanding for future developers
+□ Architectural WHY is documented (not just what/how)
+□ No duplication - each fact appears exactly once
+□ Examples provided where appropriate (showing over telling)
+□ Commit message prepared following project standards
+
+The documentation referenced in the index.md file and stored in the files in the /guidelines/ directory serves as a critical bridge between human and AI collaborators, preserving context that would otherwise be lost between sessions. 
 
 Update this documention when:
 - Making architectural changes that alter or extend the existing documentation
