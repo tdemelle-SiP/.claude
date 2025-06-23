@@ -116,7 +116,7 @@ window.postMessage({
 **WordPress Version Capture**: Browser extension manager captures and stores version:
 ```javascript
 extensionState.version = data.version;
-SiP.Core.state.setPluginState('sip-printify-manager', 'extension', {
+SiP.Core.state.setState('sip-printify-manager', 'extension', {
     version: data.version,
     isInstalled: true,
     isConnected: true

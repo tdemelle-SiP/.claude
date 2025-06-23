@@ -18,7 +18,7 @@ The release system recognizes two distinct contexts with different requirements:
 - **Purpose**: Check for and install updates
 - **Source of Truth**: Update server README (distribution catalog)
 - **Users**: Site administrators checking for updates
-- **Data Flow**: Update Server README → Plugin Dashboard → Update Installation
+- **Data Flow**: Update Server README → Plugin Dashboard (parses for display) → Update Installation
 
 ## Core Principles
 
@@ -602,6 +602,16 @@ pclose(popen($command, 'r'));
 exec($command, $output, $return_var);
 ```
 
+#### README Generation and Consumption
+
+**Important Distinction**: The "No Parsing" principle applies specifically to the README generation process, not consumption:
+
+- **Generation (Development)**: README is generated from repository data without parsing any existing README
+- **Consumption (Production)**: Production sites must parse the README to extract structured data for display
+- **Why This Works**: The README follows a predictable, self-controlled format making parsing reliable
+
+This is analogous to API responses - we generate JSON without parsing, but consumers must parse it for use.
+
 ### PowerShell Script Output
 **Why**: PowerShell's default behavior outputs return values to console, which pollutes logs when redirected to file.
 
@@ -998,10 +1008,11 @@ git ls-remote origin
 
 ### Key Changes from Previous System
 
-1. **Eliminated README Parsing**
-   - Old: Parse README with regex to extract release dates
-   - New: Generate README from stored repository data
-   - Benefit: No brittle pattern matching
+1. **Eliminated README Parsing During Generation**
+   - Old: Parse existing README to update release dates (read-modify-write cycle)
+   - New: Generate fresh README from repository data (write-only)
+   - Benefit: No brittle pattern matching during release process
+   - Note: Production sites still parse the generated README for display
 
 2. **Repository Files as Source**
    - Old: Multiple sources of truth (README, stored data, file versions)
@@ -1025,6 +1036,26 @@ git ls-remote origin
 3. **Minimal Storage**: Only store what can't be read
 4. **Release History**: Separate option tracks all releases
 5. **README Generation**: One-way process (write only, no parse)
+6. **Production Parsing**: Structured README parsing is acceptable for display purposes
+
+### Production Context Parsing
+
+While README generation is write-only, production sites require parsing for display:
+
+1. **Structured Format**: The README uses predictable markdown sections
+2. **Section Isolation**: Use clear boundaries (## headers) to separate content
+3. **Reliable Patterns**: Self-generated format ensures consistent structure
+4. **Acceptable Parsing**: Reading your own generated format is different from parsing arbitrary content
+
+Example of acceptable production parsing:
+```php
+// Extract specific sections using section headers as boundaries
+if (preg_match('/## Available Plugins\s*\n(.*?)(?=## Available Extensions|$)/s', $readme, $match)) {
+    $plugins_section = $match[1];
+}
+```
+
+This maintains the benefits of the "no parsing" principle while acknowledging the practical need for data extraction in production contexts.
 
 ## Troubleshooting Repository Management
 
