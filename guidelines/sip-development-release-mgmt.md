@@ -366,8 +366,7 @@ The PowerShell script executes these steps for both plugins and extensions:
 13. **Update README**: Generate from repository data (no parsing)
 14. **Commit Central**: Commit changes to central repository
 15. **Push Central**: Push central repository to GitHub
-16. **Return to Develop**: Checkout `develop` branch
-17. **Update Repository**: Store release date/version in repository manager
+16. **Sync Branches**: Merge `master` back to `develop` and return to `develop` branch
 
 ## Version Numbering
 
@@ -452,8 +451,24 @@ git merge develop
 git tag -a "v2.3.0" -m "Version 2.3.0"
 git push origin master --tags
 
-# Return to develop
+# CRITICAL: Sync master back to develop (Step 16)
 git checkout develop
+git merge master
+git push origin develop
+
+# Both branches now identical
+```
+
+## Branch Synchronization (Step 16)
+
+**Why**: Release process creates commits/tags on `master` during merge. Without syncing back to `develop`, branches diverge and cause merge conflicts in future releases.
+
+**The Fix**: Step 16 automatically merges `master` back to `develop` after each release.
+
+**Verification**: 
+```bash
+git rev-list --left-right --count master...develop
+# Should show: 0	0 (branches identical)
 ```
 
 ### Git Identity
@@ -907,29 +922,37 @@ $timeoutSeconds = 20;  // Git add/commit
      git pull origin develop
      ```
 
-3. **Authentication Failures**
+3. **Branch Divergence After Release**
+   - **Cause**: Step 16 (branch sync) failed during previous release
+   - **Solution**: `git checkout develop && git reset --hard master && git push origin develop --force-with-lease`
+
+4. **Merge Conflicts During Release**
+   - **Cause**: Conflicting changes between master and develop during sync
+   - **Solution**: `git checkout develop && git merge master` (resolve conflicts manually)
+
+5. **Authentication Failures**
    - Configure Git credentials
    - Use SSH keys or credential store
 
-4. **Central Repository Missing**
+6. **Central Repository Missing**
    - Ensure `sip-plugin-suite-zips` exists
    - Check directory permissions
 
 ### Debug Commands
 ```bash
+# Check branch divergence
+git rev-list --left-right --count master...develop
+
+# Verify branch sync (should be identical)
+git log --oneline -1 master
+git log --oneline -1 develop
+
 # Check Git identity
 git config user.name
 git config user.email
 
-# View branch status
-git branch -vv
-git status
-
-# Test Git connectivity
+# Test connectivity
 git ls-remote origin
-
-# Check PowerShell
-powershell -Command "Get-ExecutionPolicy"
 ```
 
 ## Security Considerations
@@ -1054,20 +1077,3 @@ $readme = SiP_Repository_Manager::generate_readme_content();
 3. **Create Release**: Ensure `sip_check_release_status()` updates on completion
 4. **View Updates**: Confirm README generation includes all active repos
 
-## Code Standards Compliance
-
-When implementing release management features, ensure compliance with SiP standards:
-
-1. **User Notifications**: Use `SiP.Core.utilities.toast` instead of `alert()`
-   - ✅ Toast notifications for user feedback
-   - ❌ Browser alerts (poor UX and styling)
-
-2. **Modal Dialogs**: Use SiP modal patterns
-   - ✅ Custom sip-modal class structure
-   - ✅ jQuery UI dialogs with sip-dialog class
-   - ❌ Native browser confirm/prompt dialogs
-
-3. **Error Handling**: Provide clear, actionable error messages
-   - ✅ Specific error context and recovery steps
-   - ✅ Modal dialogs for user choices
-   - ❌ Generic error messages

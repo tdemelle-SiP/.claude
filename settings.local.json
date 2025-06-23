@@ -44,7 +44,12 @@
       "Bash(powershell.exe:*)",
       "Bash(wp eval:*)",
       "Bash(git stash show:*)",
-      "Bash(git cat-file:*)"
+      "Bash(git cat-file:*)",
+      "Bash(git merge-base:*)",
+      "Bash(git rev-list:*)",
+      "Bash(git ls-tree:*)",
+      "Bash(git rev-parse:*)",
+      "Bash(git fetch:*)"
     ],
     "deny": []
   },
