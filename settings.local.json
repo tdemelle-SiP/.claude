@@ -50,7 +50,12 @@
       "Bash(git ls-tree:*)",
       "Bash(git rev-parse:*)",
       "Bash(git fetch:*)",
-      "Bash(xxd:*)"
+      "Bash(xxd:*)",
+      "Bash(git -C /mnt/c/Users/tdeme/Repositories/sip-printify-manager-extension log -S\"showWidget\" --oneline)",
+      "Bash(git -C /mnt/c/Users/tdeme/Repositories/sip-printify-manager-extension log -S\"showWidget\" -p --oneline -n 1)",
+      "Bash(git -C /mnt/c/Users/tdeme/Repositories/sip-printify-manager-extension show cf35121:action-scripts/widget-tabs-actions.js)",
+      "Bash(git -C /mnt/c/Users/tdeme/Repositories/sip-printify-manager-extension log --all --grep=\"showWidget\" --oneline)",
+      "Bash(git -C /mnt/c/Users/tdeme/Repositories/sip-printify-manager-extension log --oneline)"
     ],
     "deny": []
   },
