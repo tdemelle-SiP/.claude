@@ -74,7 +74,7 @@ This approach reduces unnecessary message traffic, provides more responsive user
 - Auto-update preference toggle
 - Chrome Web Store installation links
 
-**SiP Development Tools Integration**: For development and release management, the extension repository must be manually added to SiP Development Tools using the repository manager. Once added, it appears in the release management table with the same capabilities as WordPress plugins.
+**SiP Development Tools Integration**: For development and release management, the extension repository must be manually added to SiP Development Tools using the repository manager. Once added, it appears in the release management table with the same capabilities as WordPress plugins. The system supports dual distribution to both the stuffisparts update server and Chrome Web Store, with Chrome Store credentials optionally configured in the `.env` file.
 
 **Data Storage Compliance**: Extension preferences (NOT installation status) use SiP data storage patterns:
 - Client-side: Extension preferences only (NOT installation state)
@@ -88,10 +88,33 @@ This approach reduces unnecessary message traffic, provides more responsive user
 **Unified Release System**: The extension uses the same automated release system as WordPress plugins through SiP Development Tools. The system supports both plugin and extension releases with type-specific handling.
 
 **Extension-Specific Features**:
-- Chrome Web Store API integration for automated publishing
+
+#### Chrome Web Store API Integration
+The release system includes a dedicated PowerShell module (`SiP-ChromeWebStore.psm1`) that provides automated Chrome Web Store publishing capabilities:
+
+**Module Functions**:
+- `Test-ChromeStoreConfig` - Validates OAuth credentials are properly configured
+- `Get-ChromeAccessToken` - Exchanges refresh token for access token using OAuth 2.0
+- `Upload-ToChromeWebStore` - Uploads extension ZIP to Chrome Web Store
+- `Publish-ChromeExtension` - Publishes uploaded extension (or saves as draft)
+- `Get-ChromeExtensionStatus` - Retrieves current publication status
+
+**Authentication Configuration**:
+Chrome Web Store API credentials are stored in `/sip-development-tools/tools/.env`:
+```env
+CHROME_CLIENT_ID=your-client-id
+CHROME_CLIENT_SECRET=your-client-secret
+CHROME_REFRESH_TOKEN=your-refresh-token
+CHROME_EXTENSION_ID=your-extension-id
+```
+
+**Integration Features**:
 - Extension packaging and validation via `release-extension.ps1`
-- Store submission and review process automation
+- Store submission with optional draft mode (`-ChromeStoreDraft` parameter)
+- Automated upload to Chrome Web Store as step 15 in release process
+- Non-blocking integration - Chrome Store failures don't stop releases
 - Stuffisparts data file updates for version tracking
+- OAuth 2.0 authentication with automatic token refresh
 
 **Repository Requirements**: To enable release management:
 1. Extension repository must be added to SiP Development Tools via "Add Repository" button
@@ -101,6 +124,32 @@ This approach reduces unnecessary message traffic, provides more responsive user
 **Version Synchronization**: Release system updates both Chrome Web Store and stuffisparts server data to maintain dashboard accuracy.
 
 **Rollback Capability**: Failed releases can be rolled back via Chrome Web Store developer console while maintaining version tracking integrity.
+
+#### Chrome Web Store Release Process
+
+The Chrome Web Store integration is executed as step 15 in the `release-extension.ps1` script:
+
+**Release Flow**:
+1. Extension ZIP is created and uploaded to stuffisparts update server (steps 1-14)
+2. Chrome Store configuration is checked via `Test-ChromeStoreConfig`
+3. If configured, OAuth access token is obtained via refresh token
+4. Extension ZIP is uploaded to Chrome Web Store API
+5. Based on `-ChromeStoreDraft` parameter:
+   - If set: Extension saved as draft for manual review
+   - If not set: Extension automatically published
+6. Status is checked and reported back to user
+
+**Error Handling**:
+- Chrome Store upload failures are logged but don't stop the release
+- Extension remains available via stuffisparts update server
+- Manual upload to Chrome Web Store can be done if automated upload fails
+- All Chrome Store operations have 30-second timeouts
+
+**Dual Distribution Strategy**:
+- Primary: Stuffisparts update server (always succeeds)
+- Secondary: Chrome Web Store (optional, non-blocking)
+- Users can install from either source
+- Both sources receive same version simultaneously
 
 ## 3. Technical Architecture
 
@@ -1248,6 +1297,80 @@ Authentication via header: `X-SiP-API-Key: [32-character-key]`
 - Extension can appear to work with corrupt manifest
 - Background scripts may load while content scripts don't
 - Programmatic injection can mask manifest issues
+
+## 12. Chrome Web Store Troubleshooting
+
+### 12.1 Obtaining OAuth Credentials
+
+**Prerequisites**:
+1. Google Cloud Console account
+2. Chrome Web Store Developer account ($5 one-time fee)
+3. Extension must be uploaded to Chrome Web Store (can be draft)
+
+**Steps to Get Credentials**:
+1. **Create Google Cloud Project**:
+   - Go to https://console.cloud.google.com/
+   - Create new project or select existing
+   - Enable Chrome Web Store API
+
+2. **Create OAuth 2.0 Credentials**:
+   - Navigate to APIs & Services → Credentials
+   - Click "Create Credentials" → "OAuth client ID"
+   - Application type: "Web application"
+   - Add authorized redirect URI: `https://developers.google.com/oauthplayground`
+   - Save Client ID and Client Secret
+
+3. **Get Refresh Token**:
+   - Go to https://developers.google.com/oauthplayground
+   - Click settings (gear icon) → Use your own OAuth credentials
+   - Enter Client ID and Client Secret
+   - In Step 1, manually enter scope: `https://www.googleapis.com/auth/chromewebstore`
+   - Authorize and exchange for tokens
+   - Copy the Refresh Token
+
+4. **Get Extension ID**:
+   - Go to Chrome Web Store Developer Dashboard
+   - Find your extension
+   - Copy the ID from the URL or listing
+
+### 12.2 Common Error Scenarios
+
+**Authentication Errors**:
+- **401 Unauthorized**: Check refresh token is valid
+- **403 Forbidden**: Ensure Chrome Web Store API is enabled in Google Cloud Console
+- **Invalid Grant**: Refresh token expired - regenerate via OAuth playground
+
+**Upload Errors**:
+- **400 Bad Request**: Check ZIP file structure (manifest.json must be at root)
+- **409 Conflict**: Version already exists - increment version number
+- **413 Entity Too Large**: ZIP file exceeds 2GB limit
+
+**Network Errors**:
+- Timeout after 30 seconds - retry manually
+- Corporate proxy blocking - use manual upload
+
+### 12.3 Manual Publishing Fallback
+
+If automated publishing fails:
+1. Extension ZIP is still created in local repository
+2. Log shows location: `sip-printify-manager-extension/releases/[version]/`
+3. Manually upload via Chrome Web Store Developer Dashboard
+4. Extension remains available via stuffisparts update server regardless
+
+### 12.4 Testing Chrome Store Integration
+
+**Verify Configuration**:
+```powershell
+# From sip-development-tools/tools directory
+. .\SiP-ChromeWebStore.psm1
+Test-ChromeStoreConfig -ClientId $env:CHROME_CLIENT_ID -ClientSecret $env:CHROME_CLIENT_SECRET -RefreshToken $env:CHROME_REFRESH_TOKEN -ExtensionId $env:CHROME_EXTENSION_ID
+```
+
+**Test Token Exchange**:
+```powershell
+$token = Get-ChromeAccessToken -ClientId $env:CHROME_CLIENT_ID -ClientSecret $env:CHROME_CLIENT_SECRET -RefreshToken $env:CHROME_REFRESH_TOKEN
+Write-Host "Token obtained: $($token.Substring(0,10))..."
+```
 
 ## Appendices
 
