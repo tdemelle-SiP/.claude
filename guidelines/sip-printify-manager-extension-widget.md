@@ -38,12 +38,15 @@ The SiP Printify Manager browser extension is a standalone Chrome Web Store exte
 - State changes are pushed from extension to WordPress as they occur
 - No periodic status checks or ping/pong patterns
 - Event-driven updates ensure real-time synchronization
+- **No state persistence**: Extension state is NOT saved between page loads - the extension must announce itself each time
 
-This approach reduces unnecessary message traffic and provides more responsive user experience.
+This approach reduces unnecessary message traffic, provides more responsive user experience, and ensures accurate extension detection.
 
-**Version Management Integration**: Extension version is communicated to WordPress on ready announcement and stored using SiP data storage patterns for integration with the update management system.
+**Version Management Integration**: Extension version is communicated to WordPress on ready announcement but is NOT persisted. The extension must announce itself on each page load to be considered installed, ensuring accurate detection state.
 
 **Data Processing Separation**: Extension acts as a "dumb pipe" capturing and relaying raw data, while WordPress handles all processing, validation, and business logic.
+
+**Fresh Detection Model**: Extension installation state is never persisted. The extension must announce itself on each page load to be considered installed. This ensures the "Install Extension" button always appears when the extension is not actually present, eliminating stale state issues.
 
 ## 2. Distribution & Release Management
 
@@ -73,10 +76,10 @@ This approach reduces unnecessary message traffic and provides more responsive u
 
 **SiP Development Tools Integration**: For development and release management, the extension repository must be manually added to SiP Development Tools using the repository manager. Once added, it appears in the release management table with the same capabilities as WordPress plugins.
 
-**Data Storage Compliance**: Extension status is stored using SiP data storage patterns:
-- Client-side: localStorage under `sip-core.sip-printify-manager.extension`
+**Data Storage Compliance**: Extension preferences (NOT installation status) use SiP data storage patterns:
+- Client-side: Extension preferences only (NOT installation state)
 - Server-side: WordPress options for extension preferences
-- State management: SiP Core state management system
+- State management: Extension must announce itself each page load - no persistence of installation status
 
 **Update Server Integration**: Stuffisparts update server includes extension data for dashboard version checking and update notifications.
 
@@ -113,14 +116,11 @@ window.postMessage({
 }, window.location.origin);
 ```
 
-**WordPress Version Capture**: Browser extension manager captures and stores version:
+**WordPress Version Capture**: Browser extension manager captures version but does NOT persist it:
 ```javascript
 extensionState.version = data.version;
-SiP.Core.state.setState('sip-printify-manager', 'extension', {
-    version: data.version,
-    isInstalled: true,
-    isConnected: true
-});
+// No state persistence - fresh detection on each page load
+// Extension must announce itself to be considered installed
 ```
 
 **Update Checking**: WordPress compares local version against stuffisparts server data for update notifications.
@@ -897,10 +897,12 @@ PROGRAMMATIC INJECTION (Immediate activation):
 EXTENSION ANNOUNCES ITSELF:
 8. widget-relay.js executes and sends SIP_EXTENSION_READY to WordPress
 9. WordPress receives announcement and:
-   - Sets extensionState.isInstalled = true
+   - Sets extensionState.isInstalled = true (in memory only - NOT persisted)
    - Hides "Install Extension" button
    - May send SIP_SHOW_WIDGET message
 10. widget-tabs-actions.js creates/shows the floating widget
+
+IMPORTANT: Extension state is NOT persisted - fresh detection on each page load
 
 FIRST INSTALL DATA CHECK:
 11. For fresh installs only, router sends SIP_EXTENSION_INSTALLED message
@@ -979,10 +981,15 @@ setTimeout(() => {
 ```javascript
 // Set up listener early in page lifecycle
 document.addEventListener('DOMContentLoaded', function() {
+    // Always start with extension not detected
+    extensionState.isInstalled = false;
+    extensionState.isConnected = false;
+    updateButtonState(); // Show install button by default
+    
     window.addEventListener('message', function(event) {
         if (event.data && event.data.type === 'SIP_EXTENSION_READY' && 
             event.data.source === 'sip-printify-extension') {
-            // Extension detected - update UI
+            // Extension detected - update UI (memory only, no persistence)
             extensionState.isInstalled = true;
             extensionState.version = event.data.version;
             extensionState.isConnected = true;
@@ -1013,11 +1020,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
 #### Key Benefits
 
-1. **Simple Page Reload**: Most reliable approach for Chrome extension activation
-2. **Immediate Feedback**: Clear installation complete message
+1. **Fresh Detection Each Load**: Extension must announce itself on every page load
+2. **No Stale State**: No persistence means no false positives for extension detection
 3. **Clean Architecture**: Each component has clear responsibility
-4. **Reliable Detection**: Manifest-based loading eliminates race conditions
-5. **Better UX**: Quick automatic reload is better than uncertain waiting
+4. **Reliable Detection**: Push-driven model with no saved state ensures accuracy
+5. **Install Button Visibility**: Always shows when extension not detected
 
 ### 10.2 Supported WordPress Commands
 
@@ -1331,8 +1338,8 @@ Key implementation details:
 
 ### 2.1 WordPress Data Storage Updates
 - [ ] **Update browser-extension-manager.js**
-  - [ ] Integrate SiP Core state management system
-  - [ ] Store extension version in localStorage using SiP patterns
+  - [ ] Keep runtime-only state (no persistence of installation status)
+  - [ ] Store only user preferences (NOT extension detection state)
   - [ ] Add auto-update preference toggle
   - [ ] Implement update checking logic
 
@@ -1349,11 +1356,11 @@ Key implementation details:
   - [ ] Store last version check timestamps
 
 ### 2.2 Client-Side State Management
-- [ ] **Integrate with SiP Core State System**
-  - [ ] Register extension state in SiP.Core.state
-  - [ ] Update extension state on version announcements
-  - [ ] Persist extension preferences in localStorage
-  - [ ] Sync client state with server options
+- [ ] **Runtime State Management**
+  - [ ] Keep extension detection state in memory only
+  - [ ] Update runtime state on version announcements
+  - [ ] Persist only user preferences in localStorage
+  - [ ] Never persist installation/detection state
 
 ## Phase 3: SiP Core Dashboard Integration
 
@@ -1474,14 +1481,16 @@ extensionState.version = data.version;
 **File**: `/wp-content/plugins/sip-printify-manager/assets/js/modules/browser-extension-manager.js`
 
 **Changes needed:**
-1. Migrate from local `extensionState` object to `SiP.Core.state` management
+1. Keep local `extensionState` object for runtime state only (no persistence)
 2. Add Chrome Web Store installation detection
 3. Add update checking against stuffisparts server
 
 **Key sections to modify:**
-- Line 17-23: extensionState object → migrate to SiP.Core.state
-- Line 112: Where version is captured → store in SiP state
+- Line 17-23: extensionState object → keep as-is for runtime state
+- Line 112: Where version is captured → keep in memory only
 - Add new function: `checkForExtensionUpdates()`
+
+**IMPORTANT**: Extension state is NOT persisted - fresh detection on each page load
 
 #### Create extension-functions.php
 **Create new file**: `/wp-content/plugins/sip-printify-manager/includes/extension-functions.php`
@@ -1534,8 +1543,9 @@ function sip_handle_extension_update_check() {
 
 3. **views/dashboard-html.php**:
    - Update installation instructions to use Chrome Web Store link
-   - Add extension version display using SiP Core state
+   - Add extension version display from runtime state only
    - Remove embedded extension download links
+   - Ensure install button shows by default (no saved state)
 
 ### 11.3 Data Structure Requirements
 
