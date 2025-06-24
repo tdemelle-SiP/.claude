@@ -202,6 +202,9 @@ A foundational plugin providing centralized functionality that all other SiP plu
 Development and deployment utilities for the plugin suite:
 
 1. **Release Management**: Automated versioning, Git workflow, and deployment
+   - WordPress plugin releases with dependency management
+   - Chrome extension releases with optional Chrome Web Store publishing
+   - Centralized update server distribution
 2. **Development Helpers**: Code generation and testing utilities
 3. **System Diagnostics**: Environment verification and troubleshooting
 

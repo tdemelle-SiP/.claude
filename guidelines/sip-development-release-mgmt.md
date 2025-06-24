@@ -345,12 +345,15 @@ checkCurrentBranch(pluginSlug).then(response => {
    - Update version in manifest.json
    - Create ZIP with direct file structure (no wrapper folder)
    - File naming: `extension-name-X.Y.Z.zip`
-4. **Distribution**: Upload to extensions section of update server
-5. **Future**: Chrome Web Store integration (pending approval)
+4. **Distribution**: 
+   - Primary: Upload to update server for manual installation
+   - Secondary: Chrome Web Store publishing (optional, if configured)
+5. **Chrome Web Store**: Automated publishing via API integration
 
 ### 16-Step Release Process
-The PowerShell script executes these steps for both plugins and extensions:
+The PowerShell script executes these steps:
 
+**For both plugins and extensions:**
 1. **Safety Checks**: Verify Git branch and uncommitted changes
 2. **Update Version**: Update version in main plugin file (or manifest.json for extensions)
 3. **Update Dependencies**: Automatically set core dependency requirements for child plugins
@@ -364,8 +367,12 @@ The PowerShell script executes these steps for both plugins and extensions:
 11. **Archive Old ZIPs**: Move existing ZIPs to previous releases
 12. **Build Package**: Create clean release ZIP using 7-Zip via PHP
 13. **Update README**: Generate from PowerShell repository scanning
-14. **Commit Central**: Commit changes to central repository
-15. **Push Central**: Push central repository to GitHub
+14. **Upload to Server**: Upload ZIP to update server and commit central repository
+
+**For extensions only:**
+15. **Chrome Web Store**: Upload to Chrome Web Store (if configured)
+
+**Final step:**
 16. **Sync Branches**: Merge `master` back to `develop` and return to `develop` branch
 
 ## Version Numbering
@@ -802,6 +809,40 @@ curl -X POST \
 ```
 
 **Note**: The server accepts both 'plugin_zip' and 'extension_zip' parameters, automatically detecting the file type from either parameter name.
+
+## Chrome Web Store Integration
+
+### Overview
+Extensions can optionally be published to the Chrome Web Store as part of the release process. This provides users with automatic updates and easier installation through the Chrome Web Store.
+
+### Configuration
+Chrome Web Store publishing requires OAuth 2.0 credentials stored in `.env`:
+
+```env
+CHROME_CLIENT_ID=your-client-id
+CHROME_CLIENT_SECRET=your-client-secret  
+CHROME_REFRESH_TOKEN=your-refresh-token
+CHROME_EXTENSION_ID=your-extension-id
+```
+
+### Features
+- **Automatic Detection**: Script checks for credentials and skips if not configured
+- **Non-Blocking**: Chrome Web Store failures don't stop the release process
+- **Draft Support**: Use `-ChromeStoreDraft` parameter to upload without publishing
+- **Status Reporting**: Reports upload and publication status in logs
+
+### Module Architecture
+The `SiP-ChromeWebStore.psm1` module provides:
+- `Test-ChromeStoreConfig`: Validates configuration
+- `Get-ChromeAccessToken`: OAuth token exchange
+- `Upload-ToChromeWebStore`: ZIP upload via API
+- `Publish-ChromeExtension`: Publication control
+- `Get-ChromeExtensionStatus`: Status checking
+
+### Distribution Strategy
+1. **Update Server**: Primary distribution for manual installation
+2. **Chrome Web Store**: Secondary distribution for automatic updates
+3. **User Choice**: Dashboard shows install button (Chrome Store) and download button (manual)
 
 ## Logging
 
