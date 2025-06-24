@@ -23,6 +23,31 @@ Keep it to 1-2 sentences per component.
 
 The SiP Printify Manager browser extension is a standalone Chrome Web Store extension that integrates with the SiP Printify Manager WordPress plugin. It provides enhanced mockup data access and automated workflow capabilities that cannot be achieved through Printify's public API alone.
 
+### System Overview Diagram
+
+```mermaid
+flowchart TD
+    WP[WordPress Admin Page] -->|User click / DOM event| CS[Content-script<br>(widget-tabs-actions.js)]
+    CS -- "chrome.runtime.sendMessage" --> BG[Background Router]
+    BG -- "sendTabMessage()" --> CS
+    CS -->|Calls| UI[SiPWidget.UI Module]
+    UI -->|Injects| Widget[Widget iframe / DOM]
+    UI -->|AJAX| PHP[wp-admin/admin-ajax.php]
+    PHP -->|Server logic| Printify[Printify API / DB]
+    Widget -. sync .-> CS
+```
+Legend
+
+- **WP** WordPress admin page where the extension runs.  
+- **CS** Content-script that attaches to the page and forwards messages.  
+- **BG** Background script (router) that mediates extension-wide actions.  
+- **UI** `SiPWidget.UI` namespace housing all widget commands.  
+- **Widget** Injected UI element rendered in the page.  
+- **PHP** Plugin AJAX handler (`sip-printify-manager/includes/...`).  
+- **Printify** Remote Printify endpoints / site database.  
+
+Data flow: admin click → content-script → background → back to content-script → `SiPWidget.UI` → DOM injection + WordPress AJAX → server/Printify.
+
 ### 1.1 Distribution & Update Architecture
 
 **Chrome Web Store Distribution**: Extension is published as "unlisted" on Chrome Web Store to provide automatic updates while maintaining privacy. Users install via direct Chrome Web Store link provided by the WordPress plugin.
@@ -709,6 +734,27 @@ function handle(request, sender, sendResponse, router) {
     return true; // Keep channel open
 }
 ```
+
+### 6.4 Public API Naming Standard  
+_Add this subsection immediately after **6.3 Handler Context** in the “Implementation Standards” chapter._
+
+**Purpose** Prevent future `ReferenceError` issues and keep the extension extensible by enforcing a single, namespaced surface for all UI commands.
+
+| Rule | Rationale | Example |
+|------|-----------|---------|
+| **Expose every UI function under `SiPWidget.UI` only.** | Makes the API explicit and discoverable; avoids accidental globals.| `SiPWidget.UI.showWidget()` |
+| **Never call a bare function such as `showWidget()` or `toggleWidget()` from any script (wrapper, relay, handler, or content-script).** | Guarantees the call site never outruns the module loader; eliminates race conditions. | _Wrong:_ `showWidget();`<br>_Right:_ `SiPWidget.UI.showWidget();` |
+| **If legacy WordPress code requires a global, create a *temporary* bridge inside `widget-tabs-actions.js` and mark it with `// @deprecated`.** | Eases transition without breaking older releases; highlights cleanup targets. | `window.showWidget = SiPWidget.UI.showWidget; // @deprecated` |
+| **Future commands** (e.g. `refreshWidget`, `resizeWidget`) **must follow the same pattern**. | Keeps extension growth predictable. | `SiPWidget.UI.refreshWidget();` |
+
+**Implementation Checklist**
+
+1. Search the codebase for `showWidget(`, `toggleWidget(`, etc. outside `SiPWidget.UI.*` and refactor calls.  
+2. Remove any `window.*` aliases once no longer needed.  
+3. Document new commands by appending to the table above—no further globals.
+
+_Once this subsection is added, the discrepancy between `toggleWidget` and `showWidget` handling is resolved at the policy level, ensuring architectural consistency going forward._
+
 
 ## 7. Widget UI Features
 
