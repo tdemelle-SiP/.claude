@@ -168,6 +168,39 @@ sip-development-tools/
 │   └── release-actions.js       # Release UI and status monitoring
 ```
 
+### PowerShell Scripts and Modules
+```
+sip-development-tools/
+├── tools/
+│   ├── release-plugin.ps1         # WordPress plugin release automation
+│   ├── release-extension.ps1      # Chrome extension release automation
+│   ├── SiP-ChromeWebStore.psm1    # Chrome Web Store API functions
+│   └── SiP-ReleaseUtilities.psm1  # Shared release utilities and Get-ApiKey
+```
+
+#### Module Structure
+- **SiP-ReleaseUtilities.psm1**: Common functions for all release scripts
+  - `Get-ApiKey`: Reads API keys from .env files
+  - `Get-RepositoryData`: Gathers repository information
+  - `New-ReadmeContent`: Generates README content
+  - `Update-CentralReadme`: Updates central repository README
+  - `Upload-ReadmeToServer`: Uploads README to update server
+
+- **SiP-ChromeWebStore.psm1**: Chrome Web Store API integration
+  - `Test-ChromeStoreConfig`: Validates Chrome Store configuration
+  - `Get-ChromeAccessToken`: OAuth token exchange
+  - `Upload-ToChromeWebStore`: Uploads extension ZIP via API
+  - `Publish-ChromeExtension`: Publishes or saves as draft
+  - `Get-ChromeExtensionStatus`: Checks extension status
+
+#### Module Loading Pattern
+All modules are imported at the top of the release scripts using PowerShell best practices:
+```powershell
+# Import the SiP modules
+Import-Module (Join-Path -Path $PSScriptRoot -ChildPath "SiP-ChromeWebStore.psm1") -Force
+Import-Module (Join-Path -Path $PSScriptRoot -ChildPath "SiP-ReleaseUtilities.psm1") -Force
+```
+
 ### Key Classes and Functions
 
 #### PHP (Server-Side)
