@@ -695,11 +695,11 @@ sip-plugin-suite-zips/
 ├── README.md               # Auto-updated plugin & extension manifest
 ├── sip-plugins-core-2.3.0.zip
 ├── sip-printify-manager-3.1.0.zip
-├── extensions/             # Browser extensions directory
-│   └── sip-printify-manager-extension-1.0.0.zip
+├── sip-printify-manager-extension-1.0.0.zip  # Extensions now in root directory
 └── previous_releases/
     ├── sip-plugins-core-2.2.0.zip
-    └── sip-printify-manager-3.0.0.zip
+    ├── sip-printify-manager-3.0.0.zip
+    └── sip-printify-manager-extension-0.9.0.zip
 ```
 
 ### README.md Format
@@ -849,7 +849,9 @@ curl -X POST \
 Extensions can optionally be published to the Chrome Web Store as part of the release process. This provides users with automatic updates and easier installation through the Chrome Web Store.
 
 ### Configuration
-Chrome Web Store publishing requires OAuth 2.0 credentials stored in `.env`:
+Chrome Web Store publishing requires OAuth 2.0 credentials stored in `.env` file in the tools directory:
+
+**Location**: `/sip-development-tools/tools/.env`
 
 ```env
 CHROME_CLIENT_ID=your-client-id
@@ -857,6 +859,8 @@ CHROME_CLIENT_SECRET=your-client-secret
 CHROME_REFRESH_TOKEN=your-refresh-token
 CHROME_EXTENSION_ID=your-extension-id
 ```
+
+**Note**: The script looks for the .env file in its own directory (`$PSScriptRoot`), not the extension directory
 
 ### Features
 - **Automatic Detection**: Script checks for credentials and skips if not configured
@@ -1229,4 +1233,20 @@ $curlArgs = @(
     # ... rest of arguments
 )
 ```
+
+#### Shared Functions in Modules
+**Pattern**: Common functions belong in shared modules
+```powershell
+# In SiP-ReleaseUtilities.psm1
+function Invoke-GitCommandWithTimeout {
+    # Shared implementation
+}
+Export-ModuleMember -Function Invoke-GitCommandWithTimeout
+
+# In release scripts
+Import-Module (Join-Path -Path $PSScriptRoot -ChildPath "SiP-ReleaseUtilities.psm1") -Force
+# Function is now available without duplication
+```
+
+**Why**: Prevents code duplication and ensures consistent behavior across scripts
 
