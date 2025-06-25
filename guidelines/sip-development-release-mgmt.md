@@ -1182,3 +1182,51 @@ $readme = SiP_Repository_Manager::generate_readme_content();
 3. **Create Release**: Ensure `sip_check_release_status()` updates on completion
 4. **View Updates**: Confirm README generation includes all active repos
 
+#### Extension Version Not Updating After Release
+**Symptom**: Extension version shows blank in table after AJAX refresh but appears on page reload
+**Cause**: Duplicate file reading without proper UTF-8 BOM handling
+**Solution**: `sip_get_plugin_data` now reuses data from `get_fresh_repository_info()` instead of re-reading manifest.json
+
+### PowerShell Script Best Practices
+
+#### Git Command Execution
+**Pattern**: Use `git -C <path>` for commands in different directories
+```powershell
+# Correct - works reliably through cmd /c
+$isRepo = Invoke-GitCommandWithTimeout -Command "git -C `"$RepoPath`" rev-parse --is-inside-work-tree"
+
+# Incorrect - fails with cmd /c execution
+$isRepo = Invoke-GitCommandWithTimeout -Command "Set-Location '$RepoPath'; git rev-parse --is-inside-work-tree"
+```
+
+#### Clean Logging
+**Pattern**: Use exit codes for success/failure determination
+```powershell
+function Invoke-GitCommandWithTimeout {
+    # Run command and capture output
+    $output = & cmd /c "$Command 2>&1"
+    $exitCode = $LASTEXITCODE
+    
+    if ($exitCode -eq 0) {
+        Write-LogEntry "$Description completed successfully" "INFO" -Timing
+        return $output  # Return actual output on success
+    } else {
+        Write-LogEntry "$Description failed with exit code $exitCode" "ERROR"
+        return $false   # Return false on failure
+    }
+}
+```
+
+**Why**: Git uses stderr for informational messages, not just errors. Exit codes provide reliable success/failure indication.
+
+#### Suppress Progress Output
+**Pattern**: Add `-s` flag to curl commands
+```powershell
+$curlArgs = @(
+    "-s",  # Silent mode - no progress meter
+    "-k",  # Skip SSL verification
+    "-X", "POST",
+    # ... rest of arguments
+)
+```
+
