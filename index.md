@@ -36,6 +36,7 @@ This document serves as a central reference point and navigation guide for the S
 ├── 🏗️ Platform & Architecture
 │   ├── sip-plugin-platform.md      → Core architecture & dependencies
 │   ├── sip-plugin-architecture.md  → Complete plugin creation & dashboards
+│   ├── sip-plugins-core-dashboard.md → Unified installer management
 │   ├── sip-printify-manager-architecture.md → Complex plugin example
 │   └── sip-printify-manager-extension-widget.md → Browser extension docs
 │
@@ -308,6 +309,7 @@ Detailed architecture guides for specific SiP plugins with complex systems.
 
 | Guide | Description | Status |
 |-------|-------------|--------|
+| [SiP Plugins Core Dashboard](./guidelines/sip-plugins-core-dashboard.md) | Unified installer management for plugins and extensions | ✅ Complete |
 | [SiP Printify Manager Architecture](./guidelines/sip-printify-manager-architecture.md) | Complete architecture, data flows, and parent-child product relationships | ✅ Complete |
 | [SiP Printify Manager Extension](./guidelines/sip-printify-manager-extension-widget.md) | Browser extension architecture and integration | ✅ Complete |
 | [SiP Printify Manager Testing](./guidelines/sip-printify-manager-testing.md) | API testing procedures and experimental feature testing | ✅ Complete |

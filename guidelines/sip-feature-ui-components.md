@@ -853,8 +853,8 @@ The SiP Plugins Core dashboard automatically detects installed browser extension
 
 ### How It Works
 1. **Extension Announcement**: Extension content script sends presence message on dashboard page
-2. **Dashboard Listener**: Dashboard receives message and updates `window.sipExtensionState`
-3. **Table Update**: Extensions table automatically refreshes to show "Installed" status
+2. **Dashboard Listener**: Dashboard receives message and updates `window.sipInstalledItems`
+3. **Table Update**: Both plugins and extensions tables refresh via `refreshInstallersTables()`
 4. **Status Request**: Dashboard requests status after 2 seconds for late-loading extensions
 
 ### Extension Implementation
@@ -880,10 +880,15 @@ window.addEventListener('message', function(event) {
     if (event.origin !== window.location.origin) return;
     
     if (event.data?.type === 'SIP_EXTENSION_DETECTED') {
-        // Update extension state
-        window.sipExtensionState[event.data.extension.slug] = event.data.extension;
-        // Re-render extensions table
-        renderExtensionsTable(availableExtensions);
+        // Update unified installed items
+        window.sipInstalledItems[event.data.extension.slug] = {
+            type: 'extension',
+            version: event.data.extension.version,
+            isInstalled: true,
+            name: event.data.extension.name
+        };
+        // Refresh both tables
+        refreshInstallersTables();
     }
 });
 ```
