@@ -847,6 +847,53 @@ if (window.SiP.Core.extensionInstaller) {
 }
 ```
 
+## Extension Detection
+
+The SiP Plugins Core dashboard automatically detects installed browser extensions using postMessage communication.
+
+### How It Works
+1. **Extension Announcement**: Extension content script sends presence message on dashboard page
+2. **Dashboard Listener**: Dashboard receives message and updates `window.sipExtensionState`
+3. **Table Update**: Extensions table automatically refreshes to show "Installed" status
+4. **Status Request**: Dashboard requests status after 2 seconds for late-loading extensions
+
+### Extension Implementation
+```javascript
+// In extension content script (runs on WordPress admin pages)
+if (window.location.href.includes('page=sip-plugins')) {
+    window.postMessage({
+        type: 'SIP_EXTENSION_DETECTED',
+        extension: {
+            slug: 'extension-slug',
+            name: 'Extension Name',
+            version: chrome.runtime.getManifest().version,
+            isInstalled: true
+        }
+    }, window.location.origin);
+}
+```
+
+### Dashboard Implementation
+```javascript
+// Automatically set up when plugin dashboard initializes
+window.addEventListener('message', function(event) {
+    if (event.origin !== window.location.origin) return;
+    
+    if (event.data?.type === 'SIP_EXTENSION_DETECTED') {
+        // Update extension state
+        window.sipExtensionState[event.data.extension.slug] = event.data.extension;
+        // Re-render extensions table
+        renderExtensionsTable(availableExtensions);
+    }
+});
+```
+
+### Benefits
+- **Real-time Detection**: No page reload required
+- **Automatic Updates**: Status changes immediately when extension installed/removed
+- **Multi-Extension Support**: Each extension announces independently
+- **Secure Communication**: Origin checking prevents malicious messages
+
 ## Buttons and Controls
 
 ### WordPress Button Classes

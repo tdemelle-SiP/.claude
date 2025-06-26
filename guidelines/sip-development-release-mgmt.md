@@ -380,8 +380,11 @@ checkCurrentBranch(pluginSlug).then(response => {
    - File naming: `extension-name-X.Y.Z.zip`
 4. **Distribution**: 
    - Primary: Upload to update server for manual installation
-   - Secondary: Chrome Web Store publishing (optional, if configured)
-5. **Chrome Web Store**: Automated publishing via API integration
+   - Secondary: Chrome Web Store publishing (optional, controlled by per-extension toggle)
+5. **Chrome Web Store**: 
+   - Automated publishing via API integration
+   - Per-extension toggle in Development Tools dashboard
+   - Toggle state persisted in localStorage
 
 ### 16-Step Release Process
 The PowerShell script executes these steps:
@@ -403,7 +406,7 @@ The PowerShell script executes these steps:
 14. **Upload to Server**: Upload ZIP to update server and commit central repository
 
 **For extensions only:**
-15. **Chrome Web Store**: Upload to Chrome Web Store (if configured)
+15. **Chrome Web Store**: Upload to Chrome Web Store (if configured and enabled via dashboard toggle)
 
 **Final step:**
 16. **Sync Branches**: Merge `master` back to `develop` and return to `develop` branch
@@ -516,6 +519,30 @@ Default identity if not configured:
 - Name: `SiP Development Tools`
 - Email: `support@stuffisparts.com`
 
+## Chrome Web Store Publishing Control
+
+### Overview
+Extensions have a toggle in the Development Tools dashboard to control whether releases are published to the Chrome Web Store. This prevents flooding the review queue during rapid development iterations.
+
+### Implementation
+- **UI**: Toggle switch in the "Chrome Store" column for each extension
+- **Default**: Enabled (checked) for backward compatibility
+- **Persistence**: Toggle state saved in localStorage using SiP Core state management
+- **PowerShell Parameter**: `-SkipChromeStore` flag passed when toggle is unchecked
+
+### Usage
+```javascript
+// Toggle state is automatically loaded on page initialization
+// State persists across page reloads and browser sessions
+// Stored in: localStorage['sip-core']['sip-development-tools']['chrome-store-toggles'][extension-slug]
+```
+
+### Benefits
+- Prevents queuing multiple versions during development
+- Allows testing via update server without Chrome Store delays
+- Toggle state persists between sessions
+- Per-extension control for different development phases
+
 ## ZIP Creation Process
 
 ### Overview
@@ -527,6 +554,25 @@ The release process creates ZIP files using 7-Zip through a PHP function that ca
 - **ABSPATH Calculation**: Dynamically calculates ABSPATH from script location to support repositories anywhere on the filesystem
 - **Temp Directory**: Uses temporary directory structure for building packages
 - **Compression**: Uses store method (no compression) for faster processing
+
+### Extension vs Plugin ZIP Structure
+**WordPress Plugins** - Include wrapper directory:
+```
+plugin-name-1.0.0.zip
+└── plugin-name/
+    ├── plugin-name.php
+    └── ... other files
+```
+
+**Browser Extensions** - Files at root level:
+```
+extension-name-1.0.0.zip
+├── manifest.json
+├── background.js
+└── ... other files
+```
+
+The `sip_create_zip_archive()` function automatically detects extensions (by `-extension` suffix) and creates the appropriate structure.
 
 ### ABSPATH Calculation
 **Why**: Repository Manager allows repositories anywhere on filesystem, but PHP ZIP creation function requires WordPress constants. Script location provides reliable reference point for calculation.
