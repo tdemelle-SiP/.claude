@@ -408,6 +408,7 @@ browser-extension/
 │   ├── widget-error.js         # Error response formatting
 │   └── widget-styles.css       # Widget styling
 ├── action-scripts/
+│   ├── extension-detector.js            # Extension presence announcer
 │   ├── widget-tabs-actions.js          # Widget UI creation and button handling
 │   ├── printify-tab-actions.js         # Printify page monitoring and scraping
 │   └── printify-api-interceptor-actions.js # API discovery monitor
@@ -442,6 +443,7 @@ browser-extension/
                 "core-scripts/widget-debug.js",
                 "core-scripts/widget-error.js",
                 "core-scripts/widget-relay.js",
+                "action-scripts/extension-detector.js",
                 "action-scripts/widget-tabs-actions.js"
             ]
         }
@@ -513,6 +515,36 @@ browser-extension/
 ```
 
 ### 3.3 Action Scripts
+
+#### extension-detector.js
+**Why it exists**: The SiP ecosystem needs to know which extensions are installed to provide appropriate UI and functionality. This script announces the extension's presence on relevant pages.
+
+- Announces extension presence to WordPress pages
+- **Conditional behavior based on page**:
+  - On SiP Plugins Core dashboard (`page=sip-plugins`): Only announces when requested via `SIP_REQUEST_EXTENSION_STATUS` message
+  - On SiP Printify Manager pages (`page=sip-printify-manager`): Announces immediately for plugin functionality
+- Sends extension information: slug, name, version, isInstalled
+- Lightweight script with minimal overhead
+
+**Implementation**:
+```javascript
+// Conditional announcement based on current page
+if (window.location.href.includes('page=sip-plugins')) {
+    // Dashboard: Wait for request
+    window.addEventListener('message', function(event) {
+        if (event.data?.type === 'SIP_REQUEST_EXTENSION_STATUS') {
+            announceExtension();
+        }
+    });
+} else if (window.location.href.includes('page=sip-printify-manager')) {
+    // Plugin pages: Announce immediately
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', announceExtension);
+    } else {
+        announceExtension();
+    }
+}
+```
 
 #### widget-tabs-actions.js
 **Why it exists**: The widget UI needs to be injected into specific pages (SiP Printify Manager and Printify) to provide consistent user access. Separating UI from page-specific logic keeps code organized.

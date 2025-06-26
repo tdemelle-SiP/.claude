@@ -847,61 +847,6 @@ if (window.SiP.Core.extensionInstaller) {
 }
 ```
 
-## Extension Detection
-
-The SiP Plugins Core dashboard automatically detects installed browser extensions using postMessage communication.
-
-### How It Works
-1. **Extension Announcement**: Extension content script sends presence message on dashboard page
-2. **Dashboard Listener**: Dashboard receives message and updates `window.sipInstalledItems`
-3. **Table Update**: Both plugins and extensions tables refresh via `refreshInstallersTables()`
-4. **Status Request**: Dashboard requests status after 2 seconds for late-loading extensions
-
-### Extension Implementation
-```javascript
-// In extension content script (runs on WordPress admin pages)
-if (window.location.href.includes('page=sip-plugins')) {
-    window.postMessage({
-        type: 'SIP_EXTENSION_DETECTED',
-        extension: {
-            slug: 'extension-slug',
-            name: 'Extension Name',
-            version: chrome.runtime.getManifest().version,
-            isInstalled: true
-        }
-    }, window.location.origin);
-}
-```
-
-### Dashboard Implementation
-```javascript
-// Automatically set up when plugin dashboard initializes
-window.addEventListener('message', function(event) {
-    if (event.origin !== window.location.origin) return;
-    
-    if (event.data?.type === 'SIP_EXTENSION_DETECTED') {
-        // Update unified installed items
-        window.sipInstalledItems[event.data.extension.slug] = {
-            type: 'extension',
-            version: event.data.extension.version,
-            isInstalled: true,
-            name: event.data.extension.name
-        };
-        
-        // Only refresh if we have the data needed
-        if (availableInstallers && availableInstallers.extensions) {
-            refreshInstallersTables();
-        }
-        // If data not loaded yet, it will show correct status when AJAX completes
-    }
-});
-```
-
-### Benefits
-- **Real-time Detection**: No page reload required
-- **Automatic Updates**: Status changes immediately when extension installed/removed
-- **Multi-Extension Support**: Each extension announces independently
-- **Secure Communication**: Origin checking prevents malicious messages
 
 ## Buttons and Controls
 

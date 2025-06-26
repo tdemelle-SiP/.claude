@@ -12,199 +12,278 @@ The SiP Plugins Core dashboard provides centralized management for all SiP plugi
 
 ## Architecture
 
-### Unified Installer System
+### Page Load Flow
 
-The dashboard uses a unified architecture to manage both plugins and extensions:
+When the dashboard loads, it follows this sequence:
+
+1. **Show spinner** - User sees loading state immediately
+2. **Purge stored data** - Clear any cached installer data
+3. **Fetch installer data** - Get entire README from update server
+4. **Parse installer data** - Extract plugins and extensions into unified structure
+5. **Query installation status** - Check WordPress for plugins, request extension announcements
+6. **Render tables** - Display both tables with current status
+7. **Store data** - Save using SiP data storage conventions
+
+### Unified Data Structure
+
+All installer data is stored in a single `installationsTablesData` structure:
 
 ```javascript
-// Module-level storage
-let availableInstallers = {};  // Data from update server
-let installedPlugins = {};     // From WordPress PHP
-let activePlugins = [];        // Active plugin list
-
-// Unified installed items tracking
-window.sipInstalledItems = {
-    'sip-plugin/sip-plugin.php': {
-        type: 'plugin',
-        version: '1.0.0',
-        active: true,
-        data: { /* WordPress plugin data */ }
+installationsTablesData = {
+    "plugins": {
+        "sip-plugin-slug": {
+            "name": "SiP Plugin Name",
+            "version": "1.0.0",  // Latest available version
+            "download_url": "https://updates.stuffisparts.com/...",
+            "installed": true,
+            "active": true,
+            "installed_version": "0.9.0"  // Currently installed version
+        }
     },
-    'sip-extension-slug': {
-        type: 'extension',
-        version: '1.0.0',
-        isInstalled: true,
-        name: 'Extension Name'
+    "extensions": {
+        "sip-extension-slug": {
+            "name": "SiP Extension Name", 
+            "version": "1.0.0",  // Latest available version
+            "download_url": "https://updates.stuffisparts.com/...",
+            "chrome_store_url": "https://chrome.google.com/webstore/...",
+            "installed": true,
+            "installed_version": "1.0.0"  // Currently installed version
+        }
     }
-};
+}
 ```
 
 ### Why This Architecture?
 
-**Unified Data Management**: Both plugins and extensions are "installers" that enhance the SiP ecosystem. Managing them with the same patterns reduces complexity and ensures consistent behavior.
+**Single Source of Truth**: One data structure contains all information needed to render both tables - available items from the update server plus their installation status.
 
-**Single Source of Truth**: The update server provides available items, while `sipInstalledItems` tracks what's actually installed, regardless of source (WordPress or browser).
+**Fresh State on Load**: Every page load rebuilds state from primary sources, ensuring accurate information without stale cached data.
 
-**Push-Based Updates**: Extensions announce themselves via postMessage when ready, triggering immediate UI updates without polling.
+**Request-Based Extension Detection**: Extensions only announce when requested, eliminating race conditions and timing issues.
 
-**Fresh State on Load**: Every page load re-establishes state from primary sources - plugins from WordPress, extensions from browser announcements, and available items from the update server. This ensures accurate, up-to-date information without stale cached state.
+**Proper Storage**: Uses SiP data storage conventions instead of module-level variables, enabling proper state management.
 
 ## Key Components
 
-### 1. Data Loading (`loadInstallersTables`)
+### 1. Loading Installer Data (`loadInstallersTables`)
 
-Fetches available plugins and extensions from the update server in a single AJAX call:
+Fetches and processes all installer data on page load:
 
 ```javascript
 function loadInstallersTables() {
+    // Show spinner
+    $('#sip-plugins-loading').show();
+    
+    // Purge stored data
+    SiP.Core.storage.remove('installationsTablesData');
+    
+    // Create request for all installer data
     const formData = SiP.Core.utilities.createFormData(
         'sip-plugins-core',
         'plugin_management',
-        'get_available_installers'
+        'get_installers_data'  // New action that returns parsed README
     );
     
     SiP.Core.ajax.handleAjaxAction('sip-plugins-core', 'plugin_management', formData)
         .then(response => {
-            availableInstallers = response.data;  // Store both plugins and extensions
-            renderInstallersTables(availableInstallers);
+            // response.data contains parsed plugins and extensions
+            installationsTablesData = response.data;
+            
+            // Append WordPress plugin installation status
+            appendPluginStatus(installationsTablesData);
+            
+            // Request extension announcements
+            requestExtensionStatus();
+            
+            // Wait for extension responses, then render
+            setTimeout(() => {
+                renderInstallersTables(installationsTablesData);
+                SiP.Core.storage.set('installationsTablesData', installationsTablesData);
+                $('#sip-plugins-loading').hide();
+            }, 500);
         });
 }
 ```
 
-### 2. Unified Rendering (`renderInstallersTables`)
+### 2. Extension Detection
 
-Coordinates rendering of both tables using a unified render function:
+Extensions respond to requests rather than announcing automatically:
 
 ```javascript
-function renderInstallersTables(installers) {
-    if (installers.plugins) {
-        renderInstallerTable('plugin', installers.plugins);
-    }
-    if (installers.extensions) {
-        renderInstallerTable('extension', installers.extensions);
-    }
+function requestExtensionStatus() {
+    // Broadcast request for extensions to announce
+    window.postMessage({
+        type: 'SIP_REQUEST_EXTENSION_STATUS'
+    }, window.location.origin);
 }
-```
 
-The unified `renderInstallerTable()` function handles both plugins and extensions with the same logic, differentiating behavior based on the type parameter. This ensures consistent sorting, rendering, and status checking across both installer types.
-
-### 3. Extension Detection
-
-Extensions announce themselves when loaded on the dashboard page:
-
-```javascript
-// In extension-detector.js
-window.postMessage({
-    type: 'SIP_EXTENSION_DETECTED',
-    extension: {
-        slug: 'sip-printify-manager-extension',
-        name: 'SiP Printify Manager Extension',
-        version: chrome.runtime.getManifest().version,
-        isInstalled: true
-    }
-}, window.location.origin);
-```
-
-The dashboard listens for these announcements and updates the UI:
-
-```javascript
-function setupExtensionDetection() {
-    window.addEventListener('message', function(event) {
-        if (event.data && event.data.type === 'SIP_EXTENSION_DETECTED') {
-            const extension = event.data.extension;
-            
-            // Update unified storage
-            window.sipInstalledItems[extension.slug] = {
-                type: 'extension',
-                version: extension.version,
-                isInstalled: true,
-                name: extension.name
-            };
-            
-            // Only refresh if we have the data needed
-            if (availableInstallers && availableInstallers.extensions) {
-                refreshInstallersTables();
-            }
+// Listen for extension responses
+window.addEventListener('message', function(event) {
+    if (event.origin !== window.location.origin) return;
+    
+    if (event.data?.type === 'SIP_EXTENSION_DETECTED') {
+        const ext = event.data.extension;
+        
+        // Update the unified data structure
+        if (installationsTablesData.extensions[ext.slug]) {
+            installationsTablesData.extensions[ext.slug].installed = true;
+            installationsTablesData.extensions[ext.slug].installed_version = ext.version;
         }
+    }
+});
+```
+
+### 3. Rendering Tables (`renderInstallersTables`)
+
+Renders both tables from the unified data:
+
+```javascript
+function renderInstallersTables(data) {
+    if (data.plugins) {
+        renderTable('plugin', data.plugins, '#sip-plugins-table');
+    }
+    
+    if (data.extensions) {
+        renderTable('extension', data.extensions, '#sip-extensions-table');
+    }
+}
+
+function renderTable(type, items, tableId) {
+    const $tbody = $(tableId + ' tbody');
+    $tbody.empty();
+    
+    // Convert to array and sort
+    const itemsArray = Object.entries(items).map(([slug, item]) => ({
+        ...item,
+        slug: slug,
+        type: type
+    }));
+    
+    // Sort: installed first, then by name
+    itemsArray.sort((a, b) => {
+        if (a.installed && !b.installed) return -1;
+        if (!a.installed && b.installed) return 1;
+        return a.name.localeCompare(b.name);
     });
+    
+    // Render rows
+    itemsArray.forEach(item => {
+        const $row = createInstallerRow(item);
+        $tbody.append($row);
+    });
+    
+    $(tableId).show();
 }
 ```
 
-### 4. Status Checking
+### 4. Refreshing After Status Changes (`refreshInstallersTables`)
 
-Installation status is checked against the unified storage:
+When an installer status changes (install, activate, etc.):
 
 ```javascript
-// For plugins
-const installedItem = window.sipInstalledItems[expectedPluginFile];
-const isInstalled = !!installedItem;
-const isActive = isInstalled && installedItem.active;
+function refreshInstallersTables() {
+    // Get stored data
+    const data = SiP.Core.storage.get('installationsTablesData');
+    
+    if (data) {
+        // Re-render with current data
+        renderInstallersTables(data);
+    } else {
+        // Fallback: reload everything
+        loadInstallersTables();
+    }
+}
 
-// For extensions
-function checkIfExtensionInstalled(slug) {
-    const installedItem = window.sipInstalledItems[slug];
-    return installedItem && installedItem.type === 'extension' && installedItem.isInstalled;
+// Example: After plugin activation
+function handlePluginActivation(pluginSlug) {
+    // ... activation logic ...
+    
+    // Update stored data
+    const data = SiP.Core.storage.get('installationsTablesData');
+    if (data && data.plugins[pluginSlug]) {
+        data.plugins[pluginSlug].installed = true;
+        data.plugins[pluginSlug].active = true;
+        SiP.Core.storage.set('installationsTablesData', data);
+    }
+    
+    // Refresh tables
+    refreshInstallersTables();
 }
 ```
-
-## Operations
-
-### Plugin Operations
-
-All plugin operations update the unified storage:
-
-```javascript
-// Installation adds to sipInstalledItems
-window.sipInstalledItems[pluginFile] = {
-    type: 'plugin',
-    version: response.data.version,
-    active: false,
-    data: { /* plugin data */ }
-};
-
-// Activation updates the active flag
-window.sipInstalledItems[pluginFile].active = true;
-```
-
-### Extension Operations
-
-Extensions are not managed by WordPress, so operations are limited to:
-- Chrome Web Store installation (via button click)
-- Manual installation wizard (for development/testing)
-- Automatic detection when present
 
 ## Server-Side Support
 
-### AJAX Handler
+### New AJAX Handler
 
-The PHP handler provides both plugins and extensions:
+The PHP handler fetches and parses the entire README:
 
 ```php
-function sip_core_get_available_installers() {
-    $plugins_basic = SiP_Plugins_Core::get_available_plugins_list();
-    $extensions_basic = SiP_Plugins_Core::get_available_extensions_list();
+function sip_core_get_installers_data() {
+    // Fetch README from update server
+    $response = wp_remote_get('https://updates.stuffisparts.com/update-api.php?action=get_readme');
+    $readme = wp_remote_retrieve_body($response);
     
-    // Enhance data for frontend
-    $plugins = /* format plugins */;
-    $extensions = /* format extensions */;
+    // Parse plugins and extensions
+    $plugins = parse_readme_for_plugins($readme);
+    $extensions = parse_readme_for_extensions($readme);
+    
+    // Format for frontend
+    $data = [
+        'plugins' => format_plugins_data($plugins),
+        'extensions' => format_extensions_data($extensions)
+    ];
     
     SiP_AJAX_Response::success(
         'sip-plugins-core',
         'plugin_management',
-        'get_available_installers',
-        ['plugins' => $plugins, 'extensions' => $extensions],
-        'Successfully retrieved available plugins and extensions'
+        'get_installers_data',
+        $data,
+        'Successfully retrieved installer data'
     );
+}
+```
+
+## Storage
+
+Uses SiP data storage conventions (see `sip-plugin-data-storage.md`):
+
+```javascript
+// Store installer data (transient storage - cleared on page reload)
+SiP.Core.storage.set('installationsTablesData', data);
+
+// Retrieve installer data
+const data = SiP.Core.storage.get('installationsTablesData');
+
+// Clear installer data
+SiP.Core.storage.remove('installationsTablesData');
+```
+
+## Extension Behavior
+
+Extensions should conditionally announce based on the current page:
+
+```javascript
+// In extension-detector.js
+if (window.location.href.includes('page=sip-plugins')) {
+    // On dashboard: Only announce when requested
+    window.addEventListener('message', function(event) {
+        if (event.data?.type === 'SIP_REQUEST_EXTENSION_STATUS') {
+            announceExtension();
+        }
+    });
+} else if (window.location.href.includes('page=sip-printify-manager')) {
+    // On plugin pages: Announce immediately for functionality
+    announceExtension();
 }
 ```
 
 ## UI Patterns
 
-### Table Structure
+### Tables
 
-Both plugins and extensions use similar table structures:
+Both plugins and extensions use the same table structure:
 - Name (with dashboard link for active plugins)
-- Version (installed version or install button)
+- Version (shows update availability)
 - Status (Active/Inactive/Not Installed)
 - Actions (context-appropriate buttons)
 
@@ -218,55 +297,15 @@ Both plugins and extensions use similar table structures:
 - **Plugins**: Install, Activate, Deactivate, Update, Delete
 - **Extensions**: Install (Chrome Store), Manual Install
 
-## Implementation Details
-
-### Race Condition Handling
-
-The extension detection system handles the case where extensions announce themselves before the installer data is loaded from the server:
-
-```javascript
-// In setupExtensionDetection() message handler
-window.sipInstalledItems[extension.slug] = {...};
-
-// Only refresh if we have the data needed
-if (availableInstallers && availableInstallers.extensions) {
-    refreshInstallersTables();
-}
-// If data not loaded yet, it will show correct status when AJAX completes
-```
-
-This prevents the system from falling back to "installed plugins only" mode when an extension announces itself during initial page load.
-
-### Unified Render Function
-
-The `renderInstallerTable()` function provides complete unification:
-
-```javascript
-function renderInstallerTable(type, installers) {
-    // Single function handles both types
-    // Sorts by installation status, then name
-    // Creates rows using createInstallerRow()
-    // Type-specific logic isolated in createInstallerRow()
-}
-```
-
-This approach:
-- Eliminates code duplication between plugin and extension rendering
-- Ensures consistent sorting and display logic
-- Makes maintenance easier with a single code path
-- Keeps type-specific behavior clearly separated
-
 ## Best Practices
 
-1. **Consistent Naming**: Use "installers" when referring to both plugins and extensions
-2. **Unified Storage**: Always update `sipInstalledItems` for state changes
-3. **Single Refresh**: Use `refreshInstallersTables()` to update both tables
-4. **Extension Detection**: Extensions must announce on each page load (no persistence)
-5. **Race Condition Awareness**: Always check data availability before refreshing tables
+1. **Always purge on load**: Ensures fresh state from primary sources
+2. **Use the unified data structure**: Don't create separate storage for plugins/extensions
+3. **Update stored data**: Modify the stored data when status changes
+4. **Request-based detection**: Extensions only announce when asked
+5. **Proper storage**: Use SiP storage utilities, not module variables
 
-## Integration with Other Systems
+## Limitations
 
-- **Update System**: Version comparison for update notifications
-- **Release Management**: Automated deployment for both types
-- **Debug Logging**: Consistent logging for troubleshooting
-- **UI Components**: Uses standard SiP Core utilities (spinners, toasts, etc.)
+- **Extension removal**: Cannot detect when user removes extension from browser. User must reload page to see updated status.
+- **Timing**: 500ms timeout for extension responses may need adjustment based on performance.
