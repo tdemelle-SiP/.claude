@@ -2,6 +2,15 @@
 
 This guide documents the SiP Plugins Core dashboard functionality, including the unified installer management system for both WordPress plugins and browser extensions.
 
+## Required Reading
+
+Before implementing changes to the dashboard, you should understand:
+
+1. **[AJAX Implementation](./sip-plugin-ajax.md)** - For `SiP.Core.ajax` patterns and error handling
+2. **[Data Storage](./sip-plugin-data-storage.md)** - For `SiP.Core.storage` API and storage types
+3. **[UI Components](./sip-feature-ui-components.md)** - For spinner, toast notifications, and modal patterns
+4. **[Plugin Architecture](./sip-plugin-architecture.md)** - For overall plugin structure and conventions
+
 ## Overview
 
 The SiP Plugins Core dashboard provides centralized management for all SiP plugins and browser extensions, displaying:
@@ -71,13 +80,13 @@ Fetches and processes all installer data on page load:
 
 ```javascript
 function loadInstallersTables() {
-    // Show spinner
-    $('#sip-plugins-loading').show();
+    // Show spinner (see [UI Components](./sip-feature-ui-components.md#spinner-and-overlay))
+    SiP.Core.utilities.spinner.show();
     
     // Purge stored data
-    SiP.Core.storage.remove('installationsTablesData');
+    SiP.Core.storage.session.remove('installationsTablesData');
     
-    // Create request for all installer data
+    // Create request for all installer data (see [AJAX Guide](./sip-plugin-ajax.md))
     const formData = SiP.Core.utilities.createFormData(
         'sip-plugins-core',
         'plugin_management',
@@ -98,9 +107,14 @@ function loadInstallersTables() {
             // Wait for extension responses, then render
             setTimeout(() => {
                 renderInstallersTables(installationsTablesData);
-                SiP.Core.storage.set('installationsTablesData', installationsTablesData);
-                $('#sip-plugins-loading').hide();
+                SiP.Core.storage.session.set('installationsTablesData', installationsTablesData);
+                SiP.Core.utilities.spinner.hide();
             }, 500);
+        })
+        .catch(error => {
+            // Error handling (see [AJAX Error Handling](./sip-plugin-ajax.md#error-handling))
+            SiP.Core.utilities.spinner.hide();
+            SiP.Core.utilities.toast.show('Failed to load installer data', 'error');
         });
 }
 ```
@@ -183,7 +197,7 @@ When an installer status changes (install, activate, etc.):
 ```javascript
 function refreshInstallersTables() {
     // Get stored data
-    const data = SiP.Core.storage.get('installationsTablesData');
+    const data = SiP.Core.storage.session.get('installationsTablesData');
     
     if (data) {
         // Re-render with current data
@@ -194,20 +208,23 @@ function refreshInstallersTables() {
     }
 }
 
-// Example: After plugin activation
+// Example: After plugin activation (see [AJAX Success Handling](./sip-plugin-ajax.md#success-callbacks))
 function handlePluginActivation(pluginSlug) {
     // ... activation logic ...
     
     // Update stored data
-    const data = SiP.Core.storage.get('installationsTablesData');
+    const data = SiP.Core.storage.session.get('installationsTablesData');
     if (data && data.plugins[pluginSlug]) {
         data.plugins[pluginSlug].installed = true;
         data.plugins[pluginSlug].active = true;
-        SiP.Core.storage.set('installationsTablesData', data);
+        SiP.Core.storage.session.set('installationsTablesData', data);
     }
     
     // Refresh tables
     refreshInstallersTables();
+    
+    // Show success message (see [Toast Notifications](./sip-feature-ui-components.md#toast-notifications))
+    SiP.Core.utilities.toast.show('Plugin activated successfully', 'success');
 }
 ```
 
@@ -215,7 +232,7 @@ function handlePluginActivation(pluginSlug) {
 
 ### New AJAX Handler
 
-The PHP handler fetches and parses the entire README:
+The PHP handler fetches and parses the entire README (see [AJAX PHP Implementation](./sip-plugin-ajax.md#php-implementation)):
 
 ```php
 function sip_core_get_installers_data() {
@@ -223,16 +240,21 @@ function sip_core_get_installers_data() {
     $response = wp_remote_get('https://updates.stuffisparts.com/update-api.php?action=get_readme');
     $readme = wp_remote_retrieve_body($response);
     
-    // Parse plugins and extensions
-    $plugins = parse_readme_for_plugins($readme);
-    $extensions = parse_readme_for_extensions($readme);
+    // Parse plugins and extensions (existing methods in sip-plugins-core.php)
+    $plugins = SiP_Plugins_Core::parse_readme_for_plugins($readme);
+    $extensions = SiP_Plugins_Core::parse_readme_for_extensions($readme);
     
-    // Format for frontend
+    // Get installed plugin status
+    $installed_plugins = SiP_Plugins_Core::get_fresh_sip_plugins();
+    $active_plugins = get_option('active_plugins', array());
+    
+    // Format for frontend with installation status
     $data = [
-        'plugins' => format_plugins_data($plugins),
+        'plugins' => format_plugins_with_status($plugins, $installed_plugins, $active_plugins),
         'extensions' => format_extensions_data($extensions)
     ];
     
+    // Return using SiP AJAX standards (see [AJAX Response Format](./sip-plugin-ajax.md#response-format))
     SiP_AJAX_Response::success(
         'sip-plugins-core',
         'plugin_management',
@@ -243,20 +265,24 @@ function sip_core_get_installers_data() {
 }
 ```
 
+**Note**: This handler should be added to `includes/core-ajax-shell.php` following the pattern of existing handlers.
+
 ## Storage
 
-Uses SiP data storage conventions (see `sip-plugin-data-storage.md`):
+Uses SiP data storage conventions (see [Data Storage Guide](./sip-plugin-data-storage.md)):
 
 ```javascript
-// Store installer data (transient storage - cleared on page reload)
-SiP.Core.storage.set('installationsTablesData', data);
+// Store installer data (session storage - cleared on browser close)
+SiP.Core.storage.session.set('installationsTablesData', data);
 
 // Retrieve installer data
-const data = SiP.Core.storage.get('installationsTablesData');
+const data = SiP.Core.storage.session.get('installationsTablesData');
 
 // Clear installer data
-SiP.Core.storage.remove('installationsTablesData');
+SiP.Core.storage.session.remove('installationsTablesData');
 ```
+
+**Note**: Using session storage ensures data persists across page navigation but is cleared when the browser closes, providing a good balance for dashboard data.
 
 ## Extension Behavior
 
@@ -304,6 +330,20 @@ Both plugins and extensions use the same table structure:
 3. **Update stored data**: Modify the stored data when status changes
 4. **Request-based detection**: Extensions only announce when asked
 5. **Proper storage**: Use SiP storage utilities, not module variables
+6. **Follow SiP patterns**: Use established patterns from referenced documentation
+
+## Implementation Files
+
+### JavaScript
+- **Location**: `/assets/js/modules/plugin-dashboard.js`
+- **Module**: Part of the SiP Core platform loader (see [Platform Guide](./sip-plugin-platform.md))
+
+### PHP
+- **AJAX Handler**: `/includes/core-ajax-shell.php`
+- **Main Class**: `/sip-plugins-core.php` (contains parse methods)
+
+### HTML/Views
+- **Dashboard View**: `/views/dashboard.php`
 
 ## Limitations
 
