@@ -240,12 +240,14 @@ function sip_core_get_installers_data() {
     $response = wp_remote_get('https://updates.stuffisparts.com/update-api.php?action=get_readme');
     $readme = wp_remote_retrieve_body($response);
     
-    // Parse plugins and extensions (existing methods in sip-plugins-core.php)
-    $plugins = SiP_Plugins_Core::parse_readme_for_plugins($readme);
-    $extensions = SiP_Plugins_Core::parse_readme_for_extensions($readme);
+    // Parse plugins and extensions directly from README
+    // Note: Uses inline parsing to extract download URLs which aren't included in the instance methods
+    $plugins = /* parse plugins with download URLs */;
+    $extensions = /* parse extensions with download URLs */;
     
     // Get installed plugin status
-    $installed_plugins = SiP_Plugins_Core::get_fresh_sip_plugins();
+    $sip_core = sip_plugins_core();
+    $installed_plugins = $sip_core->get_fresh_sip_plugins();
     $active_plugins = get_option('active_plugins', array());
     
     // Format for frontend with installation status
