@@ -190,10 +190,10 @@ Used for persistent UI state across browser sessions. All data stored under `sip
 
 ### Core State Management System
 
-SiP Core provides a centralized state management system in `/assets/js/core/state.js`:
+SiP Core provides a centralized state management system in `/assets/js/core/state.js` that includes both state management and storage APIs:
 
 ```javascript
-// Register a plugin's state
+// State Management API - For plugin UI state
 SiP.Core.state.registerPlugin('sip-printify-manager', {
     'images-table': {},
     'products-table': {},
@@ -210,6 +210,25 @@ SiP.Core.state.setState('sip-printify-manager', 'images-table', {
 // Get state for a feature
 const tableState = SiP.Core.state.getState('sip-printify-manager', 'images-table');
 ```
+
+### Simple Storage API
+
+The same `state.js` file also provides a simpler storage API for direct session and local storage access:
+
+```javascript
+// Session Storage API - Data persists until browser tab is closed
+SiP.Core.storage.session.set('installationsTablesData', data);
+const data = SiP.Core.storage.session.get('installationsTablesData');
+SiP.Core.storage.session.remove('installationsTablesData');
+
+// Local Storage API - Data persists across browser sessions
+// Note: For plugin state management, prefer SiP.Core.state instead
+SiP.Core.storage.local.set('userPreferences', preferences);
+const prefs = SiP.Core.storage.local.get('userPreferences');
+SiP.Core.storage.local.remove('userPreferences');
+```
+
+**Why two APIs in one file?** The state management system (`SiP.Core.state`) handles complex plugin UI state with features like registration, partial updates, and UI synchronization. The storage API (`SiP.Core.storage`) provides simple get/set operations for data that doesn't need the full state management features. Both are consolidated in `state.js` to maintain a single source of truth for client-side storage.
 
 ### Structure
 ```javascript
@@ -346,19 +365,37 @@ For more details on implementing debug functionality, see the [Testing, Debuggin
 
 ## 2. Session Storage (Client-Side)
 
-Used for temporary data that expires when the browser tab closes.
+Used for temporary data that expires when the browser tab closes. Available through the storage API in `/assets/js/core/state.js`:
 
-### Progress Dialog State
+### Using the Storage API
 ```javascript
-// Store progress dialog state
-sessionStorage.setItem('sip-progress-dialog-state', JSON.stringify({
+// Store data using SiP.Core.storage.session
+SiP.Core.storage.session.set('progressState', {
     currentStep: 'uploading',
     progress: 45,
     startTime: Date.now()
-}));
+});
 
-// Retrieve progress state
-const progressState = JSON.parse(sessionStorage.getItem('sip-progress-dialog-state') || '{}');
+// Retrieve data
+const progressState = SiP.Core.storage.session.get('progressState') || {};
+
+// Remove data
+SiP.Core.storage.session.remove('progressState');
+```
+
+### Common Use Cases
+```javascript
+// Dashboard installer data (from sip-plugins-core-dashboard.md)
+SiP.Core.storage.session.set('installationsTablesData', {
+    plugins: { /* plugin data */ },
+    extensions: { /* extension data */ }
+});
+
+// Temporary form data
+SiP.Core.storage.session.set('formDraft', {
+    title: $('#title').val(),
+    content: $('#content').val()
+});
 ```
 
 ## Centralized Storage Management

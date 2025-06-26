@@ -282,7 +282,9 @@ const data = SiP.Core.storage.session.get('installationsTablesData');
 SiP.Core.storage.session.remove('installationsTablesData');
 ```
 
-**Note**: Using session storage ensures data persists across page navigation but is cleared when the browser closes, providing a good balance for dashboard data.
+**Notes**: 
+- Using session storage ensures data persists across page navigation but is cleared when the browser closes, providing a good balance for dashboard data
+- The `SiP.Core.storage` API is implemented in `/assets/js/core/state.js` alongside the state management system
 
 ## Extension Behavior
 
