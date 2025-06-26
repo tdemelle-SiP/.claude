@@ -1250,3 +1250,19 @@ Import-Module (Join-Path -Path $PSScriptRoot -ChildPath "SiP-ReleaseUtilities.ps
 
 **Why**: Prevents code duplication and ensures consistent behavior across scripts
 
+#### Variable Scoping
+**Pattern**: Define shared resources at script level
+```powershell
+# Script-level variables for resources used across functions
+$script:startTime = Get-Date
+$script:envFilePath = Join-Path -Path $PSScriptRoot -ChildPath ".env"
+
+# Access from anywhere in the script
+function SomeFunction {
+    Write-LogEntry "Using .env at: $script:envFilePath" "INFO"
+    $apiKey = Get-ApiKey -KeyName "API_KEY" -EnvFilePath $script:envFilePath
+}
+```
+
+**Why**: Prevents variable scope issues and provides single source of truth for shared resources
+

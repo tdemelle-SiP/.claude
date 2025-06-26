@@ -11,6 +11,7 @@ This guide documents the UI components and browser storage patterns used in SiP 
 - [Spinner and Overlay](#spinner-and-overlay)
 - [Modals and Dialogs](#modals-and-dialogs)
 - [Progress Indicators](#progress-indicators)
+- [Extension Installer](#extension-installer)
 - [Buttons and Controls](#buttons-and-controls)
 - [Form Elements](#form-elements)
   - [Enhanced Select](#enhanced-select)
@@ -799,6 +800,50 @@ See [Progress Dialog Guide](sip-feature-progress-dialog.md) for batch processing
 function updateProgress(current, total) {
     const percentage = (current / total) * 100;
     $('.progress-bar').css('width', percentage + '%');
+}
+```
+
+## Extension Installer
+
+The centralized browser extension installer provides a consistent installation experience across all SiP plugins.
+
+### Usage
+```javascript
+// Basic usage - opens installation wizard
+SiP.Core.extensionInstaller.showWizard({
+    name: 'Extension Name',
+    slug: 'extension-slug',
+    extensionPath: '/path/to/extension'  // For manual install
+});
+
+// Chrome Web Store installation
+SiP.Core.extensionInstaller.showWizard({
+    name: 'Extension Name',
+    chromeStoreUrl: 'https://chrome.google.com/webstore/detail/...'
+});
+```
+
+### Features
+- **Step-by-step wizard**: Guides users through manual installation process
+- **Chrome Web Store support**: Direct link to store when available
+- **Cross-browser detection**: Adapts instructions for different browsers
+- **Automatic fallback**: Manual instructions when store not available
+
+### Implementation Details
+The extension installer is part of SiP Plugins Core and loaded automatically via the platform loader. It uses jQuery UI dialog for the wizard interface with custom styling to match WordPress admin.
+
+### Integration Pattern
+```javascript
+// In plugin dashboard or button handler
+if (window.SiP.Core.extensionInstaller) {
+    // Use core installer
+    window.SiP.Core.extensionInstaller.showWizard(options);
+} else if (window.SiP.PluginName?.browserExtension) {
+    // Fallback to plugin-specific installer
+    window.SiP.PluginName.browserExtension.showInstallationWizard();
+} else {
+    // No installer available
+    SiP.Core.utilities.toast.show('Extension installer not available', 'error');
 }
 ```
 

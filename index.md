@@ -309,9 +309,19 @@ Detailed architecture guides for specific SiP plugins with complex systems.
 | Guide | Description | Status |
 |-------|-------------|--------|
 | [SiP Printify Manager Architecture](./guidelines/sip-printify-manager-architecture.md) | Complete architecture, data flows, and parent-child product relationships | ✅ Complete |
+| [SiP Printify Manager Extension](./guidelines/sip-printify-manager-extension-widget.md) | Browser extension architecture and integration | ✅ Complete |
 | [SiP Printify Manager Testing](./guidelines/sip-printify-manager-testing.md) | API testing procedures and experimental feature testing | ✅ Complete |
 
 **Important Note**: All SiP Printify Manager specific documentation (including implementation details, status management, table behaviors, etc.) should be maintained in the [SiP Printify Manager Architecture](./guidelines/sip-printify-manager-architecture.md) file, not in the general plugin development guides.
+
+### Extension Architecture Vision
+Future architectural direction for browser extensions in the SiP ecosystem.
+
+| Guide | Description | Status |
+|-------|-------------|--------|
+| [Master Extension Architecture Vision](./vision/sip-master-extension-architecture.md) | Vision for unified browser extension platform supporting multiple plugin modules | ✅ Vision Document |
+
+**Note**: The master extension architecture is a future vision. Current implementation uses individual extensions per plugin with installation management centralized in SiP Plugins Core.
 
 
 ## Core Components and Utilities
@@ -330,6 +340,7 @@ The SiP Plugins Core provides these key components (detailed in implementation g
 - **Spinner/Overlay**: `SiP.Core.utilities.spinner` - [Full Documentation](./guidelines/sip-feature-ui-components.md#spinner-and-overlay)
 - **Toast Notifications**: `SiP.Core.utilities.toast` - [Documentation](./guidelines/sip-feature-ui-components.md#toast-notifications)
 - **Progress Dialog**: `SiP.Core.progressDialog` - [Full Guide](./guidelines/sip-feature-progress-dialog.md)
+- **Extension Installer**: `SiP.Core.extensionInstaller` - Centralized browser extension installation wizard
 
 ### Plugin Framework
 - Registration: `SiP_Plugin_Framework::init_plugin()`
