@@ -47,6 +47,8 @@ window.sipInstalledItems = {
 
 **Push-Based Updates**: Extensions announce themselves via postMessage when ready, triggering immediate UI updates without polling.
 
+**Fresh State on Load**: Every page load re-establishes state from primary sources - plugins from WordPress, extensions from browser announcements, and available items from the update server. This ensures accurate, up-to-date information without stale cached state.
+
 ## Key Components
 
 ### 1. Data Loading (`loadInstallersTables`)
@@ -71,18 +73,20 @@ function loadInstallersTables() {
 
 ### 2. Unified Rendering (`renderInstallersTables`)
 
-Renders both tables using the same data structure:
+Coordinates rendering of both tables using a unified render function:
 
 ```javascript
 function renderInstallersTables(installers) {
     if (installers.plugins) {
-        renderPluginsTable(installers.plugins);
+        renderInstallerTable('plugin', installers.plugins);
     }
     if (installers.extensions) {
-        renderExtensionsTable(installers.extensions);
+        renderInstallerTable('extension', installers.extensions);
     }
 }
 ```
+
+The unified `renderInstallerTable()` function handles both plugins and extensions with the same logic, differentiating behavior based on the type parameter. This ensures consistent sorting, rendering, and status checking across both installer types.
 
 ### 3. Extension Detection
 
@@ -117,8 +121,10 @@ function setupExtensionDetection() {
                 name: extension.name
             };
             
-            // Refresh tables to show new status
-            refreshInstallersTables();
+            // Only refresh if we have the data needed
+            if (availableInstallers && availableInstallers.extensions) {
+                refreshInstallersTables();
+            }
         }
     });
 }
@@ -212,12 +218,51 @@ Both plugins and extensions use similar table structures:
 - **Plugins**: Install, Activate, Deactivate, Update, Delete
 - **Extensions**: Install (Chrome Store), Manual Install
 
+## Implementation Details
+
+### Race Condition Handling
+
+The extension detection system handles the case where extensions announce themselves before the installer data is loaded from the server:
+
+```javascript
+// In setupExtensionDetection() message handler
+window.sipInstalledItems[extension.slug] = {...};
+
+// Only refresh if we have the data needed
+if (availableInstallers && availableInstallers.extensions) {
+    refreshInstallersTables();
+}
+// If data not loaded yet, it will show correct status when AJAX completes
+```
+
+This prevents the system from falling back to "installed plugins only" mode when an extension announces itself during initial page load.
+
+### Unified Render Function
+
+The `renderInstallerTable()` function provides complete unification:
+
+```javascript
+function renderInstallerTable(type, installers) {
+    // Single function handles both types
+    // Sorts by installation status, then name
+    // Creates rows using createInstallerRow()
+    // Type-specific logic isolated in createInstallerRow()
+}
+```
+
+This approach:
+- Eliminates code duplication between plugin and extension rendering
+- Ensures consistent sorting and display logic
+- Makes maintenance easier with a single code path
+- Keeps type-specific behavior clearly separated
+
 ## Best Practices
 
 1. **Consistent Naming**: Use "installers" when referring to both plugins and extensions
 2. **Unified Storage**: Always update `sipInstalledItems` for state changes
 3. **Single Refresh**: Use `refreshInstallersTables()` to update both tables
 4. **Extension Detection**: Extensions must announce on each page load (no persistence)
+5. **Race Condition Awareness**: Always check data availability before refreshing tables
 
 ## Integration with Other Systems
 

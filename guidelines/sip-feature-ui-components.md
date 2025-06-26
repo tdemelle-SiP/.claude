@@ -887,8 +887,12 @@ window.addEventListener('message', function(event) {
             isInstalled: true,
             name: event.data.extension.name
         };
-        // Refresh both tables
-        refreshInstallersTables();
+        
+        // Only refresh if we have the data needed
+        if (availableInstallers && availableInstallers.extensions) {
+            refreshInstallersTables();
+        }
+        // If data not loaded yet, it will show correct status when AJAX completes
     }
 });
 ```
