@@ -35,7 +35,7 @@ When the dashboard loads, it follows this sequence:
 
 ### Unified Data Structure
 
-All installer data is stored in a single `installationsTablesData` structure:
+All installer data is stored in a single module-level `installationsTablesData` variable:
 
 ```javascript
 installationsTablesData = {
@@ -64,13 +64,13 @@ installationsTablesData = {
 
 ### Why This Architecture?
 
-**Single Source of Truth**: One data structure contains all information needed to render both tables - available items from the update server plus their installation status.
+**Single Source of Truth**: One module-level variable contains all information needed to render both tables - available items from the update server plus their installation status.
 
 **Fresh State on Load**: Every page load rebuilds state from primary sources, ensuring accurate information without stale cached data.
 
 **Request-Based Extension Detection**: Extensions only announce when requested, eliminating race conditions and timing issues.
 
-**Proper Storage**: Uses SiP data storage conventions instead of module-level variables, enabling proper state management.
+**Simplified Architecture**: Uses a single module-level variable for runtime data, following SiP storage patterns for simplicity and avoiding synchronization complexity.
 
 ## Key Components
 
@@ -83,8 +83,8 @@ function loadInstallersTables() {
     // Show spinner (see [UI Components](./sip-feature-ui-components.md#spinner-and-overlay))
     SiP.Core.utilities.spinner.show();
     
-    // Purge stored data
-    SiP.Core.storage.session.remove('installationsTablesData');
+    // Clear module-level data
+    installationsTablesData = null;
     
     // Create request for all installer data (see [AJAX Guide](./sip-plugin-ajax.md))
     const formData = SiP.Core.utilities.createFormData(
@@ -107,7 +107,6 @@ function loadInstallersTables() {
             // Wait for extension responses, then render
             setTimeout(() => {
                 renderInstallersTables(installationsTablesData);
-                SiP.Core.storage.session.set('installationsTablesData', installationsTablesData);
                 SiP.Core.utilities.spinner.hide();
             }, 500);
         })
@@ -142,6 +141,9 @@ window.addEventListener('message', function(event) {
         if (installationsTablesData.extensions[ext.slug]) {
             installationsTablesData.extensions[ext.slug].installed = true;
             installationsTablesData.extensions[ext.slug].installed_version = ext.version;
+            
+            // Refresh tables to show updated status
+            refreshInstallersTables();
         }
     }
 });
@@ -196,12 +198,10 @@ When an installer status changes (install, activate, etc.):
 
 ```javascript
 function refreshInstallersTables() {
-    // Get stored data
-    const data = SiP.Core.storage.session.get('installationsTablesData');
-    
-    if (data) {
+    // Use module-level data
+    if (installationsTablesData) {
         // Re-render with current data
-        renderInstallersTables(data);
+        renderInstallersTables(installationsTablesData);
     } else {
         // Fallback: reload everything
         loadInstallersTables();
@@ -212,12 +212,10 @@ function refreshInstallersTables() {
 function handlePluginActivation(pluginSlug) {
     // ... activation logic ...
     
-    // Update stored data
-    const data = SiP.Core.storage.session.get('installationsTablesData');
-    if (data && data.plugins[pluginSlug]) {
-        data.plugins[pluginSlug].installed = true;
-        data.plugins[pluginSlug].active = true;
-        SiP.Core.storage.session.set('installationsTablesData', data);
+    // Update module-level data
+    if (installationsTablesData && installationsTablesData.plugins[pluginSlug]) {
+        installationsTablesData.plugins[pluginSlug].installed = true;
+        installationsTablesData.plugins[pluginSlug].active = true;
     }
     
     // Refresh tables
@@ -303,22 +301,28 @@ function sip_core_get_installers_data() {
 
 ## Storage
 
-Uses SiP data storage conventions (see [Data Storage Guide](./sip-plugin-data-storage.md)):
+Uses a module-level variable for runtime data following SiP storage patterns (see [Data Storage Guide](./sip-plugin-data-storage.md)):
 
 ```javascript
-// Store installer data (session storage - cleared on browser close)
-SiP.Core.storage.session.set('installationsTablesData', data);
+// Module-level data storage (single source of truth)
+let installationsTablesData = null;  // Unified data structure from server
 
-// Retrieve installer data
-const data = SiP.Core.storage.session.get('installationsTablesData');
+// Clear data on page load
+installationsTablesData = null;
 
-// Clear installer data
-SiP.Core.storage.session.remove('installationsTablesData');
+// Update data from server or extension announcements
+installationsTablesData = response.data;
+
+// Access data throughout the module
+if (installationsTablesData) {
+    renderInstallersTables(installationsTablesData);
+}
 ```
 
 **Notes**: 
-- Using session storage ensures data persists across page navigation but is cleared when the browser closes, providing a good balance for dashboard data
-- The `SiP.Core.storage` API is implemented in `/assets/js/core/state.js` alongside the state management system
+- Module-level variables are appropriate for runtime data according to SiP storage patterns
+- This simplified approach eliminates synchronization complexity between multiple storage locations
+- Data is rebuilt fresh on each page load from primary sources
 
 ## Extension Behavior
 
@@ -365,7 +369,7 @@ Both plugins and extensions use the same table structure:
 2. **Use the unified data structure**: Don't create separate storage for plugins/extensions
 3. **Update stored data**: Modify the stored data when status changes
 4. **Request-based detection**: Extensions only announce when asked
-5. **Proper storage**: Use SiP storage utilities, not module variables
+5. **Single source of truth**: Use module-level variable for runtime data
 6. **Follow SiP patterns**: Use established patterns from referenced documentation
 
 ## Implementation Files

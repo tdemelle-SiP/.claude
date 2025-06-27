@@ -435,18 +435,27 @@ The PowerShell script executes these steps:
 }
 ```
 
-#### Central Repository README.md
-```markdown
-### sip-plugins-core
-- Version: 2.3.0
-- File: sip-plugins-core-2.3.0.zip
-- Last updated: 2024-03-15 14:30:00
-
-### sip-printify-manager-extension
-- Version: 1.0.0
-- File: extensions/sip-printify-manager-extension-1.0.0.zip
-- Last updated: 2024-03-15 14:35:00
-```
+#### Central Repository releases.json
+```json
+{
+  "plugins": [
+    {
+      "slug": "sip-plugins-core",
+      "name": "SiP Plugins Core",
+      "version": "2.3.0",
+      "downloadUrl": "https://updates.stuffisparts.com/sip-plugins-core-2.3.0.zip"
+    }
+  ],
+  "extensions": [
+    {
+      "slug": "sip-printify-manager-extension", 
+      "name": "SiP Printify Manager Extension",
+      "version": "1.0.0",
+      "downloadUrl": "https://updates.stuffisparts.com/extensions/sip-printify-manager-extension-1.0.0.zip",
+      "chromeStoreUrl": "https://chrome.google.com/webstore/detail/..."
+    }
+  ]
+}
 
 ## Git Workflow
 

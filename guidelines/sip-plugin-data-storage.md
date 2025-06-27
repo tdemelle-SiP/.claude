@@ -385,18 +385,21 @@ SiP.Core.storage.session.remove('progressState');
 
 ### Common Use Cases
 ```javascript
-// Dashboard installer data (from sip-plugins-core-dashboard.md)
-SiP.Core.storage.session.set('installationsTablesData', {
-    plugins: { /* plugin data */ },
-    extensions: { /* extension data */ }
-});
-
 // Temporary form data
 SiP.Core.storage.session.set('formDraft', {
     title: $('#title').val(),
     content: $('#content').val()
 });
+
+// Progress state for batch operations
+SiP.Core.storage.session.set('batchProgress', {
+    total: 100,
+    processed: 45,
+    errors: []
+});
 ```
+
+**Note**: Dashboard installer data now uses module-level variables for simplicity. See [SiP Plugins Core Dashboard](./sip-plugins-core-dashboard.md) for details.
 
 ## Centralized Storage Management
 
@@ -557,6 +560,23 @@ $recent_events = $wpdb->get_results($wpdb->prepare(
 ## 4. Window Object (Client-Side)
 
 Used for global state that needs to be accessible across modules. For consistent namespace structure, see the [Plugin Creation Guidelines](./sip-plugin-creation.md#standard-module-structure).
+
+### Module-Level Variables
+
+In addition to the global window namespace, modules can use module-level variables for runtime data that doesn't need global access:
+
+```javascript
+// Module-level variable (single source of truth for runtime data)
+let installationsTablesData = null;  // Unified data structure from server
+let activePlugins = [];              // Runtime state
+
+// This is appropriate for data that:
+// - Only needs to exist during the current page session
+// - Doesn't need to be accessed by other modules
+// - Should be rebuilt fresh on page load
+```
+
+Module-level variables are simpler than using session storage when you don't need persistence across page navigation. They're ideal for runtime state management within a single module.
 
 ### Global Namespace Structure
 ```javascript
