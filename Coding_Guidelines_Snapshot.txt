@@ -1,6 +1,58 @@
+
+
+-------------------- CODE COMPLETE MESSAGE -----------------------
+
+Please confirm that your code updates do not violate any of the primary sip coding rules:
+
+□ No defensive code added to prevent errors (fixed root causes instead)
+□ No redundant storage mechanisms (single source of truth)
+□ No setTimeout for waiting (only for intentional delays)
+□ No try-catch for errors that shouldn't exist
+□ No function_exists/class_exists/isset defensive checks
+□ Made zero assumptions (verified all data structures and field names)
+□ Code would pass senior developer review for simplicity and clarity
+□ No backward compatibility code or legacy remnants preserved
+
+Once code is confirmed compliant,  Please look over the documentation files related to work that you've implemented to make sure that they are accurate and reflect the current functioning of the code.
+ 
+ Start by reviewing /mnt/c/Users/tdeme/Local Sites/faux-stained-glass-panes/app/public/wp-content/plugins/.claude/index.md to refresh yourself with the overall structure and the principles behind it.  
+ 
+ Then Please make sure to check on all related documentation in the /guidelines/ directory to ensure that relevant files reflect updated standards correctly where appropriate and don't retain any deprecated references.
+
+ If there were aspects of the code that were unclear to you as you worked, carefully adhering to the documentation guidelines, please update the documentation to reflect the patterns, principles and structures that were needed to correctly implement your solution.
+
+ Please review the documentation from the perspective of a developer and ensure that if faced with understanding and working with the established standards, you could confidently refer to the documentation and come away with a complete clear understanding of how to work with the principles and patterns of the codebase. 
+
+ If you are adding or supplementing documentation, please make sure that you are adding it correctly according to the pattern used to document other sip plugins, core features or development tools and methods, that it is correctly referenced and linked in all expected and useful contexts and follows the documentation rules:
+
+<!-- DOCUMENTATION RULES:
+1. ARCHITECTURAL WHY - Document WHY each component exists (constraints/requirements that necessitate it)
+2. NO HISTORY - Current state only, not how we got here. The documentation SHOULD NOT be describing that the code is not what it had been, only what it IS.
+3. NO DUPLICATION - Each fact appears exactly once
+4. EXAMPLES OVER EXPLANATIONS - Explain briefly , but emphasize showing over telling
+5. UPDATE THE RIGHT SECTION - Check if info already exists before adding
+
+□ Re-read index.md to understand documentation structure
+□ Reviewed all documentation files affected by changes
+□ Updated documentation reflects current code functionality
+□ No deprecated references remain in documentation
+□ New patterns/principles properly documented
+□ Documentation follows established patterns for similar features
+□ All cross-references and links are correct and useful
+□ Documentation provides complete understanding for future developers
+□ Architectural WHY is documented (not just what/how)
+□ No duplication - each fact appears exactly once
+□ Examples provided where appropriate (showing over telling)
+
+When you're done, please provide a commit message to include when I submit the changes in source control.
+
+□ Commit message prepared following project standards
+
+
 ═══════════════════════════════════════════════════════════════════════════════
                           DEVELOPMENT PROCEDURAL FRAMEWORK REFERENCE
 ═══════════════════════════════════════════════════════════════════════════════
+
 
 Tasks will follow a plan->work->review procedural framework.
 
@@ -593,7 +645,7 @@ Do NOT update for routine code changes, bug fixes, or implementation details tha
 
 <!-- DOCUMENTATION RULES:
 1. ARCHITECTURAL WHY - Document WHY each component exists (constraints/requirements that necessitate it)
-2. NO HISTORY - Current state only, not how we got here  
+2. NO HISTORY - Current state only, not how we got here. The documentation SHOULD NOT be describing that the code is not what it had been, only what it IS.
 3. NO DUPLICATION - Each fact appears exactly once
 4. EXAMPLES OVER EXPLANATIONS - Explain briefly , but emphasize showing over telling
 5. UPDATE THE RIGHT SECTION - Check if info already exists before adding

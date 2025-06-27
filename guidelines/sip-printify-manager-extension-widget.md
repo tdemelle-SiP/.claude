@@ -303,7 +303,7 @@ Used for communication between extension components (content scripts ↔ backgro
 ```
 
 **Examples**:
-- `{ type: 'widget', action: 'navigateToTab', data: { url: '...' } }`
+- `{ type: 'widget', action: 'navigate', data: { url: '...' } }`
 - `{ type: 'printify', action: 'updateStatus', data: { productId: '...' } }`
 
 **Why this format**: The `type` field routes to specific handlers, `action` specifies the operation.
@@ -653,6 +653,149 @@ This is why the router MUST be the background script - it's the only way to rece
 - The router uses chrome.tabs.sendMessage to communicate with specific content scripts
 - WordPress postMessage messages are relayed to the router by widget-relay.js
 
+### 4.3 Tab Pairing System
+
+**Why it exists**: The widget's "Go to..." navigation feature requires maintaining relationships between WordPress admin tabs and Printify tabs to ensure navigation reuses existing tabs instead of creating new ones.
+
+#### Architecture Overview
+
+The tab pairing system uses a bidirectional pairing model:
+
+```javascript
+// Runtime cache in widget-router.js
+const tabPairs = new Map(); // Map<tabId, pairedTabId>
+
+// Persistent storage in chrome.storage.local
+{
+    sipTabPairs: {
+        "123": "456",  // Tab 123 is paired with tab 456
+        "456": "123"   // Tab 456 is paired with tab 123 (bidirectional)
+    }
+}
+```
+
+#### Key Concepts
+
+1. **Bidirectional Pairing**: Each tab knows its pair, enabling navigation in both directions
+2. **Persistence**: Pairs survive page reloads via chrome.storage.local
+3. **Automatic Cleanup**: Pairs are removed when either tab closes
+4. **One-to-One Relationships**: Each tab can only be paired with one other tab
+5. **Smart Navigation**: Avoids unnecessary reloads by checking if the paired tab is already on the target URL
+
+#### Tab Pairing Flow
+
+**Initial Navigation** (WordPress → Printify):
+1. User clicks "Go to Printify" in widget
+2. Widget sends navigation message with current tab ID
+3. Router checks if current tab has a paired Printify tab
+4. If no pair exists, creates new Printify tab and establishes pairing
+5. If pair exists and is valid, navigates to the paired tab
+
+**Return Navigation** (Printify → WordPress):
+1. User clicks "Go to WordPress" in widget
+2. Widget sends navigation message with current tab ID
+3. Router finds the paired WordPress tab
+4. Navigates to the paired WordPress tab (always exists as it initiated the pair)
+
+#### Implementation Details
+
+**Storage Functions**:
+```javascript
+// Load pairs from storage on startup
+async function loadTabPairs() {
+    const result = await chrome.storage.local.get(['sipTabPairs']);
+    const pairs = result.sipTabPairs || {};
+    tabPairs.clear();
+    for (const [tabId, pairedId] of Object.entries(pairs)) {
+        tabPairs.set(parseInt(tabId), parseInt(pairedId));
+    }
+}
+
+// Create bidirectional pairing
+async function createTabPair(tab1Id, tab2Id) {
+    tabPairs.set(tab1Id, tab2Id);
+    tabPairs.set(tab2Id, tab1Id);
+    await saveTabPairs();
+}
+```
+
+**Navigation with Pairing**:
+```javascript
+async function navigateTab(url, tabType, currentTabId) {
+    // Check for existing pair
+    const pairedTabId = currentTabId ? getPairedTab(currentTabId) : null;
+    
+    if (pairedTabId) {
+        // Verify paired tab still exists
+        try {
+            const pairedTab = await chrome.tabs.get(pairedTabId);
+            
+            // Check if already on target URL to avoid unnecessary reload
+            const isSameUrl = pairedTab.url === url || 
+                            (pairedTab.url && url && 
+                             new URL(pairedTab.url).href === new URL(url).href);
+            
+            if (isSameUrl) {
+                // Just switch focus without reloading
+                await chrome.tabs.update(pairedTabId, { active: true });
+                return { success: true, data: { tabId: pairedTabId, action: 'switched-focus' } };
+            } else {
+                // Navigate to new URL
+                await chrome.tabs.update(pairedTabId, { url: url, active: true });
+                return { success: true, data: { tabId: pairedTabId, action: 'reused-pair' } };
+            }
+        } catch (e) {
+            // Paired tab closed, clean up
+            await removeTabPair(currentTabId);
+        }
+    }
+    
+    // Create new tab and pair it
+    const newTab = await chrome.tabs.create({ url: url, active: true });
+    if (currentTabId) {
+        await createTabPair(currentTabId, newTab.id);
+    }
+    return { success: true, data: { tabId: newTab.id, action: 'created-pair' } };
+}
+```
+
+#### Message Flow for Navigation
+
+1. **Content Script** sends navigation message:
+   ```javascript
+   // Navigation message with proper format
+   chrome.runtime.sendMessage({
+       type: 'widget',
+       action: 'navigate',
+       data: {
+           url: targetUrl
+       }
+   });
+   // Note: currentTabId is automatically added by the background script from sender.tab.id
+   ```
+
+2. **Handler** passes tab context to router:
+   ```javascript
+   async function handleNavigate(data, router, sender) {
+       const currentTabId = sender?.tab?.id || data.currentTabId;
+       return await router.navigateTab(data.url, data.destination, currentTabId);
+   }
+   ```
+
+#### Lifecycle Management
+
+**Tab Close Cleanup**:
+```javascript
+chrome.tabs.onRemoved.addListener(async (tabId) => {
+    await removeTabPair(tabId);  // Automatically cleans both sides of the pair
+});
+```
+
+**Storage Persistence**:
+- Pairs are loaded on extension startup
+- Pairs are saved after each create/remove operation
+- Storage key uses SiP prefix convention: `sipTabPairs`
+
 ## 5. Common Operations
 
 ### 5.1 Status Update Flow
@@ -776,16 +919,16 @@ _Add this subsection immediately after **6.3 Handler Context** in the “Impleme
 |------|-----------|---------|
 | **Expose every UI function under `SiPWidget.UI` only.** | Makes the API explicit and discoverable; avoids accidental globals.| `SiPWidget.UI.showWidget()` |
 | **Never call a bare function such as `showWidget()` or `toggleWidget()` from any script (wrapper, relay, handler, or content-script).** | Guarantees the call site never outruns the module loader; eliminates race conditions. | _Wrong:_ `showWidget();`<br>_Right:_ `SiPWidget.UI.showWidget();` |
-| **If legacy WordPress code requires a global, create a *temporary* bridge inside `widget-tabs-actions.js` and mark it with `// @deprecated`.** | Eases transition without breaking older releases; highlights cleanup targets. | `window.showWidget = SiPWidget.UI.showWidget; // @deprecated` |
+| **If WordPress code requires a global function, create it inside `widget-tabs-actions.js` and mark it clearly.** | Provides clear API surface for WordPress integration. | `window.showWidget = SiPWidget.UI.showWidget; // WordPress integration` |
 | **Future commands** (e.g. `refreshWidget`, `resizeWidget`) **must follow the same pattern**. | Keeps extension growth predictable. | `SiPWidget.UI.refreshWidget();` |
 
 **Implementation Checklist**
 
 1. Search the codebase for `showWidget(`, `toggleWidget(`, etc. outside `SiPWidget.UI.*` and refactor calls.  
-2. Remove any `window.*` aliases once no longer needed.  
+2. Remove any `window.*` aliases if not required for WordPress integration.  
 3. Document new commands by appending to the table above—no further globals.
 
-_Once this subsection is added, the discrepancy between `toggleWidget` and `showWidget` handling is resolved at the policy level, ensuring architectural consistency going forward._
+_This subsection ensures architectural consistency for all widget UI commands._
 
 
 ## 7. Widget UI Features
@@ -1276,7 +1419,7 @@ $(document).on('extensionReady', function(e, data) {
 - The `browser-extension-manager.js` handles all extension communication
 - Other modules listen for the `extensionReady` jQuery event
 - No direct `window.addEventListener` for extension messages in individual modules
-- Legacy DOM marker detection maintained for backward compatibility
+- DOM marker detection used for extension presence verification
 
 ### 10.5 Common Pitfalls - MUST READ
 
@@ -1479,9 +1622,8 @@ Key implementation details:
 
 ## Low Priority Enhancements
 
-### 1. ~~History View Feature~~ ✅ COMPLETED
-- ~~Implement history view for captured data and actions~~
-- ✅ **Cross-tab console log viewer implemented** - History button now opens captured SiP-related console logs from both WordPress and Extension in a new window with copy/clear functionality
+### 1. History View Feature ✅ COMPLETED
+- **Cross-tab console log viewer** - History button opens captured SiP-related console logs from both WordPress and Extension in a new window with copy/clear functionality
 
 ### 2. Auto-Sync Feature  
 - The `autoSync` field in config.json is reserved for future use
@@ -1501,8 +1643,8 @@ Key implementation details:
 - ✅ Configuration system with pre-configured and user-configured modes
 - ✅ Installation flow with automatic page reload
 - ✅ Cross-tab console log viewer with SiP-prefix filtering, chronological ordering, and copy/clear functionality
-- ✅ All deprecated code removed (widget-main.js, plural handler names, action history system)
-- ✅ Documentation fully updated to reflect current implementation
+- ✅ Clean codebase with singular handler names and streamlined action system
+- ✅ Documentation reflects current implementation
 
 ---
 
