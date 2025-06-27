@@ -259,10 +259,10 @@ The release manager uses a flexible repository registration system that allows m
    └─> PowerShell updates version
    └─> Creates ZIP package
    └─> Updates last_release in storage
-   └─> Generates README from all repos
+   └─> Generates releases.json from all repos
 
 4. Production site checks updates
-   └─> Fetches README from server
+   └─> Fetches releases.json from server
    └─> Compares versions
    └─> Shows available updates
 ```
@@ -402,7 +402,7 @@ The PowerShell script executes these steps:
 10. **Ensure Directories**: Create `previous_releases` folder
 11. **Archive Old ZIPs**: Move existing ZIPs to previous releases
 12. **Build Package**: Create clean release ZIP using 7-Zip via PHP
-13. **Update README**: Generate from PowerShell repository scanning
+13. **Update releases.json**: Generate from PowerShell repository scanning
 14. **Upload to Server**: Upload ZIP to update server and commit central repository
 
 **For extensions only:**
@@ -736,7 +736,7 @@ Write-LogEntry "[COMPLETE] Release process finished" "INFO"
 ### Structure
 ```
 sip-plugin-suite-zips/
-├── README.md               # Auto-updated plugin & extension manifest
+├── releases.json           # Auto-updated plugin & extension manifest
 ├── sip-plugins-core-2.3.0.zip
 ├── sip-printify-manager-3.1.0.zip
 ├── sip-printify-manager-extension-1.0.0.zip  # Extensions now in root directory
