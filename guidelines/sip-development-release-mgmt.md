@@ -16,9 +16,9 @@ The release system recognizes two distinct contexts with different requirements:
 
 ### Production Context (Deployed Sites)
 - **Purpose**: Check for and install updates
-- **Source of Truth**: Update server README (distribution catalog)
+- **Source of Truth**: Update server releases.json (distribution catalog)
 - **Users**: Site administrators checking for updates
-- **Data Flow**: Update Server README → Plugin Dashboard (parses for display) → Update Installation
+- **Data Flow**: Update Server releases.json → Plugin Dashboard (JSON decode) → Update Installation
 
 ## Core Principles
 
@@ -53,7 +53,7 @@ DEVELOPMENT CONTEXT                           PRODUCTION CONTEXT
 │  Repository     │                          │  Deployed Site   │
 │  Source Files   │                          │  (WordPress)     │
 ├─────────────────┤                          ├──────────────────┤
-│ • plugin.php    │                          │ • Checks README  │
+│ • plugin.php    │                          │ • Checks JSON   │
 │ • manifest.json │                          │ • Shows updates  │
 └────────┬────────┘                          └────────▲─────────┘
          │                                              │
@@ -64,18 +64,18 @@ DEVELOPMENT CONTEXT                           PRODUCTION CONTEXT
 │    Table UI     │                          │ (stuffisparts)   │
 ├─────────────────┤                          ├──────────────────┤
 │ • Shows version │                          │ • Hosts ZIPs     │
-│ • Release date  │                          │ • Serves README  │
+│ • Release date  │                          │ • Serves JSON   │
 └────────┬────────┘                          └────────▲─────────┘
          │                                              │
          │ Create Release                               │ Upload
          ▼                                              │
 ┌─────────────────┐     ┌──────────────┐    ┌──────────────────┐
-│   PowerShell    │────▶│ Local ZIPs   │───▶│ README Generated │
-│    Scripts      │     │ Repository   │    │  (Not Parsed)    │
+│   PowerShell    │────▶│ Local ZIPs   │───▶│ releases.json    │
+│    Scripts      │     │ Repository   │    │  Generated       │
 └─────────────────┘     └──────────────┘    └──────────────────┘
 
-Plugin Path:  .php → Table → PS1 → ZIP → README → Server → Sites
-Extension Path: .json → Table → PS1 → ZIP → README → Server → Sites
+Plugin Path:  .php → Table → PS1 → ZIP → JSON → Server → Sites
+Extension Path: manifest.json → Table → PS1 → ZIP → JSON → Server → Sites
 ```
 
 ### Mermaid Flow Diagram
@@ -86,7 +86,7 @@ graph TB
         RM[Release Manager<br/>Table UI]
         PS[PowerShell Scripts<br/>release-plugin/extension.ps1]
         LZ[Local ZIP Archive<br/>sip-plugin-suite-zips/]
-        RG[README Generation<br/>From Repository Data]
+        RG[JSON Generation<br/>From Repository Data]
         
         RF -->|Read Metadata| RM
         RM -->|Create Release| PS
@@ -97,7 +97,7 @@ graph TB
     
     subgraph "Production Context"
         US[Update Server<br/>updates.stuffisparts.com]
-        RC[README Catalog<br/>Available Versions]
+        RC[JSON Catalog<br/>Available Versions]
         DS[Deployed Sites<br/>WordPress Installations]
         PD[Plugin Dashboard<br/>Update Checker]
         
@@ -138,14 +138,14 @@ graph TB
 - **Process**: 16-step automated release
 - **Updates**: Calls PHP to update release info on completion
 
-### 4. README Generation (Distribution Catalog)
+### 4. JSON Generation (Distribution Catalog)
 - **Trigger**: After successful release
 - **Source**: Repository Manager data
-- **Method**: PHP arrays to structured text (no concatenation)
+- **Method**: PHP arrays to structured JSON
 - **Purpose**: Catalog for production sites
 
 ### 5. Update Server (Distribution Point)
-- **Hosts**: ZIP files and README catalog
+- **Hosts**: ZIP files and releases.json catalog
 - **Access**: Public HTTP endpoint
 - **Used By**: All deployed WordPress sites
 
@@ -182,9 +182,9 @@ sip-development-tools/
 - **SiP-ReleaseUtilities.psm1**: Common functions for all release scripts
   - `Get-ApiKey`: Reads API keys from .env files
   - `Get-RepositoryData`: Gathers repository information
-  - `New-ReadmeContent`: Generates README content
-  - `Update-CentralReadme`: Updates central repository README
-  - `Upload-ReadmeToServer`: Uploads README to update server
+  - `New-JsonContent`: Generates releases.json content
+  - `Update-ReleasesJson`: Updates central repository releases.json
+  - `Upload-JsonToServer`: Uploads releases.json to update server
 
 - **SiP-ChromeWebStore.psm1**: Chrome Web Store API integration
   - `Test-ChromeStoreConfig`: Validates Chrome Store configuration
@@ -207,7 +207,7 @@ Import-Module (Join-Path -Path $PSScriptRoot -ChildPath "SiP-ReleaseUtilities.ps
 - `SiP_Repository_Manager::get_repositories()` - Get all repos with status
 - `SiP_Repository_Manager::get_fresh_repository_info()` - Read current file data
 - `SiP_Repository_Manager::update_repository_release()` - Update release tracking
-- `SiP_Repository_Manager::generate_readme_content()` - Create README from data
+- `SiP_Repository_Manager::generate_releases_json()` - Create releases.json from data
 - `sip_check_release_status()` - Monitor release and update on completion
 
 #### JavaScript (Client-Side)
@@ -688,15 +688,13 @@ pclose(popen($command, 'r'));
 exec($command, $output, $return_var);
 ```
 
-#### README Generation and Consumption
+#### JSON Generation and Consumption
 
-**Important Distinction**: The "No Parsing" principle applies specifically to the README generation process, not consumption:
+**No Parsing Principle**: The releases.json approach eliminates parsing entirely:
 
-- **Generation (Development)**: README is generated from repository data without parsing any existing README
-- **Consumption (Production)**: Production sites must parse the README to extract structured data for display
-- **Why This Works**: The README follows a predictable, self-controlled format making parsing reliable
-
-This is analogous to API responses - we generate JSON without parsing, but consumers must parse it for use.
+- **Generation (Development)**: JSON is generated from repository data as structured data
+- **Consumption (Production)**: Production sites decode JSON, no parsing required
+- **Why This Works**: JSON provides native structured data format, eliminating regex and parsing complexity
 
 ### PowerShell Script Output
 **Why**: PowerShell's default behavior outputs return values to console, which pollutes logs when redirected to file.
@@ -748,68 +746,74 @@ sip-plugin-suite-zips/
     └── sip-printify-manager-extension-0.9.0.zip
 ```
 
-### README.md Format
-```markdown
-# SiP Plugin & Extension Releases
-
-This directory contains the latest releases of all SiP plugins and extensions.
-
-Last updated: 2024-03-15 14:30:00
-
-## Available Plugins
-
-### sip-plugins-core
-- Version: 2.3.0
-- File: sip-plugins-core-2.3.0.zip
-- Last updated: 2024-03-15 14:30:00
-
-### sip-printify-manager
-- Version: 3.1.0
-- File: sip-printify-manager-3.1.0.zip
-- Last updated: 2024-03-14 10:15:00
-
-## Available Extensions
-
-### sip-printify-manager-extension
-- Version: 1.0.0
-- File: extensions/sip-printify-manager-extension-v1.0.0.zip
-- Chrome Web Store ID: ikgbhdaibkmehpeipbcooebkgpfegdbg
-- Last updated: 2024-03-15 14:35:00
+### releases.json Format
+```json
+{
+    "generated": "2024-03-15T14:30:00Z",
+    "plugins": [
+        {
+            "slug": "sip-plugins-core",
+            "name": "SiP Plugins Core",
+            "version": "2.3.0",
+            "downloadUrl": "https://updates.stuffisparts.com/download/sip-plugins-core-2.3.0.zip",
+            "lastUpdated": "2024-03-15T14:30:00Z"
+        },
+        {
+            "slug": "sip-printify-manager",
+            "name": "SiP Printify Manager",
+            "version": "3.1.0",
+            "downloadUrl": "https://updates.stuffisparts.com/download/sip-printify-manager-3.1.0.zip",
+            "lastUpdated": "2024-03-14T10:15:00Z"
+        }
+    ],
+    "extensions": [
+        {
+            "slug": "sip-printify-manager-extension",
+            "name": "SiP Printify Manager Extension",
+            "version": "1.0.0",
+            "downloadUrl": "https://updates.stuffisparts.com/download/sip-printify-manager-extension-1.0.0.zip",
+            "chromeStoreUrl": "https://chrome.google.com/webstore/detail/ikgbhdaibkmehpeipbcooebkgpfegdbg",
+            "lastUpdated": "2024-03-15T14:35:00Z"
+        }
+    ]
+}
 ```
 
-### README Generation
+### JSON Generation
 
-**Why**: The central repository README serves as a distribution catalog for deployed sites to check for updates. It's generated by scanning repositories and existing ZIP files.
+**Why**: The central repository releases.json serves as a distribution catalog for deployed sites to check for updates. It's generated by scanning repositories and existing ZIP files.
 
 #### Generation Process
 
 1. **Data Source**: PowerShell scripts scan repository directories and ZIP files
-2. **Generation Trigger**: README is regenerated after each successful release
-3. **PowerShell Functions**: Both release scripts generate complete README with all repositories
-4. **No Parsing**: README is write-only, generated fresh each time
+2. **Generation Trigger**: JSON is regenerated after each successful release
+3. **PowerShell Functions**: Both release scripts generate complete releases.json with all repositories
+4. **No Parsing**: JSON is write-only, generated fresh each time as structured data
 
-#### README Structure
-```markdown
-# SiP Plugin Releases
-
-This directory contains the latest releases of all SiP plugins.
-
-Last updated: 2024-03-15 14:30:00
-
-## Available Plugins
-
-### sip-plugins-core
-- Version: 2.3.0
-- File: [sip-plugins-core-2.3.0.zip](./sip-plugins-core-2.3.0.zip)
-- Last updated: 2024-03-15 14:30:00
-
-## Available Extensions
-
-### sip-printify-manager-extension
-- Version: 1.0.0
-- File: [extensions/sip-printify-manager-extension-1.0.0.zip](./extensions/sip-printify-manager-extension-1.0.0.zip)
-- Chrome Web Store ID: ikgbhdaibkmehpeipbcooebkgpfegdbg
-- Last updated: 2024-03-15 14:35:00
+#### JSON Structure
+```json
+{
+    "generated": "2024-03-15T14:30:00Z",
+    "plugins": [
+        {
+            "slug": "sip-plugins-core",
+            "name": "SiP Plugins Core",
+            "version": "2.3.0",
+            "downloadUrl": "https://updates.stuffisparts.com/download/sip-plugins-core-2.3.0.zip",
+            "lastUpdated": "2024-03-15T14:30:00Z"
+        }
+    ],
+    "extensions": [
+        {
+            "slug": "sip-printify-manager-extension",
+            "name": "SiP Printify Manager Extension",
+            "version": "1.0.0",
+            "downloadUrl": "https://updates.stuffisparts.com/download/sip-printify-manager-extension-1.0.0.zip",
+            "chromeStoreUrl": "https://chrome.google.com/webstore/detail/ikgbhdaibkmehpeipbcooebkgpfegdbg",
+            "lastUpdated": "2024-03-15T14:35:00Z"
+        }
+    ]
+}
 ```
 
 ### PowerShell String Building Best Practices
@@ -840,27 +844,38 @@ function Get-PluginReleaseData {
 
 2. **Content Generation Phase**
 ```powershell
-# Generate complete README from data structure
-function New-ReadmeContent {
-    param ([array]$PluginData)
+# Generate complete JSON from data structure
+function New-JsonContent {
+    param ([array]$PluginData, [array]$ExtensionData)
     
-    # Build sections in array
-    $sections = @()
-    foreach ($plugin in $PluginData) {
-        $section = @"
-### $($plugin.Name)
-- Version: $($plugin.Version)
-- File: [$($plugin.FileName)](./$($plugin.FileName))
-"@
-        $sections += $section
+    $releaseData = @{
+        generated = (Get-Date).ToUniversalTime().ToString("yyyy-MM-dd'T'HH:mm:ss'Z'")
+        plugins = @()
+        extensions = @()
     }
     
-    # Join all at once
-    $fullContent = @"
-# SiP Plugin Releases
-$($sections -join "`n`n")
-"@
-    return $fullContent
+    foreach ($plugin in $PluginData) {
+        $releaseData.plugins += @{
+            slug = $plugin.Slug
+            name = $plugin.Name
+            version = $plugin.Version
+            downloadUrl = "https://updates.stuffisparts.com/download/$($plugin.FileName)"
+            lastUpdated = $plugin.LastUpdated
+        }
+    }
+    
+    foreach ($extension in $ExtensionData) {
+        $releaseData.extensions += @{
+            slug = $extension.Slug
+            name = $extension.Name
+            version = $extension.Version
+            downloadUrl = "https://updates.stuffisparts.com/download/$($extension.FileName)"
+            chromeStoreUrl = $extension.ChromeStoreUrl
+            lastUpdated = $extension.LastUpdated
+        }
+    }
+    
+    return $releaseData | ConvertTo-Json -Depth 10
 }
 ```
 
@@ -872,7 +887,7 @@ $($sections -join "`n`n")
 - Same approach used in both `release-plugin.ps1` and `release-extension.ps1`
 
 ### Update Server Integration
-The README.md is automatically uploaded to `https://updates.stuffisparts.com/` after each release, allowing other systems to check for available updates.
+The releases.json is automatically uploaded to `https://updates.stuffisparts.com/` after each release, allowing other systems to check for available updates.
 
 ### Extension Upload API
 The update server API accepts both 'plugin_zip' and 'extension_zip' parameters to provide flexibility for different asset types.
@@ -1119,7 +1134,7 @@ git ls-remote origin
    - PATCH: Bug fixes
 
 3. **Release Notes**:
-   - Update README/changelog
+   - Update changelog
    - Document breaking changes
    - Include migration guides
 
@@ -1132,11 +1147,11 @@ git ls-remote origin
 
 ### Key Changes from Previous System
 
-1. **Eliminated README Parsing During Generation**
-   - Old: Parse existing README to update release dates (read-modify-write cycle)
-   - New: Generate fresh README from repository data (write-only)
-   - Benefit: No brittle pattern matching during release process
-   - Note: Production sites still parse the generated README for display
+1. **Eliminated Parsing Entirely**
+   - Old: Parse README with regex patterns (brittle, line-ending issues)
+   - New: Generate and consume structured JSON data
+   - Benefit: No parsing, no regex, no line-ending problems
+   - Note: Simple JSON decode for production consumption
 
 2. **Repository Files as Source**
    - Old: Multiple sources of truth (README, stored data, file versions)
@@ -1159,27 +1174,29 @@ git ls-remote origin
 2. **Dynamic Metadata**: Version/name always read fresh from files
 3. **Minimal Storage**: Only store what can't be read
 4. **Release History**: Separate option tracks all releases
-5. **README Generation**: One-way process (write only, no parse)
-6. **Production Parsing**: Structured README parsing is acceptable for display purposes
+5. **JSON Generation**: One-way process (write only, structured data)
+6. **Production Consumption**: Simple JSON decode, no parsing needed
 
-### Production Context Parsing
+### Production Context Consumption
 
-While README generation is write-only, production sites require parsing for display:
+With JSON, production sites simply decode structured data:
 
-1. **Structured Format**: The README uses predictable markdown sections
-2. **Section Isolation**: Use clear boundaries (## headers) to separate content
-3. **Reliable Patterns**: Self-generated format ensures consistent structure
-4. **Acceptable Parsing**: Reading your own generated format is different from parsing arbitrary content
+1. **Structured Format**: JSON provides native data structure
+2. **Direct Access**: No need to extract sections or parse text
+3. **Type Safety**: Data types are preserved (strings, numbers, arrays)
+4. **Error Handling**: JSON decode errors are clear and manageable
 
-Example of acceptable production parsing:
+Example of production consumption:
 ```php
-// Extract specific sections using section headers as boundaries
-if (preg_match('/## Available Plugins\s*\n(.*?)(?=## Available Extensions|$)/s', $readme, $match)) {
-    $plugins_section = $match[1];
+// Simply decode JSON
+$releases = json_decode($json_content, true);
+if (json_last_error() === JSON_ERROR_NONE) {
+    $plugins = $releases['plugins'];
+    $extensions = $releases['extensions'];
 }
 ```
 
-This maintains the benefits of the "no parsing" principle while acknowledging the practical need for data extraction in production contexts.
+This eliminates all parsing complexity and provides reliable data access.
 
 ## Troubleshooting Repository Management
 
@@ -1221,8 +1238,8 @@ $fresh = SiP_Repository_Manager::get_fresh_repository_info($repo);
 // Check release history
 $history = get_option('sip_development_tools_release_history');
 
-// Force README regeneration
-$readme = SiP_Repository_Manager::generate_readme_content();
+// Force JSON regeneration
+$json = SiP_Repository_Manager::generate_releases_json();
 ```
 
 ### Data Flow Debugging
@@ -1230,7 +1247,7 @@ $readme = SiP_Repository_Manager::generate_readme_content();
 1. **Add Repository**: Check `extract_repository_info()` detects type
 2. **Display Table**: Verify `get_release_repositories()` merges data correctly  
 3. **Create Release**: Ensure `sip_check_release_status()` updates on completion
-4. **View Updates**: Confirm README generation includes all active repos
+4. **View Updates**: Confirm JSON generation includes all active repos
 
 #### Extension Version Not Updating After Release
 **Symptom**: Extension version shows blank in table after AJAX refresh but appears on page reload

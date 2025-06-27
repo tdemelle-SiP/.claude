@@ -27,8 +27,8 @@ When the dashboard loads, it follows this sequence:
 
 1. **Show spinner** - User sees loading state immediately
 2. **Purge stored data** - Clear any cached installer data
-3. **Fetch installer data** - Get entire README from update server
-4. **Parse installer data** - Extract plugins and extensions into unified structure
+3. **Fetch installer data** - Get releases.json from update server
+4. **Decode installer data** - JSON decode into unified structure
 5. **Query installation status** - Check WordPress for plugins, request extension announcements
 6. **Render tables** - Display both tables with current status
 7. **Store data** - Save using SiP data storage conventions
@@ -90,7 +90,7 @@ function loadInstallersTables() {
     const formData = SiP.Core.utilities.createFormData(
         'sip-plugins-core',
         'plugin_management',
-        'get_installers_data'  // New action that returns parsed README
+        'get_installers_data'  // Action that returns installer data from releases.json
     );
     
     SiP.Core.ajax.handleAjaxAction('sip-plugins-core', 'plugin_management', formData)
@@ -232,28 +232,60 @@ function handlePluginActivation(pluginSlug) {
 
 ### New AJAX Handler
 
-The PHP handler fetches and parses the entire README (see [AJAX PHP Implementation](./sip-plugin-ajax.md#php-implementation)):
+The PHP handler fetches releases.json from the update server (see [AJAX PHP Implementation](./sip-plugin-ajax.md#php-implementation)):
 
 ```php
 function sip_core_get_installers_data() {
-    // Fetch README from update server
-    $response = wp_remote_get('https://updates.stuffisparts.com/update-api.php?action=get_readme');
-    $readme = wp_remote_retrieve_body($response);
+    // Fetch releases.json from update server
+    $response = wp_remote_get('https://updates.stuffisparts.com/update-api.php?action=get_releases');
+    $json = wp_remote_retrieve_body($response);
     
-    // Parse plugins and extensions directly from README
-    // Note: Uses inline parsing to extract download URLs which aren't included in the instance methods
-    $plugins = /* parse plugins with download URLs */;
-    $extensions = /* parse extensions with download URLs */;
+    // Decode JSON data
+    $releases = json_decode($json, true);
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        SiP_AJAX_Response::error('sip-plugins-core', 'plugin_management', 'get_installers_data', 
+            'Invalid JSON response from update server');
+        return;
+    }
     
-    // Get installed plugin status
-    $sip_core = sip_plugins_core();
-    $installed_plugins = $sip_core->get_fresh_sip_plugins();
+    // Get installed plugin status using centralized method
+    $installed_sip_plugins = SiP_Plugins_Core::get_installed_sip_plugins();
     $active_plugins = get_option('active_plugins', array());
     
     // Format for frontend with installation status
+    $formatted_plugins = array();
+    foreach ($releases['plugins'] as $plugin) {
+        $plugin_file = $plugin['slug'] . '/' . $plugin['slug'] . '.php';
+        $is_installed = isset($installed_sip_plugins[$plugin_file]);
+        $installed_version = $is_installed ? $installed_sip_plugins[$plugin_file]['Version'] : null;
+        $is_active = $is_installed && in_array($plugin_file, $active_plugins);
+        
+        $formatted_plugins[$plugin['slug']] = array(
+            'name' => $plugin['name'],
+            'version' => $plugin['version'],
+            'download_url' => $plugin['downloadUrl'],
+            'installed' => $is_installed,
+            'active' => $is_active,
+            'installed_version' => $installed_version
+        );
+    }
+    
+    // Format extensions (installation status determined client-side)
+    $formatted_extensions = array();
+    foreach ($releases['extensions'] as $extension) {
+        $formatted_extensions[$extension['slug']] = array(
+            'name' => $extension['name'],
+            'version' => $extension['version'],
+            'download_url' => $extension['downloadUrl'],
+            'chrome_store_url' => $extension['chromeStoreUrl'] ?? null,
+            'installed' => false, // Will be updated by client-side detection
+            'installed_version' => null
+        );
+    }
+    
     $data = [
-        'plugins' => format_plugins_with_status($plugins, $installed_plugins, $active_plugins),
-        'extensions' => format_extensions_data($extensions)
+        'plugins' => $formatted_plugins,
+        'extensions' => $formatted_extensions
     ];
     
     // Return using SiP AJAX standards (see [AJAX Response Format](./sip-plugin-ajax.md#response-format))
