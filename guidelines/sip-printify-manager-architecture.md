@@ -63,6 +63,13 @@ Blueprint rows can display mockup buttons that allow users to:
 - View existing mockups in a PhotoSwipe gallery with thumbnail index
 - Fetch mockups from Printify via the browser extension (requires extension v4.3.0+)
 
+**Blueprint Preview Row:**
+- Location: Dashboard beneath shop name header
+- Display: Horizontal scrollable row of 128x128 blueprint preview images
+- Content: First mockup image from each blueprint with mockups
+- Interaction: Click to open mockup gallery (same as table mockup button)
+- Styling: 20px spacing between images, 10px title text below each image
+
 **Mockup Storage:**
 - Location: `/wp-content/uploads/sip-printify-manager/mockups/{blueprint_id}/`
 - Files: Individual `.jpg` images and `metadata.json`
@@ -77,7 +84,9 @@ Blueprint rows can display mockup buttons that allow users to:
 **Implementation:**
 - Module: `mockup-actions.js`
 - Detection: `sip_get_existing_blueprint_mockups()` checks for `.jpg` files
+- Preview data: `sip_get_blueprint_preview_images()` - returns first image per blueprint
 - Button creation: `createMockupButtonHtml()` - icon-only button
+- Preview click handler: `handleBlueprintPreviewClick()` - reuses `showMockups()`
 - Fetch dialog: `showMockupFetchDialog()` - batch processing with progress
 - Gallery display: `displayMockupGallery()` - hybrid thumbnail grid + PhotoSwipe
 - Cleanup utility: `cleanupIncompleteMockups()` - removes incomplete downloads
