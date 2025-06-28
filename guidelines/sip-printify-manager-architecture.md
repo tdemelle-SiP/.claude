@@ -1231,3 +1231,70 @@ Through extensive testing, we've confirmed:
    - Images are downloaded once and cached locally
    - Thumbnails could be generated for faster loading (future enhancement)
    - Batch fetching reduces API calls and user wait time
+
+## Dashboard UI Features
+
+### Dynamic Table Header Counts
+
+Each main table header displays a dynamic count that updates in real-time as tables are filtered:
+
+#### Display Format
+- **Products Table**: Shows parent product count only (excludes child variants)
+- **Images Table**: Shows total count of all images (local + Printify)
+- **Templates Table**: Shows count of template files
+
+#### Implementation Details
+
+**HTML Structure:**
+Each table header uses a flexbox layout with three parts:
+```html
+<h2>
+    <span class="table-count" id="products-count">42</span>
+    <div class="table-title-container">
+        Products
+        <!-- Search field appends here -->
+    </div>
+    <span class="table-count-spacer"></span>
+</h2>
+```
+
+**CSS Layout:**
+```css
+.products-section-header h2,
+.template-section-header h2,
+.image-section-header h2 {
+    display: flex;
+    justify-content: space-between;
+}
+
+.table-count {
+    min-width: 60px;
+    text-align: left;
+    flex-shrink: 0;
+}
+
+.table-title-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-grow: 1;
+    gap: 10px;
+}
+```
+
+**Dynamic Updates:**
+Count updates are integrated with DataTables events:
+- Products: `updateProductCount()` in `product-actions.js`
+- Templates: `updateTemplateCount()` in `template-actions.js`
+- Images: `updateImageCount()` in `image-actions.js`
+
+The counts update automatically when:
+- Tables are filtered via search
+- Column filters are applied
+- Data is reloaded via AJAX
+
+**Key Architecture Decisions:**
+1. **Single Source of Truth**: Counts come directly from DataTables API
+2. **No Defensive Coding**: Direct DOM updates without null checks
+3. **Flexbox Layout**: Ensures proper alignment and centering
+4. **Search Field Integration**: Search fields append to `.table-title-container` to maintain center alignment
