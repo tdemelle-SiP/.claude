@@ -1,0 +1,43 @@
+what done looks like.
+
+templates across the top with status showing all child products published.
+
+steps to get there.
+-create template
+-load template into product creation table
+-add images
+upload child products to printify
+
+-go to printify
+	-remove unwanted mockups
+	-publish products
+
+-go to fauxstainedglasspanes.com
+	-make sure products show up correctly in shop
+		-easily navigable
+		-easily sortable
+		-easily searchable
+
+DONE
+
+--------
+The biggest outstanding steps in the sip-printify-manager product creation flow are removing unwanted mockups from new child products before publication and then publishing the products.  Neither of these can be done with the Public Printify API. We need to use the sip-printify-manager-extension to find the internal api calls that remove/add mockups associated with a product and then to publish the products.
+
+
+Sip Printify Manager -Mockups Removal plan
+
+  We need to design an interface overlay that pops up in the wordpress plugin that shows available mockups and allows the user to select which mockups they want associated with uploaded - unpublished child products before they are published.  This mockup selection would apply to the template core data and would be applied to all child products associated with that template.  The template itself should contain this data.  The most elegant way to handle this would be to use the same json array structure that printify uses to specify its mockups for products in the product.json array.  Even though we can't simply upload the product initially with this data using the printify public api, it seems like the most intuitive way to capture it and perhaps will be useful later in the process.  So the user selects which of the available mockups they want to associate with the template, clicks save and they are saved to the template.json
+
+So the emerging process looks like:
+User selects a template and chooses 
+	- select mockups 
+	- an interface comes up and shows the mockup images associated with the blueprint associated with the product that template is created from (we should already have this data. If it hasn't been retrieved yet, the user must be prompted to install the sip-printify-manager-extension to retrieve mockup data from printify.
+	- When the mockup selection window appears it should show selections from either the images in the parent product images array (printify's default selections) OR the images that the user has saved to the template file if they have done so already.
+	- from there, the user selects/modifies the mockups that they want associated with that template by selecting/deselecting from the available options
+	- the user clicks save and the data is stored in the template json file in the same structure that printify uses.
+	- a progress dialog pops up
+	- a prompt is sent to the sip-printify-manager-extension to load each child product that associated with that template's products mockup page and use the printify internal api to make the mockup changes and save them to the product. (we need to find this api call)
+	- the progress dialog window shows the progress of the interaction with the widget.  the widget itself shows the more granular widget progress in the widget message window.  The widget logs its progress and sends it back to the progress dialog.  The progress dialog compiles a log that includes its and the widgets progress in correct interleaved chronological order. This nested progress tracking has a precedent in the blueprint mockup fetching functionality implemented in the product table. It's critical to keep what each of these two interfaces tracks separate in terms of concern but aligned in terms of order of operations.
+	- when the process completes, the widget shows done and reports back that it's done, the progress dialog on the sip-printify-manager plugin page shows summary data, a view log button, a close button and a publish updated products button.
+
+	- if the user presses the publish updated products button, the update mockups progress dialog closes and a new publish progress dialog appears. This works similarly to the update mockups functionality; it sends a prompt to the sip-printify-manager-extension to publish the child products.  The extension goes to the shops main products page and sends the internal api call that publishes all the child products (we need to find this api call). It reports and logs its progress sending it back to the wordpress plugin progress dialog which reports and logs its progress and ultimately ends with a summary state with a close button and a view log button.
