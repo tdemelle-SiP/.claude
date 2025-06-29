@@ -199,9 +199,10 @@ Templates table includes a "Select Mockups" action that:
 
 **Implementation:**
 - Module: `template-actions.js` - handles UI and AJAX calls
-- Dialog: `mockup-selection-dialog.js` - manages selection interface
-- Backend: `sip_handle_template_mockup_selection()` - saves to template JSON
-- Visual indicator: Icon appears in template row when mockup selection is configured
+- Modal Dialog: Implemented directly in `showMockupSelectionModal()` and `displayMockupSelectionDialog()` functions
+- Backend: `sip_get_template_mockup_data()` - retrieves mockup data and `sip_save_template_mockup_selection()` - saves to template JSON
+- Visual indicator: 🖼️ emoji appears in template row when mockup selection is configured
+- CSS: Modal styles in `modals.css`, indicator styles in `tables.css`
 
 #### Dynamic Row Highlighting
 When a template is loaded:
@@ -288,14 +289,15 @@ When users configure mockup selections for templates, these selections must be a
 ### Implementation Components
 
 #### Frontend
-- **Trigger**: After saving template mockup selection
-- **Dialog**: `showMockupUpdateDialog()` in `template-actions.js`
+- **Trigger**: Automatically after saving template mockup selection
+- **Dialog**: `showMockupUpdateProgress()` in `template-actions.js`
 - **Batch Processing**: Uses `SiP.Core.progressDialog.processBatch()`
+- **Data Source**: Uses existing `child_products` from template data (no extra AJAX needed)
 
 #### Backend
-- **Template Data**: Loads mockup selection from template JSON
-- **Product List**: Identifies unpublished products needing updates
-- **AJAX Handler**: `sip_handle_mockup_update_batch()`
+- **Template Data**: Mockup selection saved to template JSON via `sip_save_template_mockup_selection()`
+- **Product List**: Filters `child_products` for status `wip` or `unpublished`
+- **No batch AJAX handler needed**: Frontend uses existing template data
 
 #### Extension Integration
 - **Message Type**: `SIP_UPDATE_PRODUCT_MOCKUPS`
@@ -311,14 +313,33 @@ SiP.Core.progressDialog.processBatch({
     batchSize: 1,
     dialogOptions: {
         title: 'Update Product Mockups',
-        initialMessage: 'Applying mockup selections to products...',
-        progressMessage: 'Updating mockups for products...',
+        item: 'product',
+        initialMessage: `Updating mockups for ${childProducts.length} unpublished {item}s...`,
+        progressMessage: 'Processing {stepCount} of {count} {item}s',
+        secondaryProgressMessage: 'Updating mockups for "{name}"...',
+        completionMessage: '{successCount} {item}s updated successfully!',
+        secondaryCompletionMessage: 'Click "Publish Products" below to publish the updated products',
+        waitForUserOnStart: false,
         waitForUserOnComplete: true,
-        showViewLog: true
+        completionButtons: [{
+            text: 'Publish Products',
+            class: 'ui-button-primary',
+            handler: function(dialog) {
+                dialog.close();
+                publishUpdatedProducts(childProducts);
+            }
+        }]
+    },
+    steps: {
+        weights: {
+            navigate: 20,    // Navigate to product mockup page
+            update: 60,      // Update mockups via internal API
+            verify: 20       // Verify changes were applied
+        },
+        batchCount: childProducts.length
     },
     processItemFn: function(product, dialog) {
-        // Send update request to extension
-        // Report progress back to dialog
+        return updateProductMockupsViaExtension(product, selectedMockups, blueprintId, dialog);
     }
 });
 ```

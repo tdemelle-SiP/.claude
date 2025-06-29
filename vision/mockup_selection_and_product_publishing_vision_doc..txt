@@ -31,7 +31,7 @@ Sip Printify Manager -Mockups Removal plan
 So the emerging process looks like:
 User selects a template and chooses 
 	- select mockups 
-	- an interface comes up and shows the mockup images associated with the blueprint associated with the product that template is created from (we should already have this data. If it hasn't been retrieved yet, the user must be prompted to install the sip-printify-manager-extension to retrieve mockup data from printify.
+	- an interface comes up and shows the mockup images associated with the blueprint associated with the product that template is created from (we should already have this data. If it hasn't been retrieved yet, the user must be prompted to install the sip-printify-manager-extension to retrieve mockup data from printify.)
 	- When the mockup selection window appears it should show selections from either the images in the parent product images array (printify's default selections) OR the images that the user has saved to the template file if they have done so already.
 	- from there, the user selects/modifies the mockups that they want associated with that template by selecting/deselecting from the available options
 	- the user clicks save and the data is stored in the template json file in the same structure that printify uses.
