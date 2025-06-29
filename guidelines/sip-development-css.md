@@ -707,6 +707,37 @@ IMAGE TABLE
 
 ## Responsive Design
 
+### Dashboard Layout Responsiveness
+
+The dashboard wrapper automatically adapts to WordPress admin sidebar states using simple percentage-based widths instead of fixed calculations:
+
+```css
+/* ✅ CORRECT: Responsive dashboard layout */
+.sip-dashboard-wrapper {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+/* ❌ AVOID: Fixed viewport calculations */
+/* These break when sidebar state changes */
+.sip-dashboard-wrapper {
+    width: calc(100vw - 216px); /* Don't do this */
+}
+```
+
+**Why this works**: WordPress admin creates containers that automatically adjust based on sidebar state. Using `width: 100%` fills the available space naturally.
+
+**WordPress Admin Layout Hierarchy**:
+```
+#wpwrap
+  └── #adminmenuwrap (sidebar - variable width)
+  └── #wpcontent 
+      └── #wpbody-content (automatically sized)
+          └── .wrap
+              └── .sip-dashboard-wrapper (fills 100% of available space)
+```
+
 ### Mobile-First Approach
 ```css
 /* Base styles (mobile) */
