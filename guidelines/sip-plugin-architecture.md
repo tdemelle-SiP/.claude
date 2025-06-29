@@ -756,7 +756,7 @@ Create `assets/css/admin.css`:
 /* Dashboard wrapper */
 .sip-dashboard-wrapper {
     width: 100%;
-    max-width: 1200px;
+    max-width: 100%;
     margin: 20px 0;
 }
 
