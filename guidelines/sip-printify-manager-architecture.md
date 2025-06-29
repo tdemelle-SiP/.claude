@@ -96,10 +96,10 @@ Blueprint rows can display mockup buttons that allow users to:
 
 **Template Preview Implementation:**
 - Module: `template-actions.js`
-- Data function: `sip_get_template_preview_data()` - returns template data with parent product images
+- Data function: `sip_get_template_preview_data()` - uses `sip_load_templates()` to get complete template data with parent product images
 - Render function: `renderTemplatePreviewRow()` - builds preview items dynamically
 - Click handler: `handleTemplatePreviewClick()` - loads template into creation table
-- Status meter: `createStatusMeter()` - visual representation of child product statuses
+- Status meter: `createStatusMeter()` - visual representation of child product statuses using the status field from each child product
 
 #### Implementation
 - Main file: `product-actions.js`
@@ -115,18 +115,34 @@ Manages templates that define product structures for creation.
 ### Architecture
 - Standard DataTables implementation
 - Single-level table (no grouping)
-- Server-side data loading
+- Client-side data processing
 
 ### Data Structure
-Templates use a standardized data structure:
+Templates are loaded using `sip_load_templates()` which returns complete template data including all child products:
 ```javascript
 {
     'basename': 'template_name',        // Identifier without extension
     'filename': 'template_name.json',   // Full filename
     'title': 'Display Title',           // User-friendly name
-    'template_title': 'Display Title'   // Legacy field
+    'template_title': 'Display Title',  // Legacy field
+    'source_product_id': '...',         // Parent product ID
+    'child_products': [                 // ALL child products
+        {
+            'child_product_id': '...',
+            'child_product_title': '...',
+            'printify_product_id': '...', // May be empty for WIP
+            'status': 'wip|unpublished|published'
+        }
+    ]
 }
 ```
+
+### Template Data Loading
+**Single Source Function**: `sip_load_templates()`
+- Loads complete template JSON files without filtering
+- Returns all child products regardless of status
+- Used by template table, template preview row, and all other template data needs
+- Child product filtering for product table highlighting happens client-side in JavaScript
 
 ### Special Features
 
