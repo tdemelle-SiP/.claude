@@ -63,12 +63,16 @@ Blueprint rows can display mockup buttons that allow users to:
 - View existing mockups in a PhotoSwipe gallery with thumbnail index
 - Fetch mockups from Printify via the browser extension (requires extension v4.3.0+)
 
-**Blueprint Preview Row:**
+**Template Preview Row:**
 - Location: Dashboard beneath shop name header
-- Display: Horizontal scrollable row of 128x128 blueprint preview images
-- Content: First mockup image from each blueprint with mockups
-- Interaction: Click to open mockup gallery (same as table mockup button)
-- Styling: 20px spacing between images, 10px title text below each image
+- Display: Horizontal scrollable row of 128x128 template preview images
+- Content: 
+  - Blueprint name above image
+  - First mockup image from template's parent product
+  - Child product count below image
+  - 128px x 3px status meter showing work progress proportions
+- Interaction: Click to load template into creation table
+- Styling: 20px spacing between items, centered layout
 
 **Mockup Storage:**
 - Location: `/wp-content/uploads/sip-printify-manager/mockups/{blueprint_id}/`
@@ -81,16 +85,21 @@ Blueprint rows can display mockup buttons that allow users to:
 - Gallery icon: Mockup images available for viewing
 - Button appears in 4th TD cell of blueprint summary rows
 
-**Implementation:**
+**Mockup Implementation:**
 - Module: `mockup-actions.js`
 - Detection: `sip_get_existing_blueprint_mockups()` checks for `.jpg` files
-- Preview data: `sip_get_blueprint_preview_images()` - returns first image per blueprint
 - Button creation: `createMockupButtonHtml()` - icon-only button
-- Preview click handler: `handleBlueprintPreviewClick()` - reuses `showMockups()`
 - Fetch dialog: `showMockupFetchDialog()` - batch processing with progress
 - Gallery display: `displayMockupGallery()` - hybrid thumbnail grid + PhotoSwipe
 - Cleanup utility: `cleanupIncompleteMockups()` - removes incomplete downloads
 - Extension integration: Requires `mockupFetching` capability
+
+**Template Preview Implementation:**
+- Module: `template-actions.js`
+- Data function: `sip_get_template_preview_data()` - returns template data with parent product images
+- Render function: `renderTemplatePreviewRow()` - builds preview items dynamically
+- Click handler: `handleTemplatePreviewClick()` - loads template into creation table
+- Status meter: `createStatusMeter()` - visual representation of child product statuses
 
 #### Implementation
 - Main file: `product-actions.js`
