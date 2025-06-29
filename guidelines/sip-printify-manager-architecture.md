@@ -144,12 +144,64 @@ Templates are loaded using `sip_load_templates()` which returns complete templat
 - Used by template table, template preview row, and all other template data needs
 - Child product filtering for product table highlighting happens client-side in JavaScript
 
+### Template Mockup Selection
+
+Templates can store mockup preferences that are applied to all child products before publishing:
+
+#### Data Structure
+Templates store mockup selections in their JSON structure:
+```javascript
+{
+    'basename': 'template_name',
+    'filename': 'template_name.json',
+    'title': 'Display Title',
+    'template_title': 'Display Title',
+    'source_product_id': '...',
+    'blueprint_id': '...',
+    'mockup_selection': {  // New field for mockup preferences
+        'version': '1.0',
+        'selected_mockups': [
+            {
+                'id': 'front',
+                'mockup_type_id': '789',
+                'label': 'Front',
+                'image_url': 'https://...',
+                'local_url': '/wp-content/uploads/...'
+            }
+            // Additional selected mockups
+        ],
+        'last_updated': '2025-06-29T10:00:00Z'
+    },
+    'child_products': [...]
+}
+```
+
+#### Why This Architecture
+- **Template-level control**: Mockup preferences are blueprint-specific and apply to all products from a template
+- **Printify API limitation**: Public API doesn't support mockup management during product creation
+- **Consistency**: Ensures all child products from a template have uniform mockup presentation
+- **Efficiency**: Configure once per template instead of per product
+
 ### Special Features
 
 #### Template Selection
 - Load into Creation Table action
 - Creates WIP file from template
 - Triggers cross-table highlighting
+
+#### Mockup Selection Interface
+Templates table includes a "Select Mockups" action that:
+- Opens a modal dialog showing available mockups for the template's blueprint
+- Loads mockup data from local storage (fetched via extension)
+- Displays mockups in a selectable grid with checkboxes
+- Saves selections to template JSON file
+- Shows indicator when template has mockup selections configured
+
+**Implementation:**
+- Module: `template-actions.js` - handles UI and AJAX calls
+- Dialog: `mockup-selection-dialog.js` - manages selection interface
+- Backend: `sip_handle_template_mockup_selection()` - saves to template JSON
+- Visual indicator: Icon appears in template row when mockup selection is configured
 
 #### Dynamic Row Highlighting
 When a template is loaded:
@@ -159,6 +211,123 @@ When a template is loaded:
 - Main file: `template-actions.js`
 - Highlighting function: `updateTemplateTableHighlights()`
 - Action handler: `handleTemplateActionFormSubmit()`
+- Mockup selection: `handleMockupSelectionAction()`
+
+## Product Publishing System
+
+### Overview
+The product publishing system allows users to publish unpublished products to their Printify shop. Since the Printify Public API doesn't support publishing, this functionality uses the browser extension to make internal API calls.
+
+### Architecture
+
+#### Publishing Workflow
+1. **User initiates publishing**: From product table or after mockup updates
+2. **Progress dialog appears**: Shows batch publishing interface
+3. **Extension communication**: WordPress sends publish requests to extension
+4. **Internal API calls**: Extension makes Printify internal API calls
+5. **Status updates**: Real-time progress reported back to WordPress
+6. **Database updates**: Product status changed to `published` after success
+
+#### Why This Architecture
+- **API limitation**: Printify Public API has no publish endpoint
+- **Browser access required**: Internal API requires authenticated browser session
+- **Batch efficiency**: Publishing multiple products in single operation
+- **Progress visibility**: Users see real-time status during long operations
+
+### Implementation Components
+
+#### Frontend
+- **Module**: `product-actions.js` - adds publish actions to product table
+- **Progress Dialog**: Uses `SiP.Core.progressDialog` for batch operations
+- **Status Management**: Updates product status to `publish_in_progress` then `published`
+
+#### Backend
+- **AJAX Handler**: `sip_handle_product_publish()` in `product-functions.php`
+- **Status Updates**: Uses `SiP_Product_Status` class constants
+- **Extension Message**: Sends `SIP_PUBLISH_PRODUCTS` command
+
+#### Extension
+- **Handler**: `publish-products-handler.js` - navigates to Printify and makes API calls
+- **API Endpoint**: Uses internal `/api/v1/shops/{shopId}/products/{productId}/publish.json`
+- **Error Handling**: Reports failures back to WordPress for retry options
+
+### User Interface
+
+#### Product Table Integration
+- Unpublished products show "Publish" action button
+- Bulk selection allows publishing multiple products
+- Visual status updates during publishing process
+
+#### Progress Dialog Features
+- Shows count of products being published
+- Real-time progress updates per product
+- Error reporting with retry options
+- Summary report after completion
+- Log export for troubleshooting
+
+## Mockup Update Process
+
+### Overview
+When users configure mockup selections for templates, these selections must be applied to all unpublished child products before publishing. This two-step process ensures products display only the selected mockups.
+
+### Architecture
+
+#### Update Workflow
+1. **Template mockup selection saved**: User configures mockups for template
+2. **Update products dialog**: Progress dialog for applying changes
+3. **Extension loads product pages**: Opens each product's mockup configuration
+4. **Internal API calls**: Removes unwanted mockups, keeps selected ones
+5. **Confirmation**: Reports success/failure for each product
+
+#### Why This Architecture
+- **No direct API**: Printify doesn't expose mockup management in public API
+- **Product-level changes**: Each product must be updated individually
+- **Visual feedback**: Complex operation needs progress tracking
+- **Error recovery**: Failed updates can be retried
+
+### Implementation Components
+
+#### Frontend
+- **Trigger**: After saving template mockup selection
+- **Dialog**: `showMockupUpdateDialog()` in `template-actions.js`
+- **Batch Processing**: Uses `SiP.Core.progressDialog.processBatch()`
+
+#### Backend
+- **Template Data**: Loads mockup selection from template JSON
+- **Product List**: Identifies unpublished products needing updates
+- **AJAX Handler**: `sip_handle_mockup_update_batch()`
+
+#### Extension Integration
+- **Message Type**: `SIP_UPDATE_PRODUCT_MOCKUPS`
+- **Navigation**: Loads product mockup page in Printify
+- **API Calls**: Makes internal API calls to update mockup configuration
+- **Tab Reuse**: Efficient tab management for multiple products
+
+### Progress Dialog Structure
+
+```javascript
+SiP.Core.progressDialog.processBatch({
+    items: childProducts,
+    batchSize: 1,
+    dialogOptions: {
+        title: 'Update Product Mockups',
+        initialMessage: 'Applying mockup selections to products...',
+        progressMessage: 'Updating mockups for products...',
+        waitForUserOnComplete: true,
+        showViewLog: true
+    },
+    processItemFn: function(product, dialog) {
+        // Send update request to extension
+        // Report progress back to dialog
+    }
+});
+```
+
+### Error Handling
+- Individual product failures don't stop batch
+- Failed products listed in summary
+- Retry option for failed updates
+- Detailed logs for debugging
 
 ## Image Table
 

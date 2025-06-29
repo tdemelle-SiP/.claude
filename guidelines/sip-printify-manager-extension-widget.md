@@ -1241,7 +1241,10 @@ setTimeout(() => {
         capabilities: {
             statusUpdates: true,
             apiInterception: true,
-            navigation: true
+            navigation: true,
+            mockupFetching: true,
+            mockupUpdates: true,
+            productPublishing: true
         }
     }, window.location.origin);
 }, 100);
@@ -1308,6 +1311,8 @@ The extension supports the following commands from WordPress:
 | `SIP_SHOW_WIDGET` | Show the widget | Widget handler |
 | `SIP_CHECK_STATUS` | Check plugin connection status | Widget handler |
 | `SIP_FETCH_MOCKUPS` | Fetch mockup data from Printify | Printify handler |
+| `SIP_UPDATE_PRODUCT_MOCKUPS` | Update product mockups via internal API | Printify handler |
+| `SIP_PUBLISH_PRODUCTS` | Publish products via internal API | Printify handler |
 | `SIP_CONSOLE_LOG` | Store console log from WordPress | WordPress handler |
 
 **Note**: Any other command will receive an error response with code `UNKNOWN_ACTION`.
@@ -1354,6 +1359,60 @@ window.postMessage({
         data: { /* mockup data */ }
     }
 }
+```
+
+#### Example: Update Product Mockups
+```javascript
+// WordPress sends request to update product mockups
+window.postMessage({
+    type: 'SIP_UPDATE_PRODUCT_MOCKUPS',
+    source: 'sip-printify-manager',
+    requestId: 'update_mockups_1642351234567',
+    data: {
+        product_id: '6740c96f6abac8a2d30d6a12',
+        printify_product_id: '123456789',
+        shop_id: '17823150',
+        selected_mockups: [
+            {
+                id: 'front',
+                mockup_type_id: '789',
+                label: 'Front'
+            },
+            {
+                id: 'back',
+                mockup_type_id: '790',
+                label: 'Back'
+            }
+        ]
+    }
+}, '*');
+
+// Extension navigates to product mockup page and makes internal API calls
+// Returns success/failure status for each mockup update
+```
+
+#### Example: Publish Products
+```javascript
+// WordPress sends request to publish products
+window.postMessage({
+    type: 'SIP_PUBLISH_PRODUCTS',
+    source: 'sip-printify-manager',
+    requestId: 'publish_1642351234567',
+    data: {
+        products: [
+            {
+                product_id: '6740c96f6abac8a2d30d6a12',
+                printify_product_id: '123456789',
+                title: 'Product Name'
+            }
+            // Additional products to publish
+        ],
+        shop_id: '17823150'
+    }
+}, '*');
+
+// Extension makes internal API calls to publish each product
+// Returns success/failure status for each product
 ```
 
 ### 10.3 jQuery Events
