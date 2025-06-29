@@ -1519,6 +1519,48 @@ Authentication via header: `X-SiP-API-Key: [32-character-key]`
 - Background scripts may load while content scripts don't
 - Programmatic injection can mask manifest issues
 
+### 11.6 Content Security Policy (CSP) Compliance
+
+**Why it matters**: WordPress and many web applications enforce Content Security Policy to prevent XSS attacks. Extensions must be CSP-compliant to function correctly.
+
+**CSP Restrictions**:
+- No inline scripts (`<script>` tags in HTML strings)
+- No inline event handlers (`onclick`, `onload`, etc.)
+- No `document.write()` or `eval()`
+- Limited inline styles (some CSPs block all inline styles)
+
+**Implementation Patterns**:
+
+```javascript
+// ❌ WRONG - Violates CSP
+function createPopup() {
+    const html = `
+        <button onclick="handleClick()">Click me</button>
+        <script>function handleClick() { alert('clicked'); }</script>
+    `;
+    document.write(html);
+}
+
+// ✅ CORRECT - CSP Compliant
+function createPopup() {
+    const button = document.createElement('button');
+    button.textContent = 'Click me';
+    button.addEventListener('click', () => alert('clicked'));
+    document.body.appendChild(button);
+}
+```
+
+**Widget CSP Compliance**:
+- All styles in `widget-styles.css` with CSS classes
+- Dynamic values use data attributes: `data-progress="50"`
+- Event handlers attached via `addEventListener()`
+- DOM built programmatically, never with HTML strings
+
+**Testing for CSP**:
+1. Add CSP header to test page: `Content-Security-Policy: script-src 'self';`
+2. Check browser console for CSP violation errors
+3. Verify all functionality works without inline scripts/styles
+
 ## 12. Chrome Web Store Troubleshooting
 
 ### 12.1 Obtaining OAuth Credentials
