@@ -283,7 +283,7 @@ Guides for implementing specific SiP Core features in your plugins.
 |-------|-------------|--------|
 | [Progress Dialog](./guidelines/sip-feature-progress-dialog.md) | Batch operations and progress feedback | ✅ Complete |
 | [DataTables](./guidelines/sip-feature-datatables.md) | Server-side data tables | ✅ Complete |
-| [UI Components](./guidelines/sip-feature-ui-components.md) | Core UI utilities, modals, and localStorage for UI state | ✅ Complete |
+| [UI Components](./guidelines/sip-feature-ui-components.md) | Core UI utilities, modals, and localStorage for UI state. **Read with [CSS Development](./guidelines/sip-development-css.md)** | ✅ Complete |
 | [CodeMirror](./guidelines/sip-feature-codemirror.md) | Code editor integration | ✅ Complete |
 | [PhotoSwipe](./guidelines/sip-feature-photoswipe.md) | Image lightbox functionality | ✅ Complete |
 | [Third-Party Libraries](./guidelines/sip-feature-third-party-libraries.md) | Standards for integrating external libraries | ✅ Complete |

@@ -34,6 +34,10 @@ Start with a solid base that works everywhere, then enhance for modern browsers.
 
 ## File Organization
 
+**Important**: Before creating CSS files, understand the division between Core-provided styles and plugin-specific styles. See:
+- [Plugin Architecture - CSS Architecture](./sip-plugin-architecture.md#css-architecture) - What CSS is provided by Core
+- [UI Components](./sip-feature-ui-components.md) - Which UI patterns have Core CSS support
+
 ### Directory Structure
 ```
 assets/
@@ -519,6 +523,26 @@ input[type="checkbox"],
 /* States and pseudo-elements */
 /* See sip-feature-ui-components.md#checkbox-selection-patterns for complete implementation */
 ```
+
+## Core-Provided Styles vs Plugin Styles
+
+### Understanding the Division
+
+**Core Provides** (via `sip_core_load_platform()`):
+- Base modal styles (`.sip-modal` pattern)
+- Progress dialog styles (`.sip-dialog.progress-dialog`)
+- Toast notification styles
+- Spinner/overlay styles
+- CSS variables for theming
+- Standard header components
+
+**Plugins Provide**:
+- Custom component styles
+- Plugin-specific variations
+- Layout adjustments
+- Feature-specific styles
+
+**Critical**: Never duplicate Core styles in your plugin. Always check [Plugin Architecture - Core-Provided CSS](./sip-plugin-architecture.md#core-provided-css) before adding styles.
 
 ## Component Architecture
 

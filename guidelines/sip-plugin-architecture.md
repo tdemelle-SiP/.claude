@@ -750,7 +750,19 @@ $('#items-table').DataTable({
 
 ## CSS Architecture
 
-Create `assets/css/admin.css`:
+**Why**: Plugins need their own styles for custom components while leveraging Core-provided base styles for common UI patterns.
+
+### Core-Provided CSS
+
+When you call `sip_core_load_platform()`, the following CSS files are automatically loaded:
+- **variables.css** - CSS custom properties for consistent theming
+- **modals.css** - Base styles for `.sip-modal` and `.sip-dialog` patterns  
+- **ui.css** - Core UI component styles
+- **header.css** - Standard header component styles
+
+### Plugin-Specific CSS
+
+Create `assets/css/admin.css` for your plugin-specific styles:
 
 ```css
 /* Dashboard wrapper */
@@ -784,7 +796,7 @@ Create `assets/css/admin.css`:
     align-items: center;
 }
 
-/* Follow SiP naming conventions */
+/* Plugin-specific panel styling */
 .sip-panel {
     background: #fff;
     border: 1px solid #ccd0d4;
@@ -793,9 +805,10 @@ Create `assets/css/admin.css`:
     padding: 20px;
 }
 
-.sip-dialog {
-    /* Dialog styles */
-}
+/* 
+ * Note: Base modal styles (.sip-modal, .sip-dialog) are provided by Core
+ * Only add plugin-specific modal customizations here
+ */
 ```
 
 ## Dependency Management

@@ -551,6 +551,11 @@ function createProgressDialog() {
 
 **Why**: jQuery UI dialogs have limited styling options and don't match WordPress admin aesthetics. Custom modals provide consistent branding and better mobile responsiveness.
 
+**Before implementing modals**, ensure you understand:
+- [CSS Development Standards](./sip-development-css.md) - How CSS is organized and where styles should be placed
+- [Plugin Architecture](./sip-plugin-architecture.md#css-architecture) - How Core provides CSS to plugins
+- [Platform Overview](./sip-plugin-platform.md) - The relationship between Core and plugin assets
+
 #### Structure
 ```html
 <div id="custom-modal" class="sip-modal">
@@ -623,66 +628,23 @@ function showCustomModal(title, content, onConfirm, onCancel) {
 ```
 
 #### CSS Requirements
-```css
-.sip-modal {
-    display: none;
-    position: fixed;
-    z-index: var(--sip-pm-z-modal, 2000); /* Use CSS variable, fallback to 2000 */
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    overflow: auto;
-    background-color: rgba(0,0,0,0.4);
-}
 
-.sip-modal-content {
-    background-color: #fefefe;
-    margin: 10% auto;
-    padding: 0;
-    border: 1px solid #888;
-    width: 80%;
-    max-width: 600px;
-    border-radius: 5px;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-}
+The base CSS for the sip-modal pattern is provided by SiP Plugins Core and loaded automatically when using `sip_core_load_platform()`. The styles are defined in `/sip-plugins-core/assets/css/modals.css`.
 
-.sip-modal-header {
-    padding: 15px 20px;
-    background-color: #f1f1f1;
-    border-bottom: 1px solid #ddd;
-    position: relative;
-}
+**Key CSS Classes Provided:**
+- `.sip-modal` - Modal backdrop with z-index: var(--z-modal, 10000)
+- `.sip-modal-content` - Modal container with max-width: 700px
+- `.sip-modal-header` - Header with primary color background
+- `.sip-modal-body` - Scrollable content area (max-height: 60vh)
+- `.sip-modal-footer` - Footer with right-aligned buttons
+- `.sip-modal-close` - Close button positioned in header
 
-.sip-modal-close {
-    color: #aaa;
-    float: right;
-    font-size: 28px;
-    font-weight: bold;
-    cursor: pointer;
-    line-height: 20px;
-}
+**Important Architecture Notes:**
+- See [CSS Development - Z-Index Management](./sip-development-css.md#z-index-management) for the complete z-index scale
+- See [CSS Development - Component Architecture](./sip-development-css.md#component-architecture) for BEM naming patterns
+- See [Plugin Architecture - CSS Architecture](./sip-plugin-architecture.md#css-architecture) for understanding Core vs. plugin CSS
 
-.sip-modal-close:hover,
-.sip-modal-close:focus {
-    color: #000;
-}
-
-.sip-modal-body {
-    padding: 20px;
-}
-
-.sip-modal-footer {
-    padding: 15px 20px;
-    background-color: #f1f1f1;
-    border-top: 1px solid #ddd;
-    text-align: right;
-}
-
-.sip-modal-footer button {
-    margin-left: 10px;
-}
-```
+**Note**: Individual plugins should not duplicate these base styles. If custom styling is needed, extend the base classes with plugin-specific modifiers following BEM methodology (e.g., `.sip-modal--large`, `.sip-modal-header--warning`).
 
 ### Common Modal Patterns
 

@@ -202,7 +202,7 @@ Templates table includes a "Select Mockups" action that:
 - Modal Dialog: Implemented directly in `showMockupSelectionModal()` and `displayMockupSelectionDialog()` functions
 - Backend: `sip_get_template_mockup_data()` - retrieves mockup data and `sip_save_template_mockup_selection()` - saves to template JSON
 - Visual indicator: 🖼️ emoji appears in template row when mockup selection is configured
-- CSS: Modal styles in `modals.css`, indicator styles in `tables.css`
+- CSS: Modal styles provided by SiP Core (`sip-modal` pattern), mockup grid styles in plugin's `modals.css`
 
 #### Dynamic Row Highlighting
 When a template is loaded:
