@@ -96,8 +96,17 @@ for (let i = 0; i < items.length; i++) {
 ### Step 3: Complete the Dialog
 
 ```javascript
-// Show completion summary
+// Show completion summary with default message
 dialog.complete(successCount, errorCount, errors);
+
+// Show completion summary with custom HTML
+const customSummary = `
+    <strong>Import Complete!</strong><br>
+    • ${successCount} products imported successfully<br>
+    • ${skippedCount} products skipped (duplicates)<br>
+    • ${errorCount} errors encountered
+`;
+dialog.complete(successCount, errorCount, errors, customSummary);
 
 // Or close immediately
 dialog.close();
@@ -427,7 +436,7 @@ SiP.PrintifyManager.productActions = (function($, ajax, utilities) {
 | `updateStatus(message, variables)` | Update status text with optional variables for template substitution |
 | `showError(message)` | Display error message |
 | `isCancelled()` | Check if user cancelled |
-| `complete(success, errors, errorList)` | Show completion summary |
+| `complete(success, errors, errorList, customSummary)` | Show completion summary with optional custom HTML |
 | `close()` | Close dialog immediately |
 | `startStep(stepName)` | Start a named step |
 | `completeStep(stepName)` | Complete a named step |
@@ -437,6 +446,42 @@ SiP.PrintifyManager.productActions = (function($, ajax, utilities) {
 | `showBatchItems()` | Show the batch items display area |
 | `hideBatchItems()` | Hide the batch items display area |
 | `clearBatchItems()` | Clear all batch items |
+
+## Custom Completion Summaries
+
+By default, the progress dialog shows "X of Y items processed successfully" when complete. You can override this with custom HTML:
+
+```javascript
+// Default completion
+dialog.complete(5, 0, []);  // Shows: "5 of 5 items processed successfully."
+
+// Custom completion summary
+const customSummary = `
+    <strong>Sync Complete!</strong><br>
+    • 12 products added<br>
+    • 8 products updated<br>
+    • 3 products archived
+`;
+dialog.complete(20, 0, [], customSummary);
+
+// Custom summary with error handling
+const summaryItems = [];
+if (added > 0) summaryItems.push(`${added} items added`);
+if (updated > 0) summaryItems.push(`${updated} items updated`);
+if (errors > 0) summaryItems.push(`${errors} errors encountered`);
+
+const customSummary = summaryItems.length > 0 
+    ? summaryItems.map(item => `• ${item}`).join('<br>')
+    : 'No changes were made.';
+    
+dialog.complete(successCount, errorCount, errorList, customSummary);
+```
+
+This feature is useful for:
+- Providing context-specific summaries
+- Showing multiple success metrics
+- Displaying operation-specific results
+- Creating branded completion messages
 
 ## ProcessBatchFn vs ProcessItemFn
 
