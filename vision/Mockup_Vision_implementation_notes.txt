@@ -1,4 +1,26 @@
 
+The Mockup Update progress dialog is appearing as expected.  Instead of immediately executing, I'd like the progress meter to summarize what its about to do and let the user either proceed or cancel.  The message should say something like this:
+
+- x work in progress products' mockups updated
+- x uploaded-unpublished products queued for mockups update
+- x uploaded-published products' queued for mockups update - x local mockups successfully deleted
+
+and then there could be a checkbox (selected by default) that says upload work in progress products and below that proceed or exit buttons.
+
+If the user proceeds, upload the work in progress products, update mockups for work in progress products, update mockups for unpublshed products, update mockups for published products
+
+And then in the final summary message at the end:
+
+- x work in progress products' mockups updated
+- x uploaded-unpublished products' mockups updated on the printify site
+- x uploaded-published products' mockups updated on the printify site - x local mockups successfully deleted
+
+and then the button at the bottom can say download updated mockups
+
+There is no "publish products" option (yet). That can be removed.
+
+
+------
 
 The mockups selection interface has been implemented and it correctly saves user selected mockup data to the template.json
 

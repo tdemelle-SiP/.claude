@@ -146,6 +146,58 @@ Templates are loaded using `sip_load_templates()` which returns complete templat
 - Used by template table, template preview row, and all other template data needs
 - Child product filtering for product table highlighting happens client-side in JavaScript
 
+### Template Data Forms and Flow
+
+The template system uses different data structures for different purposes:
+
+#### 1. Full Template Data (`masterTemplateData.templates`)
+- **Source**: `sip_load_templates()` PHP function
+- **Contains**: Complete template data including all child products
+- **Used for**: DataTable display, accessing child products for operations
+- **Available via**: `window.masterTemplateData.templates`
+- **Structure**: Array of template objects with full data
+
+#### 2. Template Row Data (`rowData`)
+- **Source**: DataTable row selection
+- **Contains**: Single template's data from DataTable
+- **Used for**: Identifying which template was clicked/selected
+- **Available in**: Event handlers only
+- **Structure**: Same as full template but scoped to one template
+
+#### 3. Minimal Template Data (`templateData` parameter)
+- **Source**: Extracted from rowData in event handlers
+- **Contains**: Usually just `basename` and `title`
+- **Used for**: Passing template identity to functions
+- **Structure**: `{ basename: "name", title: "Title" }`
+
+#### 4. Template Preview Row Data (`templatePreviewRowData`)
+- **Source**: `sip_get_template_preview_row_data()` PHP function
+- **Contains**: Summary data for visual preview display ONLY
+- **Used for**: Rendering the template preview row above dashboard
+- **Available via**: `window.sipPrintifyManagerData.templatePreviewRowData`
+- **Structure**: 
+  ```javascript
+  {
+      template_basename: "name",
+      template_title: "Title",
+      preview_image: "url",
+      blueprint_name: "Blueprint",
+      child_product_stats: {
+          total: 10,
+          wip: 3,
+          unpublished: 5,
+          published: 2
+      }
+  }
+  ```
+- **Important**: Does NOT contain child_products array
+
+#### Data Flow Best Practices
+1. Always use `masterTemplateData.templates` as the source of truth for full template data
+2. Use minimal templateData parameters for function calls (just basename/title)
+3. Look up full data when needed using basename as the key
+4. Never use templatePreviewRowData for anything except the preview row display
+
 ### Template Mockup Selection
 
 Templates store mockup preferences using Printify's native images array format:
@@ -376,6 +428,31 @@ When uploading WIP products that have mockup selections in their template:
    - **Efficient workflow**: Mockups applied immediately when products are ready
    - **Clear separation**: Upload completes fully before mockup updates begin
    - **Visual continuity**: Brief delay prevents dialog overlap
+
+### Comprehensive Mockup Update Dialog
+
+When template mockup selections are saved, a comprehensive dialog presents a summary before processing:
+
+#### Dialog Features
+1. **Product Status Summary**: Shows counts of products by status (WIP, unpublished, published)
+2. **Upload Option**: Checkbox to upload WIP products before updating mockups (checked by default)
+3. **Processing Sequence**:
+   - Upload WIP products to Printify (if selected)
+   - Clean up local mockup data for published products
+   - Update mockups for all products via browser extension
+4. **Completion Summary**: Shows results with "Download Updated Mockups" button
+
+#### Implementation Details
+- **Function**: `showComprehensiveMockupUpdateDialog()` in `template-actions.js`
+- **WIP Upload**: Reuses `upload_child_product_to_printify` AJAX endpoint
+- **Cleanup**: Uses `cleanup_published_product_mockups` for local file removal
+- **Sequential Processing**: Tasks processed one at a time for clear progress tracking
+
+#### Why This Architecture
+- **User Control**: Shows what will happen before starting
+- **Efficiency**: Combines multiple operations in one workflow
+- **Flexibility**: Optional WIP upload based on user needs
+- **Clear Feedback**: Detailed progress and completion summary
 
 ### Error Handling
 - Individual product failures don't stop batch
