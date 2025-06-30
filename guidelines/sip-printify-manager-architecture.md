@@ -162,18 +162,24 @@ Templates use Printify's images array for mockup selection:
     'blueprint_id': '...',
     'images': [  // Printify's native format
         {
-            'src': 'https://images.printify.com/mockup/...?camera_label=front',
-            'variant_ids': [12100, 12124, 12052], // All enabled variant IDs
+            'src': 'https://images.printify.com/mockup/{blueprint_id}/{variant_id}/{design_id}/filename.jpg?camera_label=front',
+            'variant_ids': [12100, 12101, 12102], // Size variants for this color only
             'position': 'other',
             'is_default': true,  // Only one per product
             'is_selected_for_publishing': true,
             'order': null
         }
-        // Additional selected mockups
+        // One entry per color/mockup combination
     ],
     'child_products': [...]
 }
 ```
+
+**Variant ID Grouping:**
+- Each mockup entry represents one color/mockup combination
+- `variant_ids` contains only the size variants for that specific color
+- URL uses the numerically lowest variant ID from the group
+- System automatically expands single mockup selection to multiple color entries
 
 #### Why This Architecture
 - **Native format**: Uses Printify's exact structure, no transformation needed
