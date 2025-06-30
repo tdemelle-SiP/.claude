@@ -249,12 +249,38 @@ SiP.Core.storage.local.remove('userPreferences');
         "lastUpdate": "2024-01-01T00:00:00Z",
         "pollingInterval": 5000
       }
+    },
+    "sip-modal-states": {
+      "mockup-selection-modal": {
+        "position": { "top": 100, "left": 200 },
+        "size": { "width": 800, "height": 600 },
+        "timestamp": 1234567890
+      }
     }
   }
 }
 ```
 
 ### Implementation Examples
+
+#### Modal State Management (SiP Core v2.0+)
+```javascript
+// The SiP Core modal utility automatically handles state persistence
+const modal = SiP.Core.modal.create({
+    id: 'feature-modal',
+    saveState: true,              // Enable state persistence
+    stateKey: 'my-modal-state'    // Custom key for storage
+});
+
+// State is automatically saved under sip-modal-states namespace
+// Manual access (if needed):
+const state = JSON.parse(localStorage.getItem('sip-core')) || {};
+const modalStates = state['sip-modal-states'] || {};
+const myModalState = modalStates['my-modal-state'];
+
+// Clear all modal states
+SiP.Core.modal.clearAllStates();
+```
 
 #### Table State Management
 ```javascript

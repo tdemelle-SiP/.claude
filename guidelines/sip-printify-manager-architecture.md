@@ -60,7 +60,9 @@ When a template is loaded, related rows are highlighted:
 
 #### Blueprint Mockups
 Blueprint rows can display mockup buttons that allow users to:
-- View existing mockups in a PhotoSwipe gallery with thumbnail index
+- View existing mockups in a draggable/resizable modal gallery
+- Gallery displays mockup thumbnails at 100px height in a grid layout
+- Click thumbnails to open full-size images in PhotoSwipe lightbox
 - Fetch mockups from Printify via the browser extension (requires extension v4.3.0+)
 
 **Template Preview Row:**
@@ -199,10 +201,11 @@ Templates table includes a "Select Mockups" action that:
 
 **Implementation:**
 - Module: `template-actions.js` - handles UI and AJAX calls
-- Modal Dialog: Implemented directly in `showMockupSelectionModal()` and `displayMockupSelectionDialog()` functions
+- Modal Dialog: Uses SiP.Core.modal.create() with draggable/resizable features and state persistence
 - Backend: `sip_get_template_mockup_data()` - retrieves mockup data and `sip_save_template_mockup_selection()` - saves to template JSON
 - Visual indicator: 🖼️ emoji appears in template row when mockup selection is configured
-- CSS: Modal styles provided by SiP Core (`sip-modal` pattern), mockup grid styles in plugin's `modals.css`
+- CSS: Modal base styles from SiP Core, mockup grid styles in plugin's `modals.css`
+- Thumbnails: Mockups display at 80px height with PhotoSwipe integration for full-size viewing
 
 #### Dynamic Row Highlighting
 When a template is loaded:
