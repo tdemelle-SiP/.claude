@@ -192,20 +192,22 @@ Templates store mockup selections in their JSON structure:
 - Triggers cross-table highlighting
 
 #### Mockup Selection Interface
-Templates table includes a "Select Mockups" action that:
-- Opens a modal dialog showing available mockups for the template's blueprint
-- Loads mockup data from local storage (fetched via extension)
-- Displays mockups in a selectable grid with checkboxes
-- Saves selections to template JSON file
-- Shows indicator when template has mockup selections configured
+Template rows include a dedicated "Mockups" column with icon buttons for accessing mockup selection:
+- **Icon states**: Monochrome gallery icon (no selection) or green images icon (has selection)
+- **Click behavior**: Opens modal dialog showing available mockups for the template's blueprint
+- **Modal features**: Draggable, resizable with state persistence
+- **Mockup display**: Grid layout with thumbnails and checkboxes
+- **PhotoSwipe integration**: Click thumbnails to view full-size images
+- **Data persistence**: Selections saved to template JSON file
 
 **Implementation:**
 - Module: `template-actions.js` - handles UI and AJAX calls
-- Modal Dialog: Uses SiP.Core.modal.create() with draggable/resizable features and state persistence
+- Table column: Third column with 80px width, icon-only buttons
+- Button classes: `.sip-pm-mockup-icon-button` with `.has-selection` modifier
+- Modal Dialog: Uses `SiP.Core.modal.create()` with draggable/resizable features
 - Backend: `sip_get_template_mockup_data()` - retrieves mockup data and `sip_save_template_mockup_selection()` - saves to template JSON
-- Visual indicator: 🖼️ emoji appears in template row when mockup selection is configured
 - CSS: Modal base styles from SiP Core, mockup grid styles in plugin's `modals.css`
-- Thumbnails: Mockups display at 80px height with PhotoSwipe integration for full-size viewing
+- Thumbnails: Mockups display at 100px height in modal gallery
 
 #### Dynamic Row Highlighting
 When a template is loaded:

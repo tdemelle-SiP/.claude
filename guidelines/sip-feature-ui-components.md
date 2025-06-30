@@ -599,9 +599,11 @@ The base CSS for the sip-modal pattern is provided by SiP Plugins Core and loade
 - `.sip-modal` - Modal backdrop with z-index: var(--z-modal, 10000)
 - `.sip-modal-content` - Modal container with max-width: 700px
 - `.sip-modal-header` - Header with primary color background
-- `.sip-modal-body` - Scrollable content area (max-height: 60vh)
+- `.sip-modal-body` - Scrollable content area (fills available space in resizable modals)
 - `.sip-modal-footer` - Footer with right-aligned buttons
 - `.sip-modal-close` - Close button positioned in header
+- `.sip-modal-dragging` - Applied during drag operations for performance
+- `.sip-modal-resizing` - Applied during resize operations for performance
 
 **Important Architecture Notes:**
 - See [CSS Development - Z-Index Management](./sip-development-css.md#z-index-management) for the complete z-index scale
@@ -609,6 +611,26 @@ The base CSS for the sip-modal pattern is provided by SiP Plugins Core and loade
 - See [Plugin Architecture - CSS Architecture](./sip-plugin-architecture.md#css-architecture) for understanding Core vs. plugin CSS
 
 **Note**: Individual plugins should not duplicate these base styles. If custom styling is needed, extend the base classes with plugin-specific modifiers following BEM methodology (e.g., `.sip-modal--large`, `.sip-modal-header--warning`).
+
+#### Modal Behavior
+
+**Resizable Modals:**
+- No maximum size limits - users can resize as large as needed
+- Modal body automatically adjusts to fill available space
+- Content scrolls within modal body (single scrollbar)
+- Footer positioned absolutely at bottom to ensure button accessibility
+- Body height accounts for footer to prevent overlap
+
+**Performance Optimizations:**
+- GPU acceleration enabled for smooth dragging/resizing
+- Performance classes added during drag/resize operations
+- Images use optimized rendering during movement
+- No animations during resize for snappier response
+
+**Interaction:**
+- Modals close only via close button (×) or action buttons
+- Click-outside-to-close disabled to prevent accidental closure during resize
+- Escape key closes modal (can be disabled with `closeOnEscape: false`)
 
 ## Progress Indicators
 
