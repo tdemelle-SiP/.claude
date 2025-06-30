@@ -931,6 +931,78 @@ For hover effects that preserve existing colors, use overlays instead of replaci
 }
 ```
 
+### Instant Tooltips
+
+Browser native `title` attributes have a built-in delay. For instant tooltips, use CSS with `data-tooltip`:
+
+```css
+/* Base tooltip setup */
+[data-tooltip] {
+    position: relative;
+}
+
+[data-tooltip]:hover::before,
+[data-tooltip]:hover::after {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+/* Tooltip content */
+[data-tooltip]::before {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%) translateY(5px);
+    background-color: #333;
+    color: #fff;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    z-index: var(--z-modal-super);
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.1s ease-in-out, transform 0.1s ease-in-out;
+}
+
+/* Tooltip arrow */
+[data-tooltip]::after {
+    content: '';
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%) translateY(10px);
+    border: 5px solid transparent;
+    border-top-color: #333;
+    z-index: var(--z-modal-super);
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.1s ease-in-out, transform 0.1s ease-in-out;
+}
+```
+
+**Usage:**
+```html
+<!-- Instead of title attribute -->
+<span data-tooltip="Select mockups">Hover me</span>
+
+<!-- Dynamic tooltips need JavaScript -->
+<input type="radio" class="my-radio">
+<span class="radio-wrapper" data-tooltip="Make default">
+    <!-- Radio button here -->
+</span>
+```
+
+**Why This Pattern:**
+- **Instant feedback**: No browser delay
+- **Consistent styling**: Works the same across all browsers
+- **Dynamic content**: Can be updated via JavaScript
+- **No interference**: Using wrapper elements prevents conflicts with form controls
+
 ## Legacy Code Migration
 
 ### Migration Strategy

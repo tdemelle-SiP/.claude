@@ -148,10 +148,10 @@ Templates are loaded using `sip_load_templates()` which returns complete templat
 
 ### Template Mockup Selection
 
-Templates can store mockup preferences that are applied to all child products before publishing:
+Templates store mockup preferences using Printify's native images array format:
 
 #### Data Structure
-Templates store mockup selections in their JSON structure:
+Templates use Printify's images array for mockup selection:
 ```javascript
 {
     'basename': 'template_name',
@@ -160,29 +160,26 @@ Templates store mockup selections in their JSON structure:
     'template_title': 'Display Title',
     'source_product_id': '...',
     'blueprint_id': '...',
-    'mockup_selection': {  // New field for mockup preferences
-        'version': '1.0',
-        'selected_mockups': [
-            {
-                'id': 'front',
-                'mockup_type_id': '789',
-                'label': 'Front',
-                'image_url': 'https://...',
-                'local_url': '/wp-content/uploads/...'
-            }
-            // Additional selected mockups
-        ],
-        'last_updated': '2025-06-29T10:00:00Z'
-    },
+    'images': [  // Printify's native format
+        {
+            'src': 'https://images.printify.com/mockup/...?camera_label=front',
+            'variant_ids': [12100, 12124, 12052], // All enabled variant IDs
+            'position': 'other',
+            'is_default': true,  // Only one per product
+            'is_selected_for_publishing': true,
+            'order': null
+        }
+        // Additional selected mockups
+    ],
     'child_products': [...]
 }
 ```
 
 #### Why This Architecture
-- **Template-level control**: Mockup preferences are blueprint-specific and apply to all products from a template
-- **Printify API limitation**: Public API doesn't support mockup management during product creation
-- **Consistency**: Ensures all child products from a template have uniform mockup presentation
-- **Efficiency**: Configure once per template instead of per product
+- **Native format**: Uses Printify's exact structure, no transformation needed
+- **Single source of truth**: Images array is preserved from source products and maintained throughout
+- **Template-level control**: Mockup preferences apply to all products created from template
+- **Printify API limitation**: Public API doesn't support mockup management, requires browser extension
 
 ### Special Features
 
@@ -192,13 +189,16 @@ Templates store mockup selections in their JSON structure:
 - Triggers cross-table highlighting
 
 #### Mockup Selection Interface
-Template rows include a dedicated "Mockups" column with icon buttons for accessing mockup selection:
-- **Icon states**: Monochrome gallery icon (no selection) or green images icon (has selection)
-- **Click behavior**: Opens modal dialog showing available mockups for the template's blueprint
-- **Modal features**: Draggable, resizable with state persistence
-- **Mockup display**: Grid layout with thumbnails and checkboxes
-- **PhotoSwipe integration**: Click thumbnails to view full-size images
-- **Data persistence**: Selections saved to template JSON file
+Template thumbnails are clickable with instant CSS tooltips:
+- **Thumbnail click**: Opens modal dialog showing available blueprint mockups
+- **Modal features**: Draggable, resizable with state persistence using SiP.Core.modal
+- **Selection UI**: 
+  - Checkboxes for selecting/deselecting mockups
+  - Radio buttons for designating default mockup (one per product)
+  - Only selected mockups are saved to images array
+- **Instant tooltips**: CSS-based tooltips appear immediately on hover
+- **Data persistence**: Selected mockups saved in Printify's native format with variant_ids populated
+- **PhotoSwipe integration**: Click thumbnails in modal to view full-size images
 
 **Implementation:**
 - Module: `template-actions.js` - handles UI and AJAX calls
