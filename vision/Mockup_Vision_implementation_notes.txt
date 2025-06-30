@@ -1,0 +1,95 @@
+
+
+The mockups selection interface has been implemented and it correctly saves user selected mockup data to the template.json
+
+The next step in the implementation of the full mockup selection process is to apply these changes to the child products that have been created from the template.  The approach for updating child products will depend on their status.
+
+Child Products by Status:
+Work In Progress - work in Progress Child Products exist only in the child_products array of the template.json file.  They have not been uploaded to printify and do not have their own product.json files.  No immediate adjustments are necessary for child products in the work in progress state.  However, when a child product in the work in progress state is uploaded to printify using the upload to printify action, when it has been successfully uploaded, its status will change to Uploaded - Unpublished in the sip printify manager plugin and there will be a product entry for it on printify.  This is the ideal time to apply the mockup selection changes so that when the product is published, it only publishes the selected mockups and not all the default mockups.  The solution to achieve this is to have a step added to the upload child product action that, after the upload action completes successfully the end step of which eplains to the user that the update mockups action will now commence, when the user hits continue, the upload product progress dialog goes away and the update mockups progress dialog appears.  This dialog tracks the new function in the printify manager extension that goes to the mockups page of each new child product and adjusts and saves the selected mockups to match the users selection.  When all the child products have had their mockups updated, the progress dialog shows the summary message and allows the user either to view the log or close.
+
+Uploaded - Unpublished - child products that have already been uploaded CAN have their mockups update immediately after the mockup selections have been made.  There is already provisional code that an serve as the stub for this functionality.  When it runs, the progress dialog will come up and inform the user that it will now update the mockups on X number of uploaded products.  It will then initiate the printify manager extension function that goes to each uploaded - unpublished child product's mockup selection screen on the printify site, updates and saves its selected mockups to match the users selection.    When this is completed, the user should be prompted by the final status page of the progress dialog to re-download mockups for unpublished products.  When this button is clicked, it will close the update mockups progress dialog and open a new download products progress dialog which downloads ONLY the uploaded - unpublished products that have had mockup changes made.
+
+
+Uploaded - Published - Child products in the uploaded - published status have already had their json created and been sent to the wordpress site as woocommerce products with associated mockups images.  Ideally when mockup images for published products are changed, mockup images that product that have been downloaded to wordpress as woocommerce products will have those mockups removed from the product images data and their image files deleted from the wordpress media folders. The printify manager extension can then update the selected mockups for each of these products on the printify site.  When this is completed, the user should be prompted by the final status page of the progress dialog to re-download mockups for published products.  When this button is clicked, it will close the update mockups progress dialog and open a new download products progress dialog which downloads ONLY the uploaded - published products that have had mockup changes made.
+
+If there are both uploaded -unpublished and uploaded - published products, the order of operations should be:
+-update local data for published products to remove mockups
+-update mockup selections for all effected child products on printify using the printify manager extension.
+-direct the user to redownload all effected child products from printify.
+
+
+
+
+-----------
+
+the variant ids are available sizes per color.  This is      │
+│   because the same mockup can illustrate all sizes associated  │
+│   with a particular color.  I'll folow up later on how we      │
+│   can use position, but for now if we're constructing          │
+│   position "other" seems to work in all cases.  is_default     │
+│   represents the principle mockup.  There should only be one   │
+│   of these per color and it looks like the best way to handle  │
+│   it is, when a default image is selected, to use the same     │
+│   mockup per color as the default.  We should add an           │
+│   indicator showing which mockup is set as default in our      │
+│   mockup selector and allow the user to modify it. 
+
+---------
+
+if the user selects        
+  new mockups that aren't in the default mockup list, the
+  entries that are added to the template.json images array        
+  will need to be constructed using the formula that printify     
+   uses to generate mockup urls since those won't already
+  exist in the template images array.
+
+---------
+
+we don't need to change the source image in the templates       
+  json arrays since we don't use those to draw anything.  We      
+  use the data we got for the blueprints to draw the
+  avaialble mockups table and that is working fine in its
+  current implementation.
+
+---------
+
+
+
+the product images arrays represent the default selection of mockups that printify uses - they are in the form of the final rendered product images with designs applied.
+
+
+the mockups associated with the blueprints are fetched from the printify site by going to the mockup selection page for the first product in the printify manager plugins product list that is associated with that blueprint id.  So, in fact, the images that we show associated with blueprints are actually the full range of available mockup images associated with a representative product but available to all products associated with that blueprint.
+
+The data that we fetch from the printify page includes filepaths that we then use to download the mockups "associated" with that blueprint and store them in our local mockups directory in a folder associated with that blueprint.
+
+we then repurpose that set of available images to populate the mockups selection window and then show those of the available mockups that are selected by referring initially to the printify default mockup selection and then, if the users adds or removes selections, by the updated array that reflects that in the template.json
+
+The format in the tepmplate.json should be the same format that printify uses to show selected mockups since that is exactly what it's used for in our functionality.  
+
+Please make sure the details of this flow are represented in the documentation.
+
+-------------
+
+Here's an example of the mockup array:
+[
+    "images": [
+        {
+            "src": "https:\/\/images.printify.com\/mockup\/6740c96f6abac8a2d30d6a12\/12100\/102005\/fsgp-abstract-01-tee.jpg?camera_label=front-2",
+            "variant_ids": [
+                12102,
+                12103,
+                12100,
+                12101,
+                12104
+            ],
+            "position": "other",
+            "is_default": true,
+            "is_selected_for_publishing": true,
+            "order": null
+        },
+
+The "label" is in the data as "camera_label" in the url.  We should use this format. We are only using the label for labeling the mockup images in our local interfaces.  We should simply get that data from the camera_label variable.
+
+Unless we're using version/last updated or mockup_type_id, I think we should remove them. You're right, we can add them back as additional metadata if we do use them, but there's no need to store unnecessary data elements; I believe we are able to do everything we need to do using the default printify mockup data format.
+
+For the purposes of the template data, we can use the local url to the image in the src key. The public printify api doesn't include the ability to modify mockups, so this won't change anything.  When the child products with mockup selections are uploaded to printify, printify will simply create them with the default mockups.  We'll need to follow up the push new product to printify step by using the extension to adjust the mockups on the printify site after they're uploaded so that when the products are published they only include the selected mockups.

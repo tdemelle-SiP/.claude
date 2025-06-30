@@ -300,7 +300,9 @@ When users configure mockup selections for templates, these selections must be a
 ### Implementation Components
 
 #### Frontend
-- **Trigger**: Automatically after saving template mockup selection
+- **Triggers**: 
+  - Automatically after saving template mockup selection (for unpublished/published products)
+  - Automatically after successful WIP product uploads (if template has mockup selections)
 - **Dialog**: `showMockupUpdateProgress()` in `template-actions.js`
 - **Batch Processing**: Uses `SiP.Core.progressDialog.processBatch()`
 - **Data Source**: Uses existing `child_products` from template data (no extra AJAX needed)
@@ -354,6 +356,26 @@ SiP.Core.progressDialog.processBatch({
     }
 });
 ```
+
+### Upload Integration
+
+When uploading WIP products that have mockup selections in their template:
+
+1. **Upload Completion Detection**: The `onAllComplete` callback in `creation-table-actions.js` checks for:
+   - Successfully uploaded products (`uploadedProductIds` array)
+   - Template has mockup selections (`templateData.images` array)
+   - Products now have `unpublished` status
+
+2. **Automatic Trigger**: After a 1-second delay (to let upload dialog close), the system:
+   - Filters child products to find those just uploaded
+   - Triggers `showMockupUpdateProgress()` with the filtered list
+   - Shows progress dialog for mockup updates
+
+3. **Why This Architecture**:
+   - **User convenience**: No manual step needed after uploads
+   - **Efficient workflow**: Mockups applied immediately when products are ready
+   - **Clear separation**: Upload completes fully before mockup updates begin
+   - **Visual continuity**: Brief delay prevents dialog overlap
 
 ### Error Handling
 - Individual product failures don't stop batch
