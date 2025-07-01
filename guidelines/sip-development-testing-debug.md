@@ -1,6 +1,6 @@
 # SiP Development Testing & Debug
 
-Comprehensive guide for testing, debugging, and troubleshooting SiP plugins throughout the development lifecycle. The system provides centralized debug logging for both JavaScript and PHP that can be toggled on/off.
+Comprehensive guide for testing, debugging, and troubleshooting SiP plugins throughout the development lifecycle. The system provides centralized debug logging for both JavaScript and PHP with three levels: OFF, NORMAL, and VERBOSE.
 
 ## Why This System Exists
 
@@ -9,15 +9,22 @@ The SiP plugin suite requires consistent debugging across multiple plugins, lang
 - Consistent logging interface across all plugins
 - Performance-conscious implementation (minimal overhead when disabled)
 - Synchronized debug state between client and server
+- Granular control over log verbosity with three simple levels
 
 ## Debug Logging System
 
 ### Quick Start
 
-#### Enable Debug Logging
+#### Set Debug Level
 1. Navigate to any SiP plugin dashboard with standard header
-2. Toggle **"Console Logging"** ON in the header
-3. Reload the page when prompted to see debug messages
+2. Use the **Debug** dropdown in the header to select: Off, Normal, or Verbose
+3. Or use console: `sipDebug.setLevel('OFF'|'NORMAL'|'VERBOSE')`
+
+#### Debug Levels
+
+- **OFF**: No logging output
+- **NORMAL**: Important operations and all errors  
+- **VERBOSE**: All debug messages including module loading
 
 #### JavaScript Debug Usage
 
@@ -25,17 +32,34 @@ The SiP plugin suite requires consistent debugging across multiple plugins, lang
 // Access debug object (always available via platform)
 const debug = SiP.Core.debug;
 
-// Available methods
-debug.log('Regular log message');
-debug.error('Error message');
-debug.warn('Warning message');
-debug.info('Info message');
+// Logging methods by level
+debug.normal('Important operation completed');  // Shows in NORMAL and VERBOSE
+debug.operation('User clicked save');          // Alias for normal() - more semantic
+debug.log('Detailed debug info');              // Shows only in VERBOSE (for migration)
+debug.verbose('Very detailed trace');          // Shows only in VERBOSE
+debug.error('Error message');                  // Shows in NORMAL and VERBOSE
+debug.warn('Warning message');                 // Shows in NORMAL and VERBOSE
+debug.info('Info message');                    // Shows in NORMAL and VERBOSE
+
+// Other methods (show in NORMAL and VERBOSE)
 debug.group('Group name');
 debug.groupEnd();
 debug.groupCollapsed('Collapsed group');
 debug.table(data);
 debug.time('timer-name');
 debug.timeEnd('timer-name');
+
+// Check current level
+debug.getLevel();        // Returns 0 (OFF), 1 (NORMAL), or 2 (VERBOSE)
+debug.getLevelName();    // Returns 'OFF', 'NORMAL', or 'VERBOSE'
+```
+
+#### Source Attribution
+
+All log messages now include their source file and line number automatically:
+```
+[ajax.js:42] Processing request...
+[template-actions.js:156] Template saved successfully
 ```
 
 #### PHP Debug Usage
@@ -60,26 +84,96 @@ sip_error('Failed to connect to API', 'api_call', [
 SiP.YourPlugin.moduleName = (function($) {
     const debug = SiP.Core.debug;
     
-    debug.log('▶ module-name.js Loading...');
+    // Module loading logs are VERBOSE level (detailed tracing)
+    debug.verbose('▶ module-name.js Loading...');
     
     function init() {
-        debug.log('🟢 module-name.js - init()');
+        // Initialization is important - use normal() for NORMAL level
+        debug.normal('🟢 module-name.js initialized');
         attachEventListeners();
     }
     
     function attachEventListeners() {
-        debug.log('📎 Attaching event listeners');
+        // Event listener attachment is detailed - stays verbose
+        debug.verbose('📎 Attaching event listeners');
         
         $(document).on('click', '.action-button', function(e) {
-            debug.log('🔘 Button clicked', e.target);
+            // User interactions are often important - consider normal()
+            debug.normal('🔘 Action button clicked');
+            debug.verbose('Button target:', e.target);
             handleAction(e);
         });
+    }
+    
+    function performOperation(data) {
+        debug.normal('📤 Starting important operation');
+        debug.verbose('Operation data:', data);
+        
+        try {
+            // ... operation code ...
+            debug.normal('✅ Operation completed successfully');
+        } catch (error) {
+            debug.error('❌ Operation failed:', error);
+        }
     }
     
     return {
         init: init
     };
 })(jQuery);
+```
+
+### Migration Strategy
+
+During migration from the old system to the new levels:
+
+1. **All existing `debug.log()` calls now require VERBOSE mode** - This prevents noise in NORMAL mode
+2. **Identify important operations** that should be visible in NORMAL mode:
+   - Module initialization confirmations
+   - User-triggered actions
+   - API calls and responses
+   - Successful completions of major operations
+   - All errors and warnings
+3. **Update important logs** to use `debug.normal()` instead of `debug.log()`
+4. **Keep detailed logs** as `debug.log()` or explicitly use `debug.verbose()`
+
+### Migration Examples
+
+#### Example: Module Loading
+```javascript
+// Before - all these show only in VERBOSE now
+debug.log('▶ SiP.Core.ajax Loading...');
+debug.log('▶ shop-actions.js Loading...');
+debug.log('▶ product-actions.js Loading...');
+
+// After - organized by importance
+debug.verbose('▶ ajax.js Loading...');          // Keep individual loads verbose
+debug.verbose('▶ shop-actions.js Loading...');
+debug.normal('▶ SiP Printify Manager modules initialized'); // One summary for NORMAL
+```
+
+#### Example: User Actions
+```javascript
+// Before
+debug.log('Create template button clicked');
+debug.log('Button data:', $(this).data());
+
+// After
+debug.normal('🔘 Create template action triggered');  // User action = NORMAL
+debug.verbose('Button data:', $(this).data());       // Details = VERBOSE
+```
+
+#### Example: AJAX Operations
+```javascript
+// Before
+debug.log('Starting product sync');
+debug.log('Sync response:', response);
+
+// After
+debug.normal('📤 Starting product sync');        // Operation start = NORMAL
+debug.verbose('Sync response:', response);       // Response data = VERBOSE
+debug.normal('✅ Products synced successfully'); // Success = NORMAL
+debug.error('❌ Product sync failed:', error);   // Errors always show
 ```
 
 ### PHP Debug Implementation
@@ -242,26 +336,54 @@ if (performance.memory) {
 
 ## Debug Best Practices
 
+### Log Level Guidelines
+
+#### NORMAL Level - Important Operations Only
+Use `debug.normal()` or `debug.operation()` for:
+- ✅ Plugin/module initialization confirmations
+- ✅ User-triggered actions (button clicks, form submissions)
+- ✅ API request start/completion
+- ✅ Major operation success/failure
+- ✅ State changes that affect user experience
+- ✅ All errors and warnings (use debug.error() and debug.warn())
+
+Note: `debug.operation()` is an alias for `debug.normal()` - use whichever reads better in context.
+
+#### VERBOSE Level - Detailed Tracing
+Use `debug.verbose()` or `debug.log()` for:
+- 📋 Module loading announcements
+- 📋 Event listener attachments
+- 📋 Detailed operation steps
+- 📋 Data dumps and object contents
+- 📋 Loop iterations and progress
+- 📋 Internal state changes
+- 📋 Performance measurements
+
 ### DO ✅
 
-1. **Use descriptive messages with context**:
+1. **Choose the right level for your message**:
    ```javascript
-   debug.log('🟢 Product created successfully', { id: productId, name: productName });
+   // NORMAL - User needs to know this happened
+   debug.normal('🟢 Product created successfully', { id: productId });
+   
+   // VERBOSE - Developer debugging info
+   debug.verbose('Product data before save:', productData);
    ```
 
-2. **Use appropriate log levels**:
+2. **Use appropriate methods for errors and warnings**:
    ```javascript
-   debug.error('❌ API request failed:', error);
-   debug.warn('⚠️ Deprecated function called');
-   debug.info('ℹ️ Cache refreshed');
+   debug.error('❌ API request failed:', error);    // Always visible in NORMAL+
+   debug.warn('⚠️ Deprecated function called');    // Always visible in NORMAL+
+   debug.normal('ℹ️ Cache refreshed');             // Important info
+   debug.verbose('Cache stats:', cacheStats);      // Detailed info
    ```
 
-3. **Group related operations**:
+3. **Group related operations with appropriate levels**:
    ```javascript
    debug.group('Batch Processing');
-   debug.log(`Processing ${items.length} items`);
-   items.forEach(item => debug.log('Processing:', item.id));
-   debug.log('✅ Batch complete');
+   debug.normal(`Processing ${items.length} items`);
+   items.forEach(item => debug.verbose('Processing:', item.id));
+   debug.normal('✅ Batch complete');
    debug.groupEnd();
    ```
 
@@ -272,6 +394,13 @@ if (performance.memory) {
    
    // Bad - exposes sensitive data
    sip_debug('Login attempt', 'auth', ['password' => $password]);
+   ```
+
+5. **Take advantage of automatic source attribution**:
+   ```javascript
+   // No need to include file name - it's automatic!
+   debug.normal('Operation started');
+   // Output: [template-actions.js:45] Operation started
    ```
 
 ### DON'T ❌
@@ -327,11 +456,14 @@ if (performance.memory) {
 
 ### Browser Console
 ```javascript
-// Check debug status
-SiP.Core.debug.isEnabled()
+// Check debug level
+SiP.Core.debug.getLevel()      // Returns 0, 1, or 2
+SiP.Core.debug.getLevelName()  // Returns 'OFF', 'NORMAL', or 'VERBOSE'
 
-// Enable temporarily (until reload)
-SiP.Core.debug.enable()
+// Set debug level
+sipDebug.setLevel('OFF')       // No logging
+sipDebug.setLevel('NORMAL')    // Important operations only
+sipDebug.setLevel('VERBOSE')   // All debug messages
 
 // View all SiP modules
 console.log(window.SiP)
@@ -425,10 +557,32 @@ For debugging storage operations, see [Data Storage Guide](./sip-plugin-data-sto
 ## Summary
 
 The SiP debug and testing system provides:
-- Unified logging interface for JavaScript and PHP
-- Toggle-based control for clean production environments
-- Consistent formatting and categorization
-- Performance-conscious implementation
-- Integration with WordPress debugging tools
+- **Three-level logging system**: OFF, NORMAL, and VERBOSE
+- **Automatic source attribution**: All logs show [filename.js:line]
+- **Unified logging interface** for JavaScript and PHP
+- **Gradual migration path**: Existing logs default to VERBOSE
+- **Performance-conscious**: Minimal overhead when disabled
+- **Clean production logs**: Use NORMAL for important operations only
+
+### Key Changes from Previous System
+
+1. **Three Levels Instead of On/Off**:
+   - OFF: No logging
+   - NORMAL: Important operations and errors only
+   - VERBOSE: All debug messages (where existing logs go)
+
+2. **New Methods**:
+   - `debug.normal()` - For important operations (NORMAL level)
+   - `debug.verbose()` - For detailed traces (VERBOSE level)
+   - `debug.log()` - Now maps to VERBOSE for migration
+
+3. **Automatic Source Info**:
+   - All logs now show `[filename.js:line]` automatically
+   - No need to manually include file names in messages
+
+4. **Migration Strategy**:
+   - All existing `debug.log()` calls require VERBOSE mode
+   - Gradually identify important logs and change to `debug.normal()`
+   - Keep detailed debugging as `debug.log()` or `debug.verbose()`
 
 Use liberally during development - the system has minimal performance impact when disabled and greatly improves debugging efficiency.
