@@ -873,6 +873,8 @@ SiPWidget.ModuleName = (function() {
 
 ### 6.2 Message Handling Pattern
 
+**CRITICAL**: Async handlers MUST return `true` to keep the message channel open. Without this, Chrome will close the channel before the async response is sent, causing "The message port closed before a response was received" errors.
+
 Every handler follows this pattern:
 ```javascript
 function handle(request, sender, sendResponse, router) {
@@ -887,7 +889,7 @@ function handle(request, sender, sendResponse, router) {
                     error: error.message || error.toString(),
                     code: 'HANDLER_ERROR'
                 }));
-            return true; // Keep channel open
+            return true; // REQUIRED: Keep channel open for async response
             
         default:
             sendResponse({
@@ -895,7 +897,49 @@ function handle(request, sender, sendResponse, router) {
                 error: 'Unknown action: ' + request.action,
                 code: 'UNKNOWN_ACTION'
             });
+            // No return true needed here - response sent synchronously
     }
+}
+```
+
+**Common Patterns**:
+
+1. **Async with immediate response wrapper** (Recommended):
+```javascript
+function handle(request, sender, sendResponse, router) {
+    // Wrap in async IIFE to handle all async operations
+    (async () => {
+        try {
+            // All async operations here
+            const result = await someAsyncOperation();
+            sendResponse({ success: true, data: result });
+        } catch (error) {
+            sendResponse({ success: false, error: error.message });
+        }
+    })();
+    
+    return true; // MUST return true for async handlers
+}
+```
+
+2. **Promise chain pattern**:
+```javascript
+function handle(request, sender, sendResponse, router) {
+    someAsyncOperation()
+        .then(result => sendResponse({ success: true, data: result }))
+        .catch(error => sendResponse({ success: false, error: error.message }));
+    
+    return true; // MUST return true for async handlers
+}
+```
+
+3. **Synchronous response** (No return true needed):
+```javascript
+function handle(request, sender, sendResponse, router) {
+    // Synchronous operation
+    const result = doSomethingSync();
+    sendResponse({ success: true, data: result });
+    // No return statement needed - response sent synchronously
 }
 ```
 
@@ -2063,3 +2107,54 @@ Based on reviewing both documentation files, there are no significant conflicts.
 4. **Data Storage**: Uses standard SiP patterns for both client and server storage
 **Critical Path: Repository setup → Release integration → Dashboard integration → Testing**  
 **Success Criteria: Extension appears and behaves identically to other SiP plugins in dashboard with automatic updates functioning correctly**
+
+## 13. Common Issues and Troubleshooting
+
+### 13.1 Message Port Closed Error
+
+**Error**: "The message port closed before a response was received"
+
+**Cause**: Handler function didn't return `true` for async operations
+
+**Solution**: 
+```javascript
+// WRONG - Missing return true
+async function handle(request, sender, sendResponse, router) {
+    try {
+        const result = await someAsyncOperation();
+        sendResponse({ success: true, data: result });
+    } catch (error) {
+        sendResponse({ success: false, error: error.message });
+    }
+    // Missing: return true;
+}
+
+// CORRECT - Returns true for async
+async function handle(request, sender, sendResponse, router) {
+    try {
+        const result = await someAsyncOperation();
+        sendResponse({ success: true, data: result });
+    } catch (error) {
+        sendResponse({ success: false, error: error.message });
+    }
+    return true; // Keep channel open for async response
+}
+```
+
+### 13.2 Tab Navigation Issues
+
+**Issue**: Operations requiring Printify access fail when no Printify tab is open
+
+**Solution**: The `navigateTab` function in widget-router.js automatically:
+1. Checks for existing paired tabs
+2. Creates new tabs if needed
+3. Maintains tab pairing for future operations
+
+Handlers should always use `router.navigateTab()` for Printify operations:
+```javascript
+const navResult = await router.navigateTab(url, 'printify', sender.tab?.id);
+if (!navResult.success) {
+    throw new Error(navResult.error);
+}
+const tabId = navResult.data.tabId;
+```
