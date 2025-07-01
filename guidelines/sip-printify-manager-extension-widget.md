@@ -2158,3 +2158,46 @@ if (!navResult.success) {
 }
 const tabId = navResult.data.tabId;
 ```
+
+### 13.3 Tab Pairing System Lifecycle
+
+**Overview**: The extension maintains bidirectional tab pairs between WordPress and Printify tabs to enable seamless navigation.
+
+**Tab Pairing Lifecycle**:
+
+1. **Initialization**:
+   - On startup, `loadTabPairs()` loads saved pairs from Chrome storage
+   - Tab pairs are stored in a Map: `tabPairs = new Map()`
+   - Pairs persist across browser sessions via `chrome.storage.local`
+
+2. **Tab Creation Flow** (`navigateTab` function):
+   ```
+   navigateTab(url, tabType, currentTabId)
+     ↓
+   IF currentTabId provided:
+     - Check if currentTabId has a paired tab
+     - IF paired tab exists AND is still open:
+       - Reuse paired tab (navigate to new URL)
+       - Return existing tab ID
+     - ELSE:
+       - Create new tab
+       - Create bidirectional pairing with currentTabId
+   ELSE (no currentTabId):
+     - Create new tab
+     - No pairing created
+   ```
+
+3. **Tab Pairing Storage**:
+   - Bidirectional: If tab A pairs with tab B, then B also pairs with A
+   - Stored format: `{ [tabId]: pairedTabId }`
+   - Updated immediately when pairs are created/removed
+
+4. **Tab Cleanup**:
+   - Chrome event `tabs.onRemoved` triggers `removeTabPair()`
+   - Removes both directions of the pairing
+   - Updates storage to reflect removal
+
+5. **Common Issues**:
+   - **No currentTabId**: When messages come through relay, `sender.tab?.id` may be undefined
+   - **Result**: New tab created but not paired, so subsequent operations create additional tabs
+   - **Fix**: Ensure the WordPress tab ID is properly passed through the message chain
