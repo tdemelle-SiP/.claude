@@ -1666,6 +1666,28 @@ Through extensive testing, we've confirmed:
 3. **Mockup Control**: Not possible via creation API - requires post-creation management
 4. **Printify Express**: Must be explicitly disabled with both flags set to `false`
 
+## Data Structures
+
+### Child Product Object Structure
+
+Child products from templates use this structure:
+
+```javascript
+{
+    child_product_id: '12345',           // Local WordPress post ID
+    child_product_title: 'FSGP Abstract 01 Tee - Red/M',
+    printify_product_id: '68534afa6ad639c0cd011c55',  // Printify's ID (only present after upload)
+    status: 'wip' | 'unpublished' | 'published',
+    blueprint_id: '6',
+    // ... other fields
+}
+```
+
+**Key Fields**:
+- `child_product_id`: Local identifier for WordPress
+- `printify_product_id`: Printify's identifier (required for Printify operations)
+- Products without `printify_product_id` are WIP and cannot be updated on Printify
+
 ## Performance Considerations
 
 1. **Highlighting Functions**
