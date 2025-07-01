@@ -561,6 +561,8 @@ The debug level automatically synchronizes with browser extensions that support 
 2. **Unified Control**: One dropdown controls both WordPress and extension logging
 3. **Level Mapping**: Extension respects the same three levels (OFF/NORMAL/VERBOSE)
 
+For detailed extension debug implementation, see [SiP Printify Manager Extension - Debug System](./sip-printify-manager-extension-widget.md#widget-debugjs-core-debug-module).
+
 #### Extension Debug Methods
 Browser extensions that integrate with SiP use the same debug pattern:
 

@@ -498,6 +498,14 @@ browser-extension/
 - Stores logs as pre-formatted strings in Chrome storage (max 1MB)
 - Provides debug methods that respect enabled/disabled state
 - Exposes `storeLogEntry()` for other modules to store formatted logs
+- **Synchronizes with WordPress debug level settings via `SIP_SYNC_DEBUG_LEVEL` message**
+
+See also: [SiP Debug System Documentation](./sip-development-testing-debug.md#browser-extension-integration) for complete debug system overview.
+
+**Debug Levels**:
+- **OFF** (0): No logging output
+- **NORMAL** (1): Important operations and errors only  
+- **VERBOSE** (2): All debug messages including detailed traces
 
 **Key Functions**:
 - `formatLogEntry(source, level, message)` - Centralized log formatting
@@ -505,11 +513,26 @@ browser-extension/
 - `storeLogEntry(entry)` - Stores formatted string with size management
 - `getConsoleLogs(callback)` - Retrieves stored logs for history viewing
 - `clearConsoleLogs()` - Clears all stored logs
+- `setDebugLevel(level, levelName)` - Updates debug level and persists to storage
+- `normal(message)` - Logs at NORMAL level (important operations)
+- `verbose(message)` - Logs at VERBOSE level (detailed traces)
+- `log(message)` - Logs at VERBOSE level (for backward compatibility)
+
+**Usage Pattern**:
+```javascript
+const debug = SiPWidget.Debug;
+
+debug.normal('Important operation started');     // Shows in NORMAL and VERBOSE
+debug.verbose('Detailed operation data:', data); // Shows only in VERBOSE
+debug.error('Operation failed:', error);         // Shows in NORMAL and VERBOSE
+```
 
 **Storage Format** (Updated 2025-06-17):
 ```javascript
-// Chrome storage key: 'sipConsoleLogs'
-// Value: Array of formatted strings
+// Chrome storage keys:
+// 'sipConsoleLogs' - Array of formatted log strings
+// 'sip_printify_debug_level' - Current debug level (0, 1, or 2)
+// 'sip_printify_debug_level_name' - Level name ('OFF', 'NORMAL', 'VERBOSE')
 [
     "[10:30:45] WordPress: Fetching mockups for Blueprint #6",
     "[10:30:45] Extension: Request received, navigating to Printify",
@@ -1361,6 +1384,7 @@ The extension supports the following commands from WordPress:
 | `SIP_UPDATE_PRODUCT_MOCKUPS` | Update product mockups via internal API | Printify handler |
 | `SIP_PUBLISH_PRODUCTS` | Publish products via internal API | Printify handler |
 | `SIP_CONSOLE_LOG` | Store console log from WordPress | WordPress handler |
+| `SIP_SYNC_DEBUG_LEVEL` | Synchronize debug level between WordPress and extension | Widget handler |
 
 **Note**: Any other command will receive an error response with code `UNKNOWN_ACTION`.
 
