@@ -411,12 +411,15 @@ browser-extension/
 │   ├── extension-detector.js            # Extension presence announcer
 │   ├── widget-tabs-actions.js          # Widget UI creation and button handling
 │   ├── printify-tab-actions.js         # Printify page monitoring and scraping
-│   └── printify-api-interceptor-actions.js # API discovery monitor
+│   ├── printify-api-interceptor-actions.js # API discovery monitor
+│   └── mockup-library-actions.js       # Mockup selection updates on Printify
 ├── handler-scripts/
 │   ├── widget-data-handler.js          # Widget operation logic
 │   ├── printify-data-handler.js        # Printify data processing
 │   ├── wordpress-handler.js            # WordPress message routing
-│   └── printify-api-interceptor-handler.js # API discovery processing
+│   ├── printify-api-interceptor-handler.js # API discovery processing
+│   ├── mockup-fetch-handler.js         # Blueprint mockup fetching
+│   └── mockup-update-handler.js        # Product mockup updates
 └── assets/                     # Images and static files
 ```
 

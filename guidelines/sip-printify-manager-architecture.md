@@ -460,6 +460,137 @@ When template mockup selections are saved, a comprehensive dialog presents a sum
 - Retry option for failed updates
 - Detailed logs for debugging
 
+## Browser Extension Mockup Update System
+
+### Overview
+The browser extension enables mockup management capabilities that aren't available through Printify's public API. This system allows automated updating of product mockups based on template selections.
+
+### Architecture
+
+#### Why This Architecture
+- **API Limitation**: Printify's public API has no endpoints for mockup management
+- **Browser Access**: Only the browser with an authenticated session can access internal Printify APIs
+- **Automation**: Manual mockup updates for hundreds of products would be impractical
+- **Consistency**: Ensures all products from a template have identical mockup selections
+
+#### Communication Flow
+1. **WordPress initiates**: Sends `SIP_UPDATE_PRODUCT_MOCKUPS` message with product details
+2. **Extension navigates**: Opens product's mockup library page in Printify
+3. **Page manipulation**: Updates mockup selections via DOM interaction or API interception
+4. **Internal API calls**: Uses Printify's internal endpoints to save changes
+5. **Status reporting**: Reports success/failure back to WordPress
+
+### Implementation Components
+
+#### WordPress Side
+- **Trigger Function**: `showMockupUpdateProgress()` in `template-actions.js`
+- **Message Format**:
+  ```javascript
+  {
+      type: 'printify',
+      action: 'SIP_UPDATE_PRODUCT_MOCKUPS',
+      data: {
+          productId: '68534afa6ad639c0cd011c55',
+          shopId: '17823150',
+          blueprintId: '6',
+          selectedMockups: [
+              {
+                  id: '68534afa6ad639c0cd011c55_12100_102005_front-2',
+                  variant_ids: [12100, 12101, 12102],
+                  is_default: true
+              }
+              // ... more mockup selections
+          ],
+          requestId: 'update_mockups_123_1704067200000'
+      }
+  }
+  ```
+
+#### Extension Handler
+- **Location**: `handler-scripts/mockup-update-handler.js`
+- **Responsibilities**:
+  - Navigate to mockup library URL
+  - Wait for page load and data
+  - Update selections via DOM manipulation
+  - Monitor save operation completion
+  - Report detailed progress to WordPress
+  - Handle errors with specific messaging
+
+#### Content Script
+- **Location**: `action-scripts/mockup-library-actions.js`
+- **Responsibilities**:
+  - Detect when mockup library page is ready
+  - Find mockup elements using multiple selector strategies
+  - Update checkbox states based on template selections
+  - Monitor save operations via fetch interception
+  - Report completion status back to handler
+
+#### Mockup Library Page Structure
+- **URL Pattern**: `https://printify.com/app/mockup-library/shops/{shopId}/products/{productId}`
+- **Data Available**:
+  - `groups`: Color variants with their mockup options
+  - `selected_mockups`: Currently selected mockups
+- **Update Mechanism**:
+  - Toggle mockup checkboxes via click events
+  - Designate default mockup with radio buttons
+  - Save button click or auto-save triggers API call
+
+### Mockup Selection Data Format
+
+#### Template Storage (images array)
+```javascript
+{
+    "images": [
+        {
+            "src": "https://images.printify.com/mockup/...",
+            "variant_ids": [12100, 12101, 12102], // Size variants for one color
+            "position": "other",
+            "is_default": true,
+            "is_selected_for_publishing": true,
+            "order": null
+        }
+    ]
+}
+```
+
+#### Extension Update Format
+```javascript
+{
+    "selected_mockups": [
+        {
+            "id": "68534afa6ad639c0cd011c55_12100_102005_front-2",
+            "type": "GENERATED",
+            "group_key": "521",
+            "label": "Front, White",
+            "custom_background": true,
+            "src": "https://images.printify.com/mockup/..."
+        }
+    ]
+}
+```
+
+### Error Handling Strategy
+- **Navigation failures**: Retry with new tab
+- **Page load timeout**: Report specific timeout error
+- **Selection mismatch**: Log which mockups couldn't be found
+- **Save failures**: Capture API error response
+- **Connection loss**: Store progress for manual recovery
+
+### Development Testing Approach
+
+#### Test Mode Features
+1. **Dry run mode**: Log actions without making changes
+2. **Single product test**: Update one product before batch
+3. **Detailed logging**: Capture all API calls and responses
+4. **Visual indicators**: Highlight updated elements in DOM
+
+#### Debug Information to Capture
+- Current mockup selections before update
+- Mapping of variant IDs to mockup IDs
+- API request/response payloads
+- DOM state changes
+- Timing information for optimization
+
 ## Image Table
 
 ### Purpose

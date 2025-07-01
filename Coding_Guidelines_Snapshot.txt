@@ -1,4 +1,19 @@
+-------------------- AUTO COMPACT MESSAGE ------------------------
 
+you just went through a context auto-compact. This has critically compromised your context and you should proceed with extreme caution and the assumption that you are likely to make errors. Please make sure to double check existing documentation, code and confirm goals and methods before making code changes. I will attempt to help you rehydrate with the following data:
+
+An overview and index of extensive documentation can be found here: /plugins/.claude/index.md
+
+You are expected to code based on these guidelines:
+
+□ No defensive code added to prevent errors (fixed root causes instead)
+□ No redundant storage mechanisms (single source of truth)
+□ No setTimeout for waiting (only for intentional delays)
+□ No try-catch for errors that shouldn't exist
+□ No function_exists/class_exists/isset defensive checks
+□ Made zero assumptions (verified all data structures and field names)
+□ Code would pass senior developer review for simplicity and clarity
+□ No backward compatibility code or legacy remnants preserved
 
 -------------------- CODE COMPLETE MESSAGE -----------------------
 

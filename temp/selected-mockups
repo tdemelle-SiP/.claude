@@ -1,0 +1,260 @@
+{groups: [{group_key: "521", label: "White", variant_ids: [12102, 12103, 12100, 12101, 12104],…},…],…}
+groups
+: 
+
+
+[{group_key: "521", label: "White", variant_ids: [12102, 12103, 12100, 12101, 12104],…},…]
+0: {group_key: "521", label: "White", variant_ids: [12102, 12103, 12100, 12101, 12104],…}
+    group_key: "521"
+    label: "White"
+    limits: {min: null, max: null}
+    mockup_ids: ["68534afa6ad639c0cd011c55_12100_102005_front-2", "68534afa6ad639c0cd011c55_12100_102001_folded"]
+        0: "68534afa6ad639c0cd011c55_12100_102005_front-2"
+        1: "68534afa6ad639c0cd011c55_12100_102001_folded"
+    variant_ids: [12102, 12103, 12100, 12101, 12104]
+        0: 12102
+        1: 12103
+        2: 12100
+        3: 12101
+        4: 12104
+
+1
+: 
+{group_key: "418", label: "Black", variant_ids: [12125, 12126, 12124, 12127, 12128],…}
+2
+: 
+{group_key: "421", label: "Sand", variant_ids: [12055, 12053, 12052, 12054, 12056],…}
+3
+: 
+{group_key: "438", label: "Gold", variant_ids: [12150, 12149, 12151, 12148, 12152],…}
+4
+: 
+{group_key: "420", label: "Orange", variant_ids: [12010, 12013, 12012, 12011, 12014],…}
+5
+: 
+{group_key: "364", label: "Military Green", variant_ids: [12191, 12193, 12192, 12190, 12194],…}
+6
+: 
+{group_key: "416", label: "Forest Green", variant_ids: [12142, 12143, 12145, 12144, 12146],…}
+7
+: 
+{group_key: "412", label: "Gravel", variant_ids: [11922, 11920, 11921, 11923, 11924],…}
+8
+: 
+{group_key: "369", label: "Irish Green", variant_ids: [11952, 11951, 11953, 11950, 11954],…}
+9
+: 
+{group_key: "551", label: "Sky", variant_ids: [12064, 12066, 12067, 12065, 12068],…}
+10
+: 
+{group_key: "424", label: "Charcoal", variant_ids: [11873, 11872, 11875, 11874, 11876],…}
+11
+: 
+{group_key: "425", label: "Royal", variant_ids: [12029, 12030, 12028, 12031],…}
+12
+: 
+{group_key: "511", label: "Navy", variant_ids: [11989, 11986, 11987, 11988, 11990, 11991],…}
+13
+: 
+{group_key: "398", label: "Purple", variant_ids: [12018, 12016, 12019, 12017, 12020, 12021],…}
+14
+: 
+{group_key: "429", label: "Heliconia", variant_ids: [11944, 11946, 11947, 11945, 11948, 11949],…}
+15
+: 
+{group_key: "430", label: "Cardinal Red", variant_ids: [12130, 12133, 12131, 12132, 12134],…}
+selected_mockups
+: 
+[{id: "68534afa6ad639c0cd011c55_12100_102005_front-2",…},…]
+0
+: 
+{id: "68534afa6ad639c0cd011c55_12100_102005_front-2",…}
+1
+: 
+{id: "68534afa6ad639c0cd011c55_12124_92570_front",…}
+2
+: 
+{id: "68534afa6ad639c0cd011c55_12124_92571_back",…}
+3
+: 
+{id: "68534afa6ad639c0cd011c55_12124_102005_front-2",…}
+4
+: 
+{id: "68534afa6ad639c0cd011c55_12124_102006_back-2",…}
+5
+: 
+{id: "68534afa6ad639c0cd011c55_12052_92570_front",…}
+6
+: 
+{id: "68534afa6ad639c0cd011c55_12052_92571_back",…}
+7
+: 
+{id: "68534afa6ad639c0cd011c55_12052_102005_front-2",…}
+8
+: 
+{id: "68534afa6ad639c0cd011c55_12052_102006_back-2",…}
+9
+: 
+{id: "68534afa6ad639c0cd011c55_12148_92570_front",…}
+10
+: 
+{id: "68534afa6ad639c0cd011c55_12148_92571_back",…}
+11
+: 
+{id: "68534afa6ad639c0cd011c55_12148_102005_front-2",…}
+12
+: 
+{id: "68534afa6ad639c0cd011c55_12148_102006_back-2",…}
+13
+: 
+{id: "68534afa6ad639c0cd011c55_12010_92570_front",…}
+14
+: 
+{id: "68534afa6ad639c0cd011c55_12010_92571_back",…}
+15
+: 
+{id: "68534afa6ad639c0cd011c55_12010_102005_front-2",…}
+16
+: 
+{id: "68534afa6ad639c0cd011c55_12010_102006_back-2",…}
+17
+: 
+{id: "68534afa6ad639c0cd011c55_12190_92570_front",…}
+18
+: 
+{id: "68534afa6ad639c0cd011c55_12190_92571_back",…}
+19
+: 
+{id: "68534afa6ad639c0cd011c55_12190_102005_front-2",…}
+20
+: 
+{id: "68534afa6ad639c0cd011c55_12190_102006_back-2",…}
+21
+: 
+{id: "68534afa6ad639c0cd011c55_12142_92570_front",…}
+22
+: 
+{id: "68534afa6ad639c0cd011c55_12142_92571_back",…}
+23
+: 
+{id: "68534afa6ad639c0cd011c55_12142_102005_front-2",…}
+24
+: 
+{id: "68534afa6ad639c0cd011c55_12142_102006_back-2",…}
+25
+: 
+{id: "68534afa6ad639c0cd011c55_11920_92570_front",…}
+26
+: 
+{id: "68534afa6ad639c0cd011c55_11920_92571_back",…}
+27
+: 
+{id: "68534afa6ad639c0cd011c55_11920_102005_front-2",…}
+28
+: 
+{id: "68534afa6ad639c0cd011c55_11920_102006_back-2",…}
+29
+: 
+{id: "68534afa6ad639c0cd011c55_11950_92570_front",…}
+30
+: 
+{id: "68534afa6ad639c0cd011c55_11950_92571_back",…}
+31
+: 
+{id: "68534afa6ad639c0cd011c55_11950_102005_front-2",…}
+32
+: 
+{id: "68534afa6ad639c0cd011c55_11950_102006_back-2",…}
+33
+: 
+{id: "68534afa6ad639c0cd011c55_12064_92570_front",…}
+34
+: 
+{id: "68534afa6ad639c0cd011c55_12064_92571_back",…}
+35
+: 
+{id: "68534afa6ad639c0cd011c55_12064_102005_front-2",…}
+36
+: 
+{id: "68534afa6ad639c0cd011c55_12064_102006_back-2",…}
+37
+: 
+{id: "68534afa6ad639c0cd011c55_11872_92570_front",…}
+38
+: 
+{id: "68534afa6ad639c0cd011c55_11872_92571_back",…}
+39
+: 
+{id: "68534afa6ad639c0cd011c55_11872_102005_front-2",…}
+40
+: 
+{id: "68534afa6ad639c0cd011c55_11872_102006_back-2",…}
+41
+: 
+{id: "68534afa6ad639c0cd011c55_12028_92570_front",…}
+42
+: 
+{id: "68534afa6ad639c0cd011c55_12028_92571_back",…}
+43
+: 
+{id: "68534afa6ad639c0cd011c55_12028_102005_front-2",…}
+44
+: 
+{id: "68534afa6ad639c0cd011c55_12028_102006_back-2",…}
+45
+: 
+{id: "68534afa6ad639c0cd011c55_11986_92570_front",…}
+46
+: 
+{id: "68534afa6ad639c0cd011c55_11986_92571_back",…}
+47
+: 
+{id: "68534afa6ad639c0cd011c55_11986_102005_front-2",…}
+48
+: 
+{id: "68534afa6ad639c0cd011c55_11986_102006_back-2",…}
+49
+: 
+{id: "68534afa6ad639c0cd011c55_12016_92570_front",…}
+50
+: 
+{id: "68534afa6ad639c0cd011c55_12016_92571_back",…}
+51
+: 
+{id: "68534afa6ad639c0cd011c55_12016_102005_front-2",…}
+52
+: 
+{id: "68534afa6ad639c0cd011c55_12016_102006_back-2",…}
+53
+: 
+{id: "68534afa6ad639c0cd011c55_11944_92570_front",…}
+54
+: 
+{id: "68534afa6ad639c0cd011c55_11944_92571_back",…}
+55
+: 
+{id: "68534afa6ad639c0cd011c55_11944_102005_front-2",…}
+56
+: 
+{id: "68534afa6ad639c0cd011c55_11944_102006_back-2",…}
+57
+: 
+{id: "68534afa6ad639c0cd011c55_12130_92570_front",…}
+58
+: 
+{id: "68534afa6ad639c0cd011c55_12130_92571_back",…}
+59
+: 
+{id: "68534afa6ad639c0cd011c55_12130_102005_front-2",…}
+60
+: 
+{id: "68534afa6ad639c0cd011c55_12130_102006_back-2",…}
+61
+: 
+{id: "68534afa6ad639c0cd011c55_12100_102001_folded", type: "GENERATED",…}
+    custom_background: true
+    group_key: "521"
+    id: "68534afa6ad639c0cd011c55_12100_102001_folded"
+    label: "Folded, White"
+    src: "https://images.printify.com/mockup/68534afa6ad639c0cd011c55/12100/102001/fsgp-abstract-flower-01-tee.jpg?camera_label=folded&t=1751328127584&s=400"
+    type: "GENERATED"
