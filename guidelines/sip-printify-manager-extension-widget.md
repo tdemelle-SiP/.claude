@@ -493,6 +493,12 @@ browser-extension/
 #### widget-debug.js (Core Debug Module)
 **Why it exists**: Provides centralized debug logging and cross-tab console log capture. During complex operations spanning multiple tabs (WordPress ↔ Printify), logs from both contexts are captured and preserved for debugging.
 
+**Architectural Constraint - Dual Context Support**: Chrome Manifest V3 requires the extension to operate in two distinct JavaScript contexts:
+- **Service Worker (background.js)**: No DOM access, uses `self` global object
+- **Content Scripts**: Run in web pages, have `window` global object
+
+Both contexts require debug logging, so the module detects its environment using `typeof window !== 'undefined'`. This is not defensive coding but necessary environment detection mandated by Chrome's extension architecture.
+
 - Intercepts console.log/error/warn calls containing SiP-related prefixes
 - Formats logs consistently: `[HH:MM:SS] Source: Message`
 - Stores logs as pre-formatted strings in Chrome storage (max 1MB)
@@ -526,6 +532,8 @@ debug.normal('Important operation started');     // Shows in NORMAL and VERBOSE
 debug.verbose('Detailed operation data:', data); // Shows only in VERBOSE
 debug.error('Operation failed:', error);         // Shows in NORMAL and VERBOSE
 ```
+
+**Initialization**: The debug module initializes synchronously with sensible defaults (VERBOSE level) to ensure it's immediately available when other modules load. Chrome storage state is loaded asynchronously after initialization to update settings without blocking module loading.
 
 **Storage Format** (Updated 2025-06-17):
 ```javascript
