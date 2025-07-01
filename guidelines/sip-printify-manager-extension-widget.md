@@ -2201,3 +2201,76 @@ const tabId = navResult.data.tabId;
    - **No currentTabId**: When messages come through relay, `sender.tab?.id` may be undefined
    - **Result**: New tab created but not paired, so subsequent operations create additional tabs
    - **Fix**: Ensure the WordPress tab ID is properly passed through the message chain
+
+## 14. Pause/Resume System
+
+### 14.1 Overview
+
+The extension implements an interactive pause/resume system that handles page load failures gracefully by:
+1. Detecting specific issues (login required, 404, network errors)
+2. Pausing the operation and focusing the problematic tab
+3. Showing clear instructions to the user
+4. Allowing the user to fix the issue and resume
+
+**Why This Architecture**: Automated error recovery is unreliable for authentication and page errors. User intervention ensures proper resolution.
+
+### 14.2 Components
+
+#### Router State Management (widget-router.js)
+```javascript
+const operationState = {
+    paused: false,
+    pausedOperation: null,
+    pausedCallback: null
+};
+
+async function pauseOperation(tabId, issue, instructions) {
+    // 1. Set pause state
+    // 2. Focus problematic tab
+    // 3. Update widget UI with instructions
+    // 4. Return promise that resolves on resume
+}
+
+function resumeOperation() {
+    // 1. Clear pause state
+    // 2. Resolve pause promise
+    // 3. Update widget UI
+}
+```
+
+#### Error Detection (mockup-library-actions.js)
+```javascript
+function detectPageIssue() {
+    // Returns null if no issue, or:
+    return {
+        issue: 'Login Required',
+        instructions: 'Please sign in to your Printify account and click Resume.',
+        canContinue: true  // false for unrecoverable errors
+    };
+}
+```
+
+#### Widget UI (widget-tabs-actions.js)
+Displays pause status with:
+- Warning icon
+- Issue title
+- Clear instructions
+- Resume button
+
+### 14.3 Operation Flow
+
+1. **Page Check**: Handler requests page state via `CHECK_MOCKUP_PAGE_READY`
+2. **Issue Detection**: Content script detects login page, 404, or error
+3. **Pause**: Handler calls `router.pauseOperation()` with issue details
+4. **User Action**: Tab focuses, widget shows instructions
+5. **Fix & Resume**: User fixes issue, clicks Resume button
+6. **Continue**: Operation continues from where it paused
+
+### 14.4 Supported Issues
+
+| Issue | Detection | Instructions | Can Continue |
+|-------|-----------|--------------|--------------|
+| Login Required | URL contains `/login` or login form present | "Please sign in to your Printify account and click Resume." | Yes |
+| Product Not Found | 404 page or "Product not found" text | "This product may have been deleted. Check the product ID and try again." | No |
+| Page Load Error | Error page elements or "Something went wrong" | "Please refresh the page (Ctrl+R) and click Resume when the page loads correctly." | Yes |
+| Network Error | "ERR_" or "This site can't be reached" | "Check your internet connection, refresh the page, and click Resume." | Yes |
