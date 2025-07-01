@@ -554,6 +554,31 @@ Debug logging is essential for AJAX troubleshooting. See [AJAX Guide](./sip-plug
 ### Data Storage Debugging
 For debugging storage operations, see [Data Storage Guide](./sip-plugin-data-storage.md).
 
+### Browser Extension Integration
+The debug level automatically synchronizes with browser extensions that support it. When you change the debug level in WordPress:
+
+1. **Automatic Sync**: The browser extension receives the new debug level immediately
+2. **Unified Control**: One dropdown controls both WordPress and extension logging
+3. **Level Mapping**: Extension respects the same three levels (OFF/NORMAL/VERBOSE)
+
+#### Extension Debug Methods
+Browser extensions that integrate with SiP use the same debug pattern:
+
+```javascript
+// In browser extension code
+const debug = SiPWidget.Debug;
+
+debug.normal('Important operation');     // Shows in NORMAL and VERBOSE
+debug.log('Detailed trace');            // Shows only in VERBOSE
+debug.verbose('Very detailed info');    // Shows only in VERBOSE
+debug.error('Error occurred');          // Shows in NORMAL and VERBOSE
+```
+
+The extension debug system automatically:
+- Syncs with WordPress debug level on page load
+- Updates when level changes without requiring reload
+- Maintains consistent logging behavior across environments
+
 ## Summary
 
 The SiP debug and testing system provides:
