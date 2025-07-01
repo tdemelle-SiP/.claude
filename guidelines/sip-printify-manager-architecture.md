@@ -1000,12 +1000,15 @@ wp_localize_script('sip-main', 'sipPrintifyManagerData', array(
 Prevent stale product IDs and template data when operations modify the underlying data but don't trigger a page reload.
 
 #### Problem Addressed
-When users save WIP data back to main templates, the `window.masterTemplateData` object becomes stale because:
-- The save operation updates server-side JSON files
-- The browser's JavaScript objects retain old product IDs and data
-- Subsequent operations (like mockup updates) use incorrect product IDs
+Two related issues can cause stale product IDs:
+
+1. **Client-side staleness**: When users save WIP data back to main templates, the `window.masterTemplateData` object becomes stale
+2. **Server-side data loss**: When saving WIP to main, updated product IDs from uploads could be overwritten with old IDs from the WIP file
 
 #### Implementation
+The system uses two complementary approaches:
+
+##### 1. Client-side Refresh
 The template system implements a refresh mechanism via `refreshTemplateDataFromServer()`:
 
 ```javascript
@@ -1024,6 +1027,32 @@ function refreshTemplateDataFromServer() {
                 return response.data;
             }
         });
+}
+```
+
+##### 2. Server-side Product ID Preservation
+The `sip_save_wip_to_main_template_file()` function merges updated product IDs before saving:
+
+```php
+// Before saving WIP to main, preserve any updated product IDs
+if (file_exists($permanent_path)) {
+    $existing_main_data = json_decode(file_get_contents($permanent_path), true);
+    
+    // Create map of updated product IDs
+    $existing_product_map = [];
+    foreach ($existing_main_data['child_products'] as $child) {
+        if (!empty($child['printify_product_id'])) {
+            $existing_product_map[$child['child_product_id']] = $child['printify_product_id'];
+        }
+    }
+    
+    // Merge updated IDs into WIP data before saving
+    foreach ($wip_data['child_products'] as &$wip_child) {
+        if (isset($existing_product_map[$wip_child['child_product_id']]) && 
+            $wip_child['status'] !== 'wip') {
+            $wip_child['printify_product_id'] = $existing_product_map[$wip_child['child_product_id']];
+        }
+    }
 }
 ```
 
@@ -1048,10 +1077,11 @@ handleSuccessResponse: function(response) {
 ```
 
 #### Why This Architecture
-- **Data Integrity**: Ensures JavaScript objects match server-side data
-- **No Page Reload**: Updates data seamlessly without disrupting user workflow
+- **Data Integrity**: Two-layer protection ensures product IDs are never lost
+- **No Page Reload**: Updates data seamlessly without disrupting user workflow  
 - **Selective Updates**: Only refreshes when data changes, not on every operation
-- **Fallback Safety**: Operations continue even if refresh function isn't available
+- **Product ID Preservation**: Server-side merge prevents data loss during WIP saves
+- **Non-destructive**: Only updates non-WIP products, preserving work in progress
 
 ## Cross-Table Systems
 
