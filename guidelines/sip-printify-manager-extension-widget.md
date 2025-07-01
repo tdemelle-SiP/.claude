@@ -326,6 +326,32 @@ Router unwraps & routes:  { type: 'wordpress', action: 'SIP_SHOW_WIDGET', data: 
 
 **Key Point**: Never mix formats. External messages MUST use 'SIP_' prefix. Internal messages MUST use handler/action pattern.
 
+#### Debug Level Synchronization
+
+**Why it exists**: The extension needs to respect WordPress debug settings for consistent logging behavior across the entire SiP ecosystem.
+
+**Implementation**: Every message from WordPress to the extension includes the current debug level:
+```javascript
+// In browser-extension-manager.js
+function sendMessageToExtension(message, origin = '*') {
+    const enrichedMessage = Object.assign({}, message, {
+        debugLevel: SiP.Core.debug.getLevel(),      // 0=OFF, 1=NORMAL, 2=VERBOSE
+        debugLevelName: SiP.Core.debug.getLevelName() // 'OFF', 'NORMAL', 'VERBOSE'
+    });
+    window.postMessage(enrichedMessage, origin);
+}
+```
+
+**Extension Processing**: The relay checks every incoming message for debug level:
+```javascript
+// In widget-relay.js
+if (data.debugLevel !== undefined && data.debugLevelName !== undefined) {
+    SiPWidget.Debug.setDebugLevel(data.debugLevel, data.debugLevelName);
+}
+```
+
+This ensures the extension always uses the correct debug level, updating immediately when changed in WordPress.
+
 #### Request-Response Correlation
 
 **Why Request IDs**: When multiple async operations run concurrently (e.g., fetching mockups for 4 blueprints), responses must be matched to their originating requests to prevent race conditions.
@@ -338,7 +364,9 @@ window.postMessage({
     type: 'SIP_COMMAND_NAME',
     source: 'sip-printify-manager',
     requestId: requestId,  // Required for async operations
-    data: { /* request data */ }
+    data: { /* request data */ },
+    debugLevel: 0,  // Always included: 0=OFF, 1=NORMAL, 2=VERBOSE
+    debugLevelName: 'OFF'  // Always included: human-readable level
 }, '*');
 
 // Set up response listener BEFORE sending request
@@ -504,7 +532,7 @@ Both contexts require debug logging, so the module detects its environment using
 - Stores logs as pre-formatted strings in Chrome storage (max 1MB)
 - Provides debug methods that respect enabled/disabled state
 - Exposes `storeLogEntry()` for other modules to store formatted logs
-- **Synchronizes with WordPress debug level settings via `SIP_SYNC_DEBUG_LEVEL` message**
+- **Automatically synchronizes with WordPress debug level on every received message**
 
 See also: [SiP Debug System Documentation](./sip-development-testing-debug.md#browser-extension-integration) for complete debug system overview.
 
@@ -1392,7 +1420,6 @@ The extension supports the following commands from WordPress:
 | `SIP_UPDATE_PRODUCT_MOCKUPS` | Update product mockups via internal API | Printify handler |
 | `SIP_PUBLISH_PRODUCTS` | Publish products via internal API | Printify handler |
 | `SIP_CONSOLE_LOG` | Store console log from WordPress | WordPress handler |
-| `SIP_SYNC_DEBUG_LEVEL` | Synchronize debug level between WordPress and extension | Widget handler |
 
 **Note**: Any other command will receive an error response with code `UNKNOWN_ACTION`.
 
