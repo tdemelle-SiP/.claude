@@ -994,6 +994,65 @@ wp_localize_script('sip-main', 'sipPrintifyManagerData', array(
 - **Consistency**: Single source of truth for configuration
 - **Security**: Server-side filtering of sensitive data before exposure
 
+### Template Data Refresh Pattern
+
+#### Purpose
+Prevent stale product IDs and template data when operations modify the underlying data but don't trigger a page reload.
+
+#### Problem Addressed
+When users save WIP data back to main templates, the `window.masterTemplateData` object becomes stale because:
+- The save operation updates server-side JSON files
+- The browser's JavaScript objects retain old product IDs and data
+- Subsequent operations (like mockup updates) use incorrect product IDs
+
+#### Implementation
+The template system implements a refresh mechanism via `refreshTemplateDataFromServer()`:
+
+```javascript
+function refreshTemplateDataFromServer() {
+    const formData = SiP.Core.utilities.createFormData('sip-printify-manager', 'template_action', 'load_templates');
+    
+    return SiP.Core.ajax.handleAjaxAction('sip-printify-manager', 'template_action', formData)
+        .then(function(response) {
+            if (response.success && response.data) {
+                // Update global data
+                window.masterTemplateData = { templates: response.data.templates || [] };
+                
+                // Reload template table
+                reloadTemplateTable(response.data);
+                
+                return response.data;
+            }
+        });
+}
+```
+
+#### Refresh Triggers
+Data refresh is triggered after operations that modify template data:
+- **Save WIP to Main**: After `creation-table-actions.js` saves work in progress
+- **Template Deletion**: After removing a template
+- **Bulk Operations**: After batch updates that modify multiple templates
+
+#### Usage Example
+```javascript
+// In creation-table-actions.js after saving WIP to main
+handleSuccessResponse: function(response) {
+    if (response.action === 'save_wip_to_main') {
+        // Refresh template data to get updated product IDs
+        if (SiP.PrintifyManager.templateActions && 
+            typeof SiP.PrintifyManager.templateActions.refreshTemplateDataFromServer === 'function') {
+            SiP.PrintifyManager.templateActions.refreshTemplateDataFromServer();
+        }
+    }
+}
+```
+
+#### Why This Architecture
+- **Data Integrity**: Ensures JavaScript objects match server-side data
+- **No Page Reload**: Updates data seamlessly without disrupting user workflow
+- **Selective Updates**: Only refreshes when data changes, not on every operation
+- **Fallback Safety**: Operations continue even if refresh function isn't available
+
 ## Cross-Table Systems
 
 ### Dynamic Row Highlighting System

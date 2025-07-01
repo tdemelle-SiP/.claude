@@ -1559,9 +1559,165 @@ Extension calls these WordPress endpoints:
 
 Authentication via header: `X-SiP-API-Key: [32-character-key]`
 
-## 11. Development Guidelines
+## 11. Pause/Resume Error Recovery System
 
-### 11.1 Widget Visibility Requirements
+### 11.1 Overview
+
+The pause/resume system provides interactive error handling for page load failures during automated operations. When the extension encounters login requirements, 404 errors, or page load issues, it pauses operations, focuses the problematic tab, and provides clear instructions for users to resolve the issue before resuming.
+
+### 11.2 Architecture
+
+#### Core Components
+
+**Router State Management** (`widget-router.js`):
+```javascript
+let pausedOperation = null;  // Stores paused operation context
+
+function pauseOperation(operation) {
+    pausedOperation = operation;
+}
+
+function resumeOperation() {
+    const operation = pausedOperation;
+    pausedOperation = null;
+    return operation;
+}
+```
+
+**Error Detection** (`mockup-library-actions.js`):
+```javascript
+function detectPageIssue() {
+    const issues = [];
+    
+    // Check for login page
+    if (window.location.pathname.includes('/login') || 
+        document.querySelector('input[type="password"][name="password"]')) {
+        issues.push('login_required');
+    }
+    
+    // Check for 404/error pages
+    if (document.title.toLowerCase().includes('404') ||
+        document.title.toLowerCase().includes('not found') ||
+        document.querySelector('h1')?.textContent.includes("This site can't be reached")) {
+        issues.push('page_not_found');
+    }
+    
+    // Check for other errors
+    if (document.querySelector('.error-page') || 
+        document.querySelector('[class*="error"]')) {
+        issues.push('page_error');
+    }
+    
+    return issues.length > 0 ? issues : null;
+}
+```
+
+### 11.3 Operation Flow
+
+#### Pause Flow
+1. **Error Detection**: Content script detects page load issue
+2. **Operation Pause**: Handler stores operation context in router
+3. **Tab Focus**: Chrome focuses the problematic tab
+4. **UI Update**: Widget shows pause status with clear instructions
+5. **User Action**: User fixes the issue (logs in, navigates to correct page)
+
+#### Resume Flow
+1. **User Clicks Resume**: Widget sends resume request
+2. **Context Retrieval**: Router retrieves paused operation
+3. **Operation Continues**: Handler resumes from where it left off
+4. **Success Response**: Operation completes and responds to WordPress
+
+### 11.4 Implementation Example
+
+**Mockup Update Handler** (`mockup-update-handler.js`):
+```javascript
+async function waitForPageReady(tabId, expectedUrl, router) {
+    // Wait for page load
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    // Check page state
+    const pageState = await getPageState(tabId);
+    
+    if (pageState.issues) {
+        // Pause operation
+        await router.pauseOperation({
+            type: 'mockup_update',
+            tabId: tabId,
+            expectedUrl: expectedUrl,
+            resumeHandler: 'mockup-update'
+        });
+        
+        // Focus problematic tab
+        await chrome.tabs.update(tabId, { active: true });
+        
+        // Update widget UI
+        await router.sendTabMessage(tabId, {
+            type: 'updateOperationStatus',
+            status: 'paused',
+            message: getIssueMessage(pageState.issues[0])
+        });
+        
+        // Return pause indicator
+        return { paused: true };
+    }
+    
+    return { ready: true };
+}
+```
+
+### 11.5 Widget UI Integration
+
+**Status Display** (`widget-tabs-actions.js`):
+```javascript
+function updateOperationStatus(status, message) {
+    const statusElement = document.getElementById('sip-operation-status');
+    
+    if (status === 'paused') {
+        statusElement.innerHTML = `
+            <div class="sip-pause-status">
+                <div class="sip-pause-icon">⚠️</div>
+                <div class="sip-pause-message">${message}</div>
+                <button id="sip-resume-btn" class="sip-resume-button">
+                    Resume Operation
+                </button>
+            </div>
+        `;
+    }
+}
+```
+
+### 11.6 Error Messages
+
+The system provides user-friendly messages for common issues:
+
+| Issue | Message |
+|-------|---------|
+| `login_required` | "Please log in to Printify, then click Resume" |
+| `page_not_found` | "Page not found. Please navigate to the correct page and click Resume" |
+| `page_error` | "Page failed to load. Please refresh the page and click Resume" |
+| `permission_denied` | "Access denied. Please check your permissions and click Resume" |
+
+### 11.7 Best Practices
+
+1. **Always Include Resume Handler**: Specify which handler should process the resume
+2. **Store Minimal Context**: Only store what's needed to resume the operation
+3. **Clear Instructions**: Provide specific actions users should take
+4. **Tab Focus**: Always focus the problematic tab for user convenience
+5. **Graceful Degradation**: Operations should handle both pause and non-pause scenarios
+
+### 11.8 Adding Pause/Resume to New Operations
+
+To add pause/resume support to a new operation:
+
+1. **Add Error Detection**: Check for page issues during operation
+2. **Store Context**: Use `router.pauseOperation()` with operation details
+3. **Update UI**: Send status update to widget
+4. **Handle Resume**: Add case in `widget-data-handler.js` for your operation type
+5. **Test Scenarios**: Test with login pages, 404s, and network errors
+
+## 12. Development Guidelines
+
+### 12.1 Widget Visibility Requirements
 
 **Widget Initialization**:
 - Widget MUST start with `sip-visible` class for immediate visibility
@@ -1580,7 +1736,7 @@ Authentication via header: `X-SiP-API-Key: [32-character-key]`
 3. Inspect DOM for `#sip-floating-widget` element
 4. Verify position values in inline styles
 
-### 11.2 Adding New Operations
+### 12.2 Adding New Operations
 
 1. Start with the trigger (user action or page event)
 2. Define the message format
@@ -1590,7 +1746,7 @@ Authentication via header: `X-SiP-API-Key: [32-character-key]`
 6. Update storage schema if needed
 7. Update UI components if needed
 
-### 11.3 Debugging
+### 12.3 Debugging
 
 - Enable debug mode: `chrome.storage.local.set({sip_printify_debug: true})`
 - Check router for message flow
