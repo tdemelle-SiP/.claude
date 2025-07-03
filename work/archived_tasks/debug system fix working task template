@@ -1,0 +1,30 @@
+## Task: Fix Debug State Persistence and Console Output for SIP Printify Manager Extension
+**Date Started:** 2025-07-03 10:52
+
+### Task Understanding
+**What:** Fix the debug system to stop repeatedly announcing debug level and ensure NORMAL mode only shows important operations, not verbose initialization logs
+**Why:** The console is cluttered with 39+ repeated debug level announcements and verbose logs that should only appear in VERBOSE mode, making it difficult to see important information
+**Success Criteria:** 
+- Debug level announced only once on page load
+- Level changes announced only when actually changing
+- NORMAL mode shows only important operations
+- No explanations about what debug modes do
+
+### Documentation Review
+- [x] sip-development-testing-debug.md - Defines three-level debug system and proper usage
+- [x] sip-printify-manager-extension-widget.md - Documents extension debug synchronization
+
+### Files to Modify
+- /mnt/c/Users/tdeme/Local Sites/faux-stained-glass-panes/app/public/wp-content/plugins/sip-plugins-core/assets/js/core/debug.js
+- /mnt/c/Users/tdeme/Repositories/sip-printify-manager-extension/core-scripts/widget-debug.js
+- /mnt/c/Users/tdeme/Repositories/sip-printify-manager-extension/action-scripts/widget-tabs-actions.js
+
+### Implementation Plan
+1. Add change detection to WordPress debug.js to only announce real level changes
+2. Add change detection to extension widget-debug.js to prevent duplicate announcements
+3. Simplify debug announcements - just show level, no explanations
+4. Update widget-tabs-actions.js initialization logs from normal() to verbose()
+5. Test all three debug levels to ensure proper behavior
+
+### Questions/Blockers
+None - the issue is clear and the solution is straightforward
