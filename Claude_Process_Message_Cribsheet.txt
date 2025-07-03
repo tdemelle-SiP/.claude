@@ -16,14 +16,12 @@ Before you begin, Read the guidelines at
 
 This document contains a process overview detailing behavioral requirements for the three stages that all tasks will follow: the Plan Stage, the Work Stage and the Review Stage.  Again, these are behavioral requirements; this is not reference material.  Read the document in its entirety before beginning any subsequent steps.   All work done must remain in accordance with these behavioral requirements.
 
-Carefully review the details of the task that the user is asking for help with focusing on the WHY the work is needed in the larger context of the plugin.   
+BEFORE USING ANY FILE READING TOOL:
+You MUST see this exact message in the chat from yourself:
+"✅ PLAN IA CHECKLIST COMPLETED - PROCEEDING TO CODE REVIEW"
 
-If the user uploads an image, look for the most recent image in this directory: /mnt/c/Users/tdeme/Documents/VSCode_Images_Repo/
-If the user did not mention an image upload, skip this step.
-
-Refer to the working-task-template to ensure you have a full practical understanding of the goals and constraints of the task.
-
-/mnt/c/Users/tdeme/Local Sites/faux-stained-glass-panes/app/public/wp-content/plugins/.claude/working-task-planning-template.md.
+If you don't see this message, you CANNOT use Read, Glob, Grep, or Task     
+tools.
 
 When you have completed your preparation, post your working understanding and your plan concisely in the chat.  At that point, collaborate with the user to finalize any questions that you may have had or that the user has.  Do not code until explicitly instructed to do so by the user.
 

@@ -35,44 +35,54 @@ NO CODING until this stage is complete and you receive explicit instruction.
 
 ## PLAN I - REQUIREMENTS ANALYSIS
 
-1. Read task request and any uploaded images in /mnt/c/Users/tdeme/Documents/VSCode_Images_Repo/
-2. Read this entire Coding_Guidelines_Snapshot.txt document
-3. Read index.md for documentation structure overview
-4. Read ALL relevant documentation completely (not skimmed)
-5. Analyze existing code patterns and their documentation relationships
-6. Identify WHY the work is needed in the plugin context
+Ia. Read Documentation Files
+    1. Read task request and if the user has referenced any uploaded images, review them in /mnt/c/Users/tdeme/Documents/VSCode_Images_Repo/
+    2. Read this entire Coding_Guidelines_Snapshot.txt document
+    3. Read index.md for documentation structure overview
+    4. Identify guideline files relevant to the task from their descriptions in the idex.md file
+    5. Read ALL relevant documentation completely (not skimmed)
+    6. Respond in chat with the completed checklist and a summary of documents read
+        □ Read Coding_Guidelines_Snapshot.txt entirely (list key principles found)
+        □ Read index.md and all relevant documentation (list all guideline files found with your briefly summarized assessment of their relevance to the task)
+        □ Read guidelines identified as relevant (summarize the main purpose of each in 1 line)
 
 ### Documentation Review Requirements
-- **Read COMPLETELY** - Do not skim or read only first sections
-- Identify patterns in code and relate to documentation
-- Note undocumented patterns in Questions section
-- Request clarification for unclear/incomplete documentation
+    - **Read COMPLETELY** - Do not skim or read only first sections
+    - Identify patterns in code and relate to documentation
+    - Note undocumented patterns in Questions section
+    - Request clarification for unclear/incomplete documentation
+
+⚠️ STOP: You MUST complete Plan Ia BEFORE any code search or file exploration ⚠️
+
+    CRITICAL: If you search for code files before completing Plan Ia, you will:
+    - Miss documented patterns and waste time rediscovering them
+    - Propose solutions that violate established architecture
+    - Require multiple iterations to fix preventable issues
+
+Ib. Review Code Files
+    1. Analyze existing code patterns and their documentation relationships
+    2. Identify WHY the work is needed in the plugin context
+    3. Respond in chat with the completed checklist and a summary of files read
+        □ Analyzed existing code patterns
+        □ Traced code sequences systematically without logical leaps
+        □ Inspected actual runtime data, DOM elements, and property names where relevant
 
 ### Code Review Requirements
 When analyzing code:
-- Replace speculation with definitive understanding
-- Systematically trace code sequences without logical leaps
-- Understand entire contextual framework before details
+    - Replace speculation with definitive understanding
+    - Systematically trace code sequences without logical leaps
+    - Understand entire contextual framework before details
 
 ## PLAN II - IMPLEMENTATION PLAN
-
-1. Complete working-task-planning-template.md at:
-   /mnt/c/Users/tdeme/Local Sites/faux-stained-glass-panes/app/public/wp-content/plugins/.claude/working-task-planning-template.md
-2. Post plan in chat for user collaboration
-3. Make zero assumptions - list all uncertainties in Questions section
-4. Wait for explicit instruction to begin coding
-
-### Plan Compliance Checklist
-□ Read Coding_Guidelines_Snapshot.txt entirely
-□ Read index.md and all relevant documentation
-□ Completed working-task-planning-template.md
-□ Analyzed existing code patterns
-□ Identified architectural WHY
-□ Made zero assumptions
-□ Traced code sequences systematically without logical leaps
-□ Inspected actual runtime data, DOM elements, and property names where relevant
-□ All proposed changes follow documented patterns OR have explicit justification
-
+    1. Complete working-task-planning-template.md at:
+    /mnt/c/Users/tdeme/Local Sites/faux-stained-glass-panes/app/public/wp-content/plugins/.claude/working-task-planning-template.md
+    2. Post plan in chat for user collaboration
+    3. Make zero assumptions - list all uncertainties in Questions section
+    4. Wait for explicit instruction to begin coding
+        □ Completed working-task-planning-template.md
+        □ Identified architectural WHY
+        □ Made zero assumptions
+        □ All proposed changes follow documented patterns OR have explicit justification
 
 ═══════════════════════════════════════════════════════════════════════════════
                                  WORK STAGE
