@@ -353,6 +353,7 @@ browser-extension/
 │   ├── widget-relay.js         # Content script - Relays WordPress postMessages to router
 │   ├── widget-debug.js         # Debug utilities
 │   ├── widget-error.js         # Error response formatting
+│   ├── action-logger.js        # Structured action logging system
 │   └── widget-styles.css       # Widget styling
 ├── action-scripts/
 │   ├── extension-detector.js            # Extension presence announcer
@@ -438,7 +439,7 @@ browser-extension/
 - Returns responses back to WordPress via postMessage
 
 #### widget-debug.js (Core Debug Module)
-**Why it exists**: Provides centralized debug logging and cross-tab console log capture. During complex operations spanning multiple tabs (WordPress ↔ Printify), logs from both contexts are captured and preserved for debugging.
+**Why it exists**: Provides centralized debug logging that respects WordPress debug levels and works across all extension contexts.
 
 **Architectural Constraint - Dual Context Support**: Chrome Manifest V3 requires the extension to operate in two distinct JavaScript contexts:
 - **Service Worker (background.js)**: No DOM access, uses `self` global object
@@ -446,12 +447,9 @@ browser-extension/
 
 Both contexts require debug logging, so the module detects its environment using `typeof window !== 'undefined'`. This is not defensive coding but necessary environment detection mandated by Chrome's extension architecture.
 
-- Intercepts console.log/error/warn calls containing SiP-related prefixes
-- Formats logs consistently: `[HH:MM:SS] Source: Message`
-- Stores logs in Chrome storage (see Storage Format section for details)
 - Provides debug methods that respect enabled/disabled state
-- Exposes `storeLogEntry()` for other modules to store formatted logs
 - **Automatically synchronizes with WordPress debug level on every received message**
+- Works in conjunction with action-logger.js for structured logging
 
 See also: [SiP Debug System Documentation](./sip-development-testing-debug.md#browser-extension-integration) for complete debug system overview.
 
@@ -461,15 +459,12 @@ See also: [SiP Debug System Documentation](./sip-development-testing-debug.md#br
 - **VERBOSE** (2): All debug messages including detailed traces
 
 **Key Functions**:
-- `formatLogEntry(source, level, message)` - Centralized log formatting
-- `captureLog(level, args)` - Intercepts and formats console output
-- `storeLogEntry(entry)` - Stores formatted log entry
-- `getConsoleLogs(callback)` - Retrieves stored logs for history viewing
-- `clearConsoleLogs()` - Clears all stored logs
 - `setDebugLevel(level, levelName)` - Updates debug level and persists to storage
 - `normal(message)` - Logs at NORMAL level (important operations)
 - `verbose(message)` - Logs at VERBOSE level (detailed traces)
 - `log(message)` - Logs at VERBOSE level (for backward compatibility)
+- `error(message)` - Logs errors at NORMAL level
+- `warn(message)` - Logs warnings at NORMAL level
 
 **Usage Pattern**:
 ```javascript
@@ -482,28 +477,43 @@ debug.error('Operation failed:', error);         // Shows in NORMAL and VERBOSE
 
 **Initialization**: The debug module initializes synchronously with sensible defaults (VERBOSE level) to ensure it's immediately available when other modules load. Chrome storage state is loaded asynchronously after initialization to update settings without blocking module loading.
 
-**Storage Format** (Updated 2025-06-17):
+**Storage Format**:
 ```javascript
 // Chrome storage keys:
-// 'sipConsoleLogs' - Array of formatted log strings
 // 'sip_printify_debug_level' - Current debug level (0, 1, or 2)
 // 'sip_printify_debug_level_name' - Level name ('OFF', 'NORMAL', 'VERBOSE')
-
-// Log storage details:
-// - Key: 'sipConsoleLogs' in Chrome local storage
-// - Format: Array of pre-formatted strings: "[HH:MM:SS] Source: Message"
-// - Size Management: Automatic cleanup when approaching 1MB limit
-// - Persistence: Survives page reloads and browser restarts
-// - Warnings prefixed with "Warning:", errors prefixed with "Error:"
-// - No JSON parsing needed - what you see is what you copy
-
-// Example:
-[
-    "[10:30:45] WordPress: Fetching mockups for Blueprint #6",
-    "[10:30:45] Extension: Request received, navigating to Printify",
-    "[10:30:48] Extension: API response captured - 12 mockups found"
-]
 ```
+
+**Note**: Console log capture has been replaced by the action-logger.js system which provides structured, meaningful logging of extension actions rather than mirroring console output.
+
+#### action-logger.js (Action Logging System)
+**Why it exists**: Provides structured logging of extension actions rather than mirroring console output. This gives meaningful insights into what the extension is actually doing, with timing, status, and context information.
+
+**Key Features**:
+- Structured log entries with categories, timing, and status
+- Respects WordPress debug levels (OFF/NORMAL/VERBOSE)
+- Automatic storage management (1MB limit)
+- Tab context for each action
+- Duration tracking for operations
+
+**Categories**:
+- `WORDPRESS_ACTION` - Requests from WordPress
+- `NAVIGATION` - Tab navigation operations
+- `DATA_FETCH` - Data scraping and fetching
+- `API_CALL` - API interceptions
+- `STATE_CHANGE` - Extension state updates
+- `ERROR` - Operation failures
+- `AUTH` - Authentication events
+
+**Public API**:
+- `log(category, action, details)` - Log an action
+- `normal(category, action, details)` - Log at NORMAL level
+- `verbose(category, action, details)` - Log at VERBOSE level
+- `startTiming(operationId)` - Start timing an operation
+- `endTiming(operationId)` - End timing and return duration
+- `getLogs(callback)` - Retrieve stored logs
+- `clearLogs()` - Clear all logs
+- `setDebugLevel(level, levelName)` - Update debug level
 
 ### 5.3 Action Scripts
 
@@ -765,67 +775,81 @@ Handlers run in the background script context and have access to router methods.
 
 ## 9. Widget UI Features
 
-### 9.1 Cross-Tab Console Log Viewer
+### 9.1 Action History Viewer
 
-**Why it exists**: During complex operations like mockup fetching that span multiple tabs (WordPress ↔ Printify), console logs from both contexts are needed for debugging. Page reloads during blueprint processing cause log loss, making cross-tab history essential for development and troubleshooting.
+**Why it exists**: During complex operations like mockup fetching that span multiple tabs (WordPress ↔ Printify), understanding the sequence of actions performed by the extension is crucial for debugging. The action logger provides structured, meaningful logs of what the extension actually does.
 
 #### Implementation Architecture
 
-**Log Capture System**:
-- **Extension Side** (`widget-debug.js`): Intercepts console.log/error/warn calls matching SiP prefixes
-- **WordPress Side** (`browser-extension-manager.js`): Intercepts SiP.Core.debug calls and sends to extension
+**Action Logging System**:
+- **Extension Side** (`action-logger.js`): Logs structured actions with categories, timing, and status
+- **WordPress Side**: Sends only actionable requests (no console mirroring)
 - **Storage**: Chrome local storage with 1MB limit and automatic cleanup
-- **Correlation**: Timestamps enable chronological interleaving of logs from both tabs
+- **Categories**: WORDPRESS_ACTION, NAVIGATION, DATA_FETCH, API_CALL, STATE_CHANGE, ERROR, AUTH
 
-#### SiP Prefixes Captured
+#### Action Categories
 
-The system captures console logs containing these SiP-related prefixes:
-- `♀️ [SiP Printify Extension]` - Extension debug output
-- `SiP` - WordPress SiP.Core.debug calls
-- `▶`, `🟢`, `🔴`, `🟡`, `⚪`, `✅`, `❌`, `⚠️` - Emoji prefixes used in SiP debug output
+The system logs these types of extension actions:
+- **WORDPRESS_ACTION**: Requests received from WordPress plugin
+- **NAVIGATION**: Tab navigation and pairing operations
+- **DATA_FETCH**: Data scraping and mockup fetching
+- **API_CALL**: Printify API interceptions
+- **STATE_CHANGE**: Extension state updates
+- **ERROR**: Operation failures
+- **AUTH**: Authentication events
 
 #### Usage Flow
 
 1. **History Button**: User clicks History button in extension widget
-2. **Log Retrieval**: `window.widgetDebug.getConsoleLogs()` retrieves stored logs
-3. **Window Creation**: New popup window opens with formatted log viewer
+2. **Log Retrieval**: `SiPWidget.ActionLogger.getLogs()` retrieves action history
+3. **Window Creation**: New popup window opens with formatted action viewer
 4. **Features Available**:
-   - **Copy All Logs**: Copies all logs to clipboard in plain text format
-   - **Clear Logs**: Clears stored logs with confirmation
-   - **Visual Filtering**: Color-coded by log level (error/warn/log) and source (WordPress/Extension)
-   - **Chronological Display**: Logs sorted by timestamp showing cross-tab interaction sequence
+   - **Action Timeline**: Chronological list of extension actions
+   - **Duration Tracking**: Shows how long each operation took
+   - **Status Indicators**: Success/failure for each action
+   - **Tab Information**: Shows which tab performed the action
+   - **Copy Functionality**: Export action history for analysis
 
 #### Technical Details
 
-**WordPress Console Interception** (browser-extension-manager.js):
-- Intercepts SiP.Core.debug calls and sends to extension
-- Converts arguments to strings (JSON.stringify for objects)
-- Formats with timestamp [HH:MM:SS] and WordPress prefix
-- Adds level prefix for warnings and errors
-- Sends pre-formatted string via window.postMessage with type 'SIP_CONSOLE_LOG'
-**Extension Console Interception** (widget-debug.js):
-- Captures extension console logs with SiP prefixes
-- Determines source (WordPress vs Extension) based on context
-- Formats messages (JSON.stringify for objects)
-- Uses centralized formatting function
-- Stores formatted log entries
+**Action Structure**:
+```javascript
+{
+    timestamp: Date.now(),
+    category: 'WORDPRESS_ACTION',
+    action: 'fetchMockups', 
+    tabId: 123,
+    tabName: 'SiP Printify Manager',
+    duration: 1234, // milliseconds
+    status: 'success', // or 'failure'
+    details: { /* action-specific data */ }
+}
+```
+
+**Debug Level Integration**:
+- **OFF** (0): No action logging
+- **NORMAL** (1): Important operations (WordPress actions, navigation, errors)
+- **VERBOSE** (2): All actions including detailed traces
 
 **Storage Management**:
-See [Storage Format](#storage-format) section for complete details about log storage implementation.
+- Key: 'sipActionLogs' in Chrome local storage
+- Automatic cleanup when approaching 1MB limit
+- Persists through page reloads
+- Respects WordPress debug level settings
 
 #### User Experience
 
-**Log Viewer Window**:
-- **Dark Theme**: Console-like appearance for developer familiarity
-- **Grid Layout**: Timestamp | Source | Level | Message columns
-- **Color Coding**: Visual distinction between log levels and sources
-- **Copy Functionality**: One-click copy of all logs for sharing/analysis
-- **Statistics**: Shows total log count and breakdown by source
+**Action Viewer Window**:
+- **Timeline View**: Actions displayed chronologically
+- **Action Details**: Category, description, duration, status
+- **Tab Context**: Shows which tab performed each action
+- **Filtering**: View by category or status
+- **Performance Metrics**: Total time for operations
 
 **Integration Points**:
 - **Widget Button**: Seamlessly integrated into existing widget UI
-- **Error Handling**: Graceful fallback if log capture unavailable
-- **Performance**: Minimal impact on normal operation, only captures SiP-related logs
+- **Real-time Updates**: Actions appear as they happen
+- **Export Options**: Copy action history for debugging
 
 ## 10. Storage Management
 
@@ -929,7 +953,6 @@ The extension supports the following commands from WordPress:
 | `SIP_FETCH_MOCKUPS` | Fetch mockup data from Printify | Printify handler |
 | `SIP_UPDATE_PRODUCT_MOCKUPS` | Update product mockups via internal API | Printify handler |
 | `SIP_PUBLISH_PRODUCTS` | Publish products via internal API | Printify handler |
-| `SIP_CONSOLE_LOG` | Store console log from WordPress | WordPress handler |
 
 **Note**: Any other command will receive an error response with code `UNKNOWN_ACTION`.
 
