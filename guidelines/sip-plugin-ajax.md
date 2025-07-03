@@ -1,105 +1,85 @@
 # SiP Plugin AJAX Guide & Checklist
 
-This guide shows how AJAX works in the SiP Plugin Suite and serves as both a quick reference and implementation checklist.
+## Overview
 
-## Quick AJAX Flow (What Happens)
+Centralized AJAX handling system for the SiP Plugin Suite with three-level routing architecture.
 
-1. **JavaScript makes request** → 2. **Core routes it** → 3. **Plugin shell catches it** → 4. **Handler processes it** → 5. **PHP routes response** → 6. **Success handler receives it**
+## Architecture Diagram
+
+```mermaid
+sequenceDiagram
+    participant U as User Action
+    participant JS as JavaScript Module
+    participant Core as SiP.Core.ajax
+    participant WP as admin-ajax.php
+    participant Shell as Plugin Shell<br/>(Ajax Router)
+    participant Handler as Action Handler<br/>(Specific Function)
+    participant DB as Database/API
+    
+    U->>JS: Click/Submit
+    JS->>JS: createFormData()<br/>plugin_id, action_type, action
+    JS->>Core: handleAjaxAction()
+    Core->>Core: Show spinner
+    Core->>Core: Add nonce
+    Core->>WP: POST Request<br/>action=sip_handle_ajax_request
+    
+    Note over WP,Shell: Level 1: WordPress/Core Routing
+    WP->>WP: Verify nonce & permissions
+    WP->>Shell: do_action('sip_plugin_handle_action',<br/>$plugin_id, $action_type)
+    
+    Note over Shell: Level 2: Plugin Shell Routing
+    Shell->>Shell: Check plugin_id match
+    Shell->>Shell: Route by $action_type<br/>(e.g., 'product_action')
+    Shell->>Handler: Call handler function<br/>(e.g., sip_handle_product_action)
+    
+    Note over Handler: Level 3: Action Handler Routing
+    Handler->>Handler: Get specific action from<br/>$_POST[$action_type]
+    Handler->>Handler: Route by specific action<br/>(e.g., 'create_product')
+    Handler->>DB: Perform operation
+    DB-->>Handler: Result
+    
+    Handler->>Handler: SiP_AJAX_Response::success()<br/>Sets action_type for routing
+    Handler-->>WP: JSON Response
+    WP-->>Core: Response with action_type
+    Core->>Core: Hide spinner
+    Core->>Core: Route by action_type
+    Core-->>JS: Success/Error callback
+    JS->>U: Update UI
+```
+
+## Why Three-Level Architecture
+
+The AJAX system uses three distinct routing levels because:
+
+1. **Level 1 (WordPress/Core)**: Provides centralized security, nonce verification, and plugin discovery. All AJAX requests enter through a single, secure endpoint.
+
+2. **Level 2 (Plugin Shell)**: Enables modular organization within plugins. Each major feature (products, templates, images) gets its own action type and handler file, preventing single massive switch statements.
+
+3. **Level 3 (Action Handler)**: Allows fine-grained operation routing. Each handler manages related operations (create, update, delete) in one cohesive unit.
+
+This architecture enables:
+- **Cross-module operations**: One module can call another's PHP functions while routing responses back to the originator
+- **Consistent security**: All requests pass through the same validation layers
+- **Maintainable code**: Related operations stay together in focused handler files
+- **Flexible response routing**: PHP controls which JavaScript handler receives the response via `action_type`
+
+## Quick Reference
 
 ### Standard Flow
 JavaScript → PHP Handler → JavaScript (same action_type)
 
-### Cross-Table Flow  
+### Cross-Table Flow
 JavaScript (table A) → PHP Handler (table B functions) → JavaScript (table A success handler)
 
-### AJAX Data Flow Visualization (ASCII)
-
+### Example: Template Delete
 ```
-┌──────────────────────────────────────────────────────────────────┐
-│                    SiP AJAX Request Flow                          │
-└──────────────────────────────────────────────────────────────────┘
-
-JavaScript Side                           PHP Side
-─────────────────                        ─────────────
-                                        
-1. Create Request                       
-┌─────────────────┐                     
-│ createFormData  │                     
-│ • plugin_id     │                     
-│ • action_type   │                     
-│ • action        │                     
-└────────┬────────┘                     
-         │                              
-2. Send Request                         
-┌────────▼────────┐                     
-│ handleAjaxAction│                     
-│ • Show spinner  │                     
-│ • Add nonce     │                     
-│ • POST to admin │────────────────────►
-└─────────────────┘                     
-                                        3. Route Request
-                                        ┌─────────────────┐
-                                        │ wp_ajax_sip_*   │
-                                        │ • Verify nonce  │
-                                        │ • Check perms   │
-                                        └────────┬────────┘
-                                                 │
-                                        4. Process Action
-                                        ┌────────▼────────┐
-                                        │ Plugin Handler  │
-                                        │ • Validate data │
-                                        │ • Execute logic │
-                                        │ • Access DB     │
-                                        └────────┬────────┘
-                                                 │
-5. Handle Response                      ┌────────▼────────┐
-┌─────────────────┐                     │ wp_send_json_*  │
-│ Success Handler │◄────────────────────┤ • success/error │
-│ • Hide spinner  │                     │ • data payload  │
-│ • Update UI     │                     └─────────────────┘
-│ • Show toast    │                     
-└─────────────────┘                     
+User clicks "Delete Template" → 
+JS: createFormData('printify-manager', 'template', 'delete') →
+Level 1: WordPress routes to sip_plugin_handle_action →
+Level 2: Plugin shell routes to sip_handle_template_action() →
+Level 3: Handler routes to 'delete' case in switch statement →
+Execute delete_template() → Return success with action_type='template'
 ```
-
-### AJAX Data Flow Visualization (Mermaid)
-
-```mermaid
-sequenceDiagram
-    participant JS as JavaScript Module
-    participant Core as SiP.Core.ajax
-    participant WP as WordPress Admin
-    participant Handler as Plugin Handler
-    participant DB as Database
-    
-    JS->>JS: createFormData(plugin, type, action)
-    JS->>Core: handleAjaxAction(formData)
-    Core->>Core: Show spinner
-    Core->>Core: Add nonce
-    Core->>WP: POST /wp-admin/admin-ajax.php
-    
-    WP->>WP: Verify nonce
-    WP->>WP: Check permissions
-    WP->>Handler: Route to plugin handler
-    
-    Handler->>Handler: Validate input
-    Handler->>DB: Query/Update data
-    DB-->>Handler: Return results
-    
-    Handler->>WP: wp_send_json_success/error
-    WP-->>Core: JSON response
-    Core->>Core: Hide spinner
-    Core->>JS: Promise resolved/rejected
-    
-    alt Success
-        JS->>JS: Update UI
-        JS->>JS: Show success toast
-    else Error
-        JS->>JS: Show error message
-        JS->>JS: Log error details
-    end
-```
-
-For detailed dashboard integration examples, see the [Dashboards Guide](./sip-plugin-dashboards.md#step-4-implement-action-forms).
 
 ## Implementation Checklist & Code Examples
 
@@ -163,10 +143,9 @@ SiP.Core.ajax.handleAjaxAction('sip-printify-manager', 'product_action', formDat
 ### ✅ PHP Ajax Shell (File: `includes/{plugin}-ajax-shell.php`)
 
 ```php
-// 1. Register with the standardized hook (2 parameters only!)
+// Register with the standardized hook (2 parameters only!)
 add_action('sip_plugin_handle_action', 'sip_printify_route_action', 10, 2);
 
-// 2. Route to appropriate handlers
 function sip_printify_route_action($plugin_id, $action_type) {
     // Only handle our plugin
     if ($plugin_id !== 'sip-printify-manager') return;
@@ -175,6 +154,10 @@ function sip_printify_route_action($plugin_id, $action_type) {
     switch ($action_type) {
         case 'product_action':
             sip_handle_product_action();
+            break;
+            
+        case 'template_action':
+            sip_handle_template_action();
             break;
             
         default:
@@ -195,41 +178,23 @@ function sip_printify_route_action($plugin_id, $action_type) {
 - [ ] Routes by action type
 - [ ] Has default error case
 
-### ✅ PHP Action Handler (File: `includes/{feature}-functions.php`)
+### ✅ PHP Action Handler - Basic Pattern
 
 ```php
 function sip_handle_product_action() {
-    // 1. Get the specific action
+    // Get the specific action from $_POST
     $specific_action = isset($_POST['product_action']) 
         ? sanitize_text_field($_POST['product_action']) 
         : '';
     
-    // 2. Route to specific operation
+    // Route to specific operation
     switch ($specific_action) {
         case 'create_product':
-            // Validate
-            if (empty($_POST['product_name'])) {
-                SiP_AJAX_Response::error(
-                    'sip-printify-manager',
-                    'product_action',
-                    'create_product',
-                    'Product name is required'
-                );
-                return;
-            }
+            handle_create_product();
+            break;
             
-            // Process
-            $product_name = sanitize_text_field($_POST['product_name']);
-            $product_id = create_product($product_name);
-            
-            // Respond
-            SiP_AJAX_Response::success(
-                'sip-printify-manager',
-                'product_action',
-                'create_product',
-                ['product_id' => $product_id],
-                'Product created successfully'
-            );
+        case 'delete_product':
+            handle_delete_product();
             break;
             
         default:
@@ -240,6 +205,38 @@ function sip_handle_product_action() {
                 'Unknown action: ' . $specific_action
             );
     }
+}
+```
+
+### ✅ PHP Action Handler - Specific Operation
+
+```php
+function handle_create_product() {
+    // 1. Validate inputs
+    if (empty($_POST['product_name'])) {
+        SiP_AJAX_Response::error(
+            'sip-printify-manager',
+            'product_action',
+            'create_product',
+            'Product name is required'
+        );
+        return;
+    }
+    
+    // 2. Sanitize data
+    $product_name = sanitize_text_field($_POST['product_name']);
+    
+    // 3. Process operation
+    $product_id = create_product($product_name);
+    
+    // 4. Return success response
+    SiP_AJAX_Response::success(
+        'sip-printify-manager',
+        'product_action',
+        'create_product',
+        ['product_id' => $product_id],
+        'Product created successfully'
+    );
 }
 ```
 
@@ -393,6 +390,144 @@ plugins/
     ├── includes/
     │   ├── printify-ajax-shell.php # Plugin router
     │   └── product-functions.php   # Action handlers
+```
+
+## Error Handling Patterns
+
+### JavaScript Error Handling
+
+```javascript
+// Basic error handling with user feedback
+SiP.Core.ajax.handleAjaxAction('sip-printify-manager', 'product_action', formData)
+    .then(response => {
+        // Success - response.success is already true
+        updateUI(response.data);
+    })
+    .catch(error => {
+        // Network or server error
+        console.error('AJAX Error:', error);
+        SiP.Core.utilities.toast.show('Connection error. Please try again.', 5000, true);
+    });
+```
+
+### Handling Specific Error Types
+
+```javascript
+function handleSuccessResponse(response) {
+    // Check for application-level errors
+    if (!response.success) {
+        switch (response.action) {
+            case 'create_product':
+                if (response.message.includes('duplicate')) {
+                    showDuplicateProductDialog(response);
+                } else {
+                    SiP.Core.utilities.toast.show(response.message, 5000, true);
+                }
+                break;
+                
+            case 'delete_product':
+                if (response.message.includes('permission')) {
+                    showPermissionError();
+                } else {
+                    SiP.Core.utilities.toast.show('Delete failed: ' + response.message, 5000, true);
+                }
+                break;
+                
+            default:
+                // Generic error display
+                SiP.Core.utilities.toast.show('Error: ' + response.message, 5000, true);
+        }
+        return;
+    }
+    
+    // Handle successful responses...
+}
+```
+
+### PHP Error Response Patterns
+
+```php
+// Validation error with specific field
+if (empty($_POST['product_name'])) {
+    SiP_AJAX_Response::error(
+        'sip-printify-manager',
+        'product_action', 
+        'create_product',
+        'Product name is required',
+        ['field' => 'product_name']  // Additional error context
+    );
+    return;
+}
+
+// Permission error
+if (!current_user_can('edit_products')) {
+    SiP_AJAX_Response::error(
+        'sip-printify-manager',
+        'product_action',
+        'delete_product', 
+        'You do not have permission to delete products'
+    );
+    return;
+}
+
+// Database error with fallback
+try {
+    $result = $wpdb->insert($table_name, $data);
+    if ($result === false) {
+        throw new Exception($wpdb->last_error);
+    }
+} catch (Exception $e) {
+    SiP_AJAX_Response::error(
+        'sip-printify-manager',
+        'product_action',
+        'create_product',
+        'Database error: Could not save product',
+        ['technical_error' => $e->getMessage()]
+    );
+    return;
+}
+```
+
+### Batch Operation Error Handling
+
+```javascript
+async function processBatch(items) {
+    const errors = [];
+    const successes = [];
+    
+    for (const item of items) {
+        try {
+            const formData = SiP.Core.utilities.createFormData(
+                'sip-printify-manager', 
+                'product_action', 
+                'process_item'
+            );
+            formData.append('item_id', item.id);
+            
+            const response = await SiP.Core.ajax.handleAjaxAction(
+                'sip-printify-manager',
+                'product_action', 
+                formData,
+                { showSpinner: false }
+            );
+            
+            if (response.success) {
+                successes.push(item);
+            } else {
+                errors.push({ item, error: response.message });
+            }
+        } catch (error) {
+            errors.push({ item, error: 'Network error' });
+        }
+    }
+    
+    // Report results
+    if (errors.length > 0) {
+        showBatchErrorReport(errors, successes);
+    } else {
+        SiP.Core.utilities.toast.show(`All ${successes.length} items processed successfully`, 3000);
+    }
+}
 ```
 
 ## Debugging Tips

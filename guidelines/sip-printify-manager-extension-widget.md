@@ -180,22 +180,9 @@ The Chrome Web Store integration is executed as step 15 in the `release-extensio
 
 ### 3.1 Version Communication Protocol
 
-**Extension Ready Announcement**: Extension announces version on load:
-```javascript
-window.postMessage({
-    type: 'SIP_EXTENSION_READY',
-    source: 'sip-printify-extension',
-    version: chrome.runtime.getManifest().version,
-    capabilities: { ... }
-}, window.location.origin);
-```
+**Extension Ready Announcement**: Extension posts a message with type 'SIP_EXTENSION_READY', source identifier, version from manifest, and capabilities object to window.location.origin.
 
-**WordPress Version Capture**: Browser extension manager captures version but does NOT persist it:
-```javascript
-extensionState.version = data.version;
-// No state persistence - fresh detection on each page load
-// Extension must announce itself to be considered installed
-```
+**WordPress Version Capture**: Browser extension manager captures version in memory only (`extensionState.version = data.version`) with no persistence - fresh detection required on each page load.
 
 **Update Checking**: WordPress compares local version against stuffisparts server data for update notifications.
 
@@ -209,7 +196,7 @@ extensionState.version = data.version;
 
 **Handler Context Pattern**: Instead of message passing between router and handlers, handlers receive a router context object. This eliminates an unnecessary message hop and provides direct access to Chrome APIs.
 
-### 2.2 The Central Router Pattern
+### 3.2 The Central Router Pattern
 
 **ALL messages in the extension flow through widget-router.js - NO EXCEPTIONS**
 
@@ -219,7 +206,7 @@ The router is the background script and the single message hub that:
 - Executes Chrome API commands directly (no separate widget-main.js)
 - Returns responses to the originator
 
-### 2.3 Message Flow Diagram
+### 3.3 Message Flow Diagram
 ```mermaid
 graph TB
     subgraph "Content Scripts"
@@ -263,50 +250,15 @@ graph TB
 
 The State Management flow is shown in the Mermaid diagram above, where handlers update Chrome Storage, which triggers onChange events that update the widget UI in widget-tabs-actions.js.
 
-### 2.4 Message Formats
+### 3.4 Message Formats
 
-**IMPORTANT**: The extension uses TWO distinct message formats for different communication contexts:
+**Two distinct formats for different contexts**:
 
-#### External Messages (WordPress ↔ Extension via postMessage)
+**External (WordPress ↔ Extension)**: `{ type: 'SIP_*', source: 'sip-printify-manager', ... }`
+- SIP_ prefix identifies our messages among all postMessages
 
-Used for communication between web pages and the extension. These messages cross the browser security boundary.
-
-**Format**:
-```javascript
-{
-    type: 'SIP_COMMAND_NAME',     // Always prefixed with 'SIP_' for identification
-    source: 'sip-printify-manager', // Identifies sender
-    requestId: 'unique-id',        // Optional: for response matching
-    // Command-specific data
-}
-```
-
-**Examples**:
-- WordPress → Extension: `type: 'SIP_CHECK_STATUS'`, `type: 'SIP_SHOW_WIDGET'`
-- Extension → WordPress: `type: 'SIP_EXTENSION_READY'`, `type: 'SIP_EXTENSION_RESPONSE'`
-
-**Why this format**: The 'SIP_' prefix identifies our messages among all postMessages on the page.
-
-#### Internal Messages (Within Extension via chrome.runtime)
-
-Used for communication between extension components (content scripts ↔ background script).
-
-**Format**:
-```javascript
-{
-    type: 'widget' | 'printify' | 'wordpress',  // Determines which handler
-    action: 'specificAction',                   // The operation to perform
-    data: {                                     // Operation-specific data
-        // ...
-    }
-}
-```
-
-**Examples**:
-- `{ type: 'widget', action: 'navigate', data: { url: '...' } }`
-- `{ type: 'printify', action: 'updateStatus', data: { productId: '...' } }`
-
-**Why this format**: The `type` field routes to specific handlers, `action` specifies the operation.
+**Internal (Extension components)**: `{ type: 'widget|printify|wordpress', action: '...', data: {...} }`
+- Type routes to handler, action specifies operation
 
 #### Message Format Conversion
 
@@ -356,42 +308,9 @@ This ensures the extension always uses the correct debug level, updating immedia
 
 **Why Request IDs**: When multiple async operations run concurrently (e.g., fetching mockups for 4 blueprints), responses must be matched to their originating requests to prevent race conditions.
 
-**Implementation Pattern**:
-```javascript
-// WordPress sends request with unique ID
-const requestId = 'operation_' + itemId + '_' + Date.now();
-window.postMessage({
-    type: 'SIP_COMMAND_NAME',
-    source: 'sip-printify-manager',
-    requestId: requestId,  // Required for async operations
-    data: { /* request data */ },
-    debugLevel: 0,  // Always included: 0=OFF, 1=NORMAL, 2=VERBOSE
-    debugLevelName: 'OFF'  // Always included: human-readable level
-}, '*');
+**Implementation Pattern**: WordPress sends requests with unique IDs (`operation_[itemId]_[timestamp]`) and sets up response listeners before sending. The message includes type, source, requestId, data, debugLevel (0-2), and debugLevelName. Response handlers match by requestId to correlate async responses.
 
-// Set up response listener BEFORE sending request
-const responseHandler = function(event) {
-    if (event.data && 
-        event.data.type === 'SIP_EXTENSION_RESPONSE' &&
-        event.data.requestId === requestId) {  // Match by requestId
-        
-        window.removeEventListener('message', responseHandler);
-        const response = event.data.response;
-        // Process response...
-    }
-};
-window.addEventListener('message', responseHandler);
-```
-
-**CRITICAL**: The relay preserves the requestId in wrapped responses:
-```javascript
-// Extension → WordPress (via relay)
-{
-    type: 'SIP_EXTENSION_RESPONSE',
-    requestId: 'operation_6_1642351234567',  // Preserved from request
-    response: { /* actual response data */ }
-}
-```
+**CRITICAL**: The relay preserves the requestId in wrapped responses. Extension → WordPress responses include `type: 'SIP_EXTENSION_RESPONSE'`, the preserved `requestId` from the original request, and the actual response data.
 
 #### Handler Chrome API Requests
 Handlers can request Chrome API execution by calling router methods directly:
@@ -421,9 +340,9 @@ const tabs = await router.queryTabs({ url: '*://printify.com/*' });
 
 **Note**: Error response formatting is centralized in `widget-error.js`. Content scripts use `SiPWidget.Error` methods. The background script (router and handlers) returns plain error objects with `success: false`.
 
-## 3. Component Responsibilities
+## 5. Component Responsibilities
 
-### 3.1 File Structure
+### 5.1 File Structure
 ```
 browser-extension/
 ├── manifest.json               # Extension configuration
@@ -498,7 +417,7 @@ browser-extension/
 - `printify-api-interceptor-actions.js` → `printify-api-interceptor-handler.js`
 - This makes it clear which handler processes which action script's events
 
-### 3.2 Core Scripts
+### 5.2 Core Scripts
 
 #### widget-router.js (Background Script)
 **Why it exists**: Chrome extensions require a background script to access privileged APIs (tabs, cross-origin requests). Making the router the background script ensures ALL messages flow through one central point as documented.
@@ -529,7 +448,7 @@ Both contexts require debug logging, so the module detects its environment using
 
 - Intercepts console.log/error/warn calls containing SiP-related prefixes
 - Formats logs consistently: `[HH:MM:SS] Source: Message`
-- Stores logs as pre-formatted strings in Chrome storage (max 1MB)
+- Stores logs in Chrome storage (see Storage Format section for details)
 - Provides debug methods that respect enabled/disabled state
 - Exposes `storeLogEntry()` for other modules to store formatted logs
 - **Automatically synchronizes with WordPress debug level on every received message**
@@ -544,7 +463,7 @@ See also: [SiP Debug System Documentation](./sip-development-testing-debug.md#br
 **Key Functions**:
 - `formatLogEntry(source, level, message)` - Centralized log formatting
 - `captureLog(level, args)` - Intercepts and formats console output
-- `storeLogEntry(entry)` - Stores formatted string with size management
+- `storeLogEntry(entry)` - Stores formatted log entry
 - `getConsoleLogs(callback)` - Retrieves stored logs for history viewing
 - `clearConsoleLogs()` - Clears all stored logs
 - `setDebugLevel(level, levelName)` - Updates debug level and persists to storage
@@ -569,6 +488,16 @@ debug.error('Operation failed:', error);         // Shows in NORMAL and VERBOSE
 // 'sipConsoleLogs' - Array of formatted log strings
 // 'sip_printify_debug_level' - Current debug level (0, 1, or 2)
 // 'sip_printify_debug_level_name' - Level name ('OFF', 'NORMAL', 'VERBOSE')
+
+// Log storage details:
+// - Key: 'sipConsoleLogs' in Chrome local storage
+// - Format: Array of pre-formatted strings: "[HH:MM:SS] Source: Message"
+// - Size Management: Automatic cleanup when approaching 1MB limit
+// - Persistence: Survives page reloads and browser restarts
+// - Warnings prefixed with "Warning:", errors prefixed with "Error:"
+// - No JSON parsing needed - what you see is what you copy
+
+// Example:
 [
     "[10:30:45] WordPress: Fetching mockups for Blueprint #6",
     "[10:30:45] Extension: Request received, navigating to Printify",
@@ -576,7 +505,7 @@ debug.error('Operation failed:', error);         // Shows in NORMAL and VERBOSE
 ]
 ```
 
-### 3.3 Action Scripts
+### 5.3 Action Scripts
 
 #### extension-detector.js
 **Why it exists**: The SiP ecosystem needs to know which extensions are installed to provide appropriate UI and functionality. This script announces the extension's presence on relevant pages.
@@ -588,25 +517,7 @@ debug.error('Operation failed:', error);         // Shows in NORMAL and VERBOSE
 - Sends extension information: slug, name, version, isInstalled
 - Lightweight script with minimal overhead
 
-**Implementation**:
-```javascript
-// Conditional announcement based on current page
-if (window.location.href.includes('page=sip-plugins')) {
-    // Dashboard: Wait for request
-    window.addEventListener('message', function(event) {
-        if (event.data?.type === 'SIP_REQUEST_EXTENSION_STATUS') {
-            announceExtension();
-        }
-    });
-} else if (window.location.href.includes('page=sip-printify-manager')) {
-    // Plugin pages: Announce immediately
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', announceExtension);
-    } else {
-        announceExtension();
-    }
-}
-```
+**Implementation**: On the SiP Plugins Core dashboard, waits for `SIP_REQUEST_EXTENSION_STATUS` message before announcing. On SiP Printify Manager pages, announces immediately after DOM is ready.
 
 #### widget-tabs-actions.js
 **Why it exists**: The widget UI needs to be injected into specific pages (SiP Printify Manager and Printify) to provide consistent user access. Separating UI from page-specific logic keeps code organized.
@@ -634,7 +545,7 @@ if (window.location.href.includes('page=sip-plugins')) {
 - Captures API patterns and responses
 - Sends captured data to router for processing
 
-### 3.4 Handler Scripts
+### 5.4 Handler Scripts
 
 #### widget-data-handler.js
 **Why it exists**: Widget operations (navigation, config, UI state) are distinct from data operations and need their own business logic layer in the background context.
@@ -684,9 +595,9 @@ Processes captured API data:
 - Stores discovered endpoints
 - Manages API knowledge base
 
-## 4. Chrome Extension Constraints
+## 6. Chrome Extension Constraints
 
-### 4.1 API Access Limitations
+### 6.1 API Access Limitations
 
 **Background Script (widget-router.js and handlers loaded by background.js)**
 - Full Chrome API access
@@ -703,7 +614,7 @@ Processes captured API data:
 - CANNOT use: chrome.tabs, chrome.windows, cross-origin fetch
 - Must request privileged operations from the background script
 
-### 4.2 Message Passing Architecture
+### 6.2 Message Passing Architecture
 
 **Key Constraint**: Content scripts cannot intercept chrome.runtime.sendMessage calls from other content scripts. These messages go directly to the background script.
 
@@ -715,7 +626,7 @@ This is why the router MUST be the background script - it's the only way to rece
 - The router uses chrome.tabs.sendMessage to communicate with specific content scripts
 - WordPress postMessage messages are relayed to the router by widget-relay.js
 
-### 4.3 Tab Pairing System
+### 6.3 Tab Pairing System
 
 **Why it exists**: The widget's "Go to..." navigation feature requires maintaining relationships between WordPress admin tabs and Printify tabs to ensure navigation reuses existing tabs instead of creating new ones.
 
@@ -761,106 +672,28 @@ const tabPairs = new Map(); // Map<tabId, pairedTabId>
 
 #### Implementation Details
 
-**Storage Functions**:
-```javascript
-// Load pairs from storage on startup
-async function loadTabPairs() {
-    const result = await chrome.storage.local.get(['sipTabPairs']);
-    const pairs = result.sipTabPairs || {};
-    tabPairs.clear();
-    for (const [tabId, pairedId] of Object.entries(pairs)) {
-        tabPairs.set(parseInt(tabId), parseInt(pairedId));
-    }
-}
+**Storage Functions**: The `loadTabPairs()` function loads pairs from chrome.storage.local on startup, parsing tab IDs and populating the runtime Map. The `createTabPair()` function creates bidirectional mappings in the Map and persists to storage.
 
-// Create bidirectional pairing
-async function createTabPair(tab1Id, tab2Id) {
-    tabPairs.set(tab1Id, tab2Id);
-    tabPairs.set(tab2Id, tab1Id);
-    await saveTabPairs();
-}
-```
-
-**Navigation with Pairing**:
-```javascript
-async function navigateTab(url, tabType, currentTabId) {
-    // Check for existing pair
-    const pairedTabId = currentTabId ? getPairedTab(currentTabId) : null;
-    
-    if (pairedTabId) {
-        // Verify paired tab still exists
-        try {
-            const pairedTab = await chrome.tabs.get(pairedTabId);
-            
-            // Check if already on target URL to avoid unnecessary reload
-            const isSameUrl = pairedTab.url === url || 
-                            (pairedTab.url && url && 
-                             new URL(pairedTab.url).href === new URL(url).href);
-            
-            if (isSameUrl) {
-                // Just switch focus without reloading
-                await chrome.tabs.update(pairedTabId, { active: true });
-                return { success: true, data: { tabId: pairedTabId, action: 'switched-focus' } };
-            } else {
-                // Navigate to new URL
-                await chrome.tabs.update(pairedTabId, { url: url, active: true });
-                return { success: true, data: { tabId: pairedTabId, action: 'reused-pair' } };
-            }
-        } catch (e) {
-            // Paired tab closed, clean up
-            await removeTabPair(currentTabId);
-        }
-    }
-    
-    // Create new tab and pair it
-    const newTab = await chrome.tabs.create({ url: url, active: true });
-    if (currentTabId) {
-        await createTabPair(currentTabId, newTab.id);
-    }
-    return { success: true, data: { tabId: newTab.id, action: 'created-pair' } };
-}
-```
+**Navigation with Pairing**: The `navigateTab()` function checks for existing paired tabs, verifies they still exist, and avoids unnecessary reloads by comparing URLs. If the paired tab is on the target URL, it just switches focus. Otherwise, it navigates the paired tab or creates a new tab with pairing. Returns success with action taken ('switched-focus', 'reused-pair', or 'created-pair').
 
 #### Message Flow for Navigation
 
-1. **Content Script** sends navigation message:
-   ```javascript
-   // Navigation message with proper format
-   chrome.runtime.sendMessage({
-       type: 'widget',
-       action: 'navigate',
-       data: {
-           url: targetUrl
-       }
-   });
-   // Note: currentTabId is automatically added by the background script from sender.tab.id
-   ```
+1. **Content Script** sends navigation message with type 'widget', action 'navigate', and target URL. The currentTabId is automatically added by the background script from sender.tab.id.
 
-2. **Handler** passes tab context to router:
-   ```javascript
-   async function handleNavigate(data, router, sender) {
-       const currentTabId = sender?.tab?.id || data.currentTabId;
-       return await router.navigateTab(data.url, data.destination, currentTabId);
-   }
-   ```
+2. **Handler** extracts the current tab ID from the sender context and passes it to router.navigateTab() along with the URL and destination.
 
 #### Lifecycle Management
 
-**Tab Close Cleanup**:
-```javascript
-chrome.tabs.onRemoved.addListener(async (tabId) => {
-    await removeTabPair(tabId);  // Automatically cleans both sides of the pair
-});
-```
+**Tab Close Cleanup**: Chrome's `tabs.onRemoved` listener automatically calls `removeTabPair()` which cleans both sides of the bidirectional pairing.
 
 **Storage Persistence**:
 - Pairs are loaded on extension startup
 - Pairs are saved after each create/remove operation
 - Storage key uses SiP prefix convention: `sipTabPairs`
 
-## 5. Common Operations
+## 7. Common Operations
 
-### 5.1 Status Update Flow
+### 7.1 Status Update Flow
 
 1. WordPress plugin: `window.postMessage({ type: 'SIP_CHECK_STATUS', source: 'sip-printify-manager' })`
 2. widget-relay.js receives postMessage and relays to router via chrome.runtime.sendMessage
@@ -870,7 +703,7 @@ chrome.tabs.onRemoved.addListener(async (tabId) => {
 6. widget-tabs-actions.js updates UI from storage change
 7. Response sent back through relay to WordPress
 
-### 5.2 Adding New Features
+### 7.2 Adding New Features
 
 To add a new feature (e.g., inventory monitoring):
 
@@ -884,140 +717,39 @@ To add a new feature (e.g., inventory monitoring):
 
 **CRITICAL**: When adding routing in wordpress-handler.js, you MUST implement the corresponding action in the target handler.
 
-## 6. Implementation Standards
+## 8. Implementation Standards
 
-### 6.1 Module Pattern
+### 8.1 Module Pattern
 
 All scripts use IIFE pattern with SiPWidget namespace:
 
-**Content Scripts**:
-```javascript
-var SiPWidget = window.SiPWidget || {};
-SiPWidget.ModuleName = (function() {
-    'use strict';
-    
-    const debug = window.widgetDebug || { log: () => {}, error: () => {}, warn: () => {} };
-    
-    // Private members
-    
-    // Public API
-    return {
-        init: function() {},
-        publicMethod: function() {}
-    };
-})();
-```
+**Content Scripts**: Use `window.SiPWidget` namespace with `window.widgetDebug` for logging. Returns public API object with init() and other public methods.
 
-**Background Scripts** (service workers):
-```javascript
-var SiPWidget = self.SiPWidget || {};  // Note: 'self' not 'window'
-SiPWidget.ModuleName = (function() {
-    'use strict';
-    
-    // In service workers, use console directly
-    const debug = {
-        log: (...args) => console.log('[Module Name]', ...args),
-        error: (...args) => console.error('[Module Name]', ...args),
-        warn: (...args) => console.warn('[Module Name]', ...args)
-    };
-    
-    // Private members
-    
-    // Public API
-    return {
-        handle: function() {}
-    };
-})();
-```
+**Background Scripts** (service workers): Use `self.SiPWidget` namespace (not `window`) with console directly for logging. Returns public API with handle() method.
 
-### 6.2 Message Handling Pattern
+### 8.2 Message Handling Pattern
 
 **CRITICAL**: Async handlers MUST return `true` to keep the message channel open. Without this, Chrome will close the channel before the async response is sent, causing "The message port closed before a response was received" errors.
 
 Every handler follows this pattern:
-```javascript
-function handle(request, sender, sendResponse, router) {
-    debug.log('Processing:', request.action);
-    
-    switch (request.action) {
-        case 'specificAction':
-            handleSpecificAction(request.data, router)
-                .then(result => sendResponse(result))
-                .catch(error => sendResponse({
-                    success: false,
-                    error: error.message || error.toString(),
-                    code: 'HANDLER_ERROR'
-                }));
-            return true; // REQUIRED: Keep channel open for async response
-            
-        default:
-            sendResponse({
-                success: false,
-                error: 'Unknown action: ' + request.action,
-                code: 'UNKNOWN_ACTION'
-            });
-            // No return true needed here - response sent synchronously
-    }
-}
-```
+- Receives: `request`, `sender`, `sendResponse`, `router` parameters
+- Logs the action being processed
+- Uses switch statement for action routing
+- For async operations: MUST return `true` to keep channel open
+- For sync operations: No return statement needed
+- Always sends response with success/error structure
 
 **Common Patterns**:
 
-1. **Async with immediate response wrapper** (Recommended):
-```javascript
-function handle(request, sender, sendResponse, router) {
-    // Wrap in async IIFE to handle all async operations
-    (async () => {
-        try {
-            // All async operations here
-            const result = await someAsyncOperation();
-            sendResponse({ success: true, data: result });
-        } catch (error) {
-            sendResponse({ success: false, error: error.message });
-        }
-    })();
-    
-    return true; // MUST return true for async handlers
-}
-```
+1. **Async with immediate response wrapper** (Recommended): Use async IIFE to wrap all async operations, then return `true`
+2. **Promise chain pattern**: Chain promises with .then()/.catch(), then return `true`
+3. **Synchronous response**: Send response immediately, no return statement needed
 
-2. **Promise chain pattern**:
-```javascript
-function handle(request, sender, sendResponse, router) {
-    someAsyncOperation()
-        .then(result => sendResponse({ success: true, data: result }))
-        .catch(error => sendResponse({ success: false, error: error.message }));
-    
-    return true; // MUST return true for async handlers
-}
-```
+### 8.3 Handler Context
 
-3. **Synchronous response** (No return true needed):
-```javascript
-function handle(request, sender, sendResponse, router) {
-    // Synchronous operation
-    const result = doSomethingSync();
-    sendResponse({ success: true, data: result });
-    // No return statement needed - response sent synchronously
-}
-```
+Handlers run in the background script context and have access to router methods. They can call router methods directly (e.g., `router.createTab()`) and must return `true` for async operations.
 
-### 6.3 Handler Context
-
-Handlers run in the background script context and have access to router methods:
-```javascript
-// Handler has access to router context
-function handle(request, sender, sendResponse, router) {
-    // Can call router methods directly
-    router.createTab({ url: 'https://example.com' })
-        .then(tab => sendResponse({ success: true, tabId: tab.id }))
-        .catch(error => sendResponse({ success: false, error: error.message }));
-    return true; // Keep channel open
-}
-```
-
-### 6.4 Public API Naming Standard  
-_Add this subsection immediately after **6.3 Handler Context** in the “Implementation Standards” chapter._
+### 8.4 Public API Naming Standard  
 
 **Purpose** Prevent future `ReferenceError` issues and keep the extension extensible by enforcing a single, namespaced surface for all UI commands.
 
@@ -1028,18 +760,12 @@ _Add this subsection immediately after **6.3 Handler Context** in the “Impleme
 | **If WordPress code requires a global function, create it inside `widget-tabs-actions.js` and mark it clearly.** | Provides clear API surface for WordPress integration. | `window.showWidget = SiPWidget.UI.showWidget; // WordPress integration` |
 | **Future commands** (e.g. `refreshWidget`, `resizeWidget`) **must follow the same pattern**. | Keeps extension growth predictable. | `SiPWidget.UI.refreshWidget();` |
 
-**Implementation Checklist**
-
-1. Search the codebase for `showWidget(`, `toggleWidget(`, etc. outside `SiPWidget.UI.*` and refactor calls.  
-2. Remove any `window.*` aliases if not required for WordPress integration.  
-3. Document new commands by appending to the table above—no further globals.
-
-_This subsection ensures architectural consistency for all widget UI commands._
+**Implementation Checklist**: Search for bare function calls (`showWidget(`, `toggleWidget(`), refactor to use `SiPWidget.UI.*`, remove unnecessary `window.*` aliases, and document new commands in the pattern table.
 
 
-## 7. Widget UI Features
+## 9. Widget UI Features
 
-### 7.1 Cross-Tab Console Log Viewer
+### 9.1 Cross-Tab Console Log Viewer
 
 **Why it exists**: During complex operations like mockup fetching that span multiple tabs (WordPress ↔ Printify), console logs from both contexts are needed for debugging. Page reloads during blueprint processing cause log loss, making cross-tab history essential for development and troubleshooting.
 
@@ -1072,83 +798,20 @@ The system captures console logs containing these SiP-related prefixes:
 #### Technical Details
 
 **WordPress Console Interception** (browser-extension-manager.js):
-```javascript
-// Intercepts SiP.Core.debug calls and sends to extension
-function sendLogToExtension(level, args) {
-    // Convert arguments to string
-    let message = args.map(arg => {
-        if (typeof arg === 'object') {
-            try {
-                return JSON.stringify(arg, null, 2);
-            } catch (e) {
-                return String(arg);
-            }
-        }
-        return String(arg);
-    }).join(' ');
-    
-    // Format timestamp
-    const timestamp = new Date().toTimeString().split(' ')[0]; // HH:MM:SS
-    
-    // Add level prefix for warnings and errors
-    if (level === 'warn') {
-        message = 'Warning: ' + message;
-    } else if (level === 'error') {
-        message = 'Error: ' + message;
-    }
-    
-    // Create formatted log string
-    const formattedLog = `[${timestamp}] WordPress: ${message}`;
-    
-    // Send pre-formatted string to extension
-    window.postMessage({
-        type: 'SIP_CONSOLE_LOG',
-        source: 'sip-printify-manager',
-        data: formattedLog
-    }, '*');
-}
-```
-
+- Intercepts SiP.Core.debug calls and sends to extension
+- Converts arguments to strings (JSON.stringify for objects)
+- Formats with timestamp [HH:MM:SS] and WordPress prefix
+- Adds level prefix for warnings and errors
+- Sends pre-formatted string via window.postMessage with type 'SIP_CONSOLE_LOG'
 **Extension Console Interception** (widget-debug.js):
-```javascript
-// Captures extension console logs with SiP prefixes
-function captureLog(level, args) {
-    if (!shouldCaptureLog(args)) return;
-    
-    // Determine source
-    var source = inWordPressContext() ? 'WordPress' : 'Extension';
-    
-    // Format message
-    var message = args.map(function(arg) {
-        if (typeof arg === 'object') {
-            try {
-                return JSON.stringify(arg, null, 2);
-            } catch (e) {
-                return String(arg);
-            }
-        }
-        return String(arg);
-    }).join(' ');
-    
-    // Use centralized formatting function
-    var formattedLog = formatLogEntry(source, level, message);
-    
-    // Store the formatted log entry
-    storeLogEntry(formattedLog);
-}
-```
+- Captures extension console logs with SiP prefixes
+- Determines source (WordPress vs Extension) based on context
+- Formats messages (JSON.stringify for objects)
+- Uses centralized formatting function
+- Stores formatted log entries
 
 **Storage Management**:
-- **Key**: `sipConsoleLogs` in Chrome local storage
-- **Format**: Array of formatted log strings: `[HH:MM:SS] Source: Message`
-- **Size Management**: Automatic cleanup when approaching 1MB limit
-- **Persistence**: Survives page reloads and browser restarts
-
-**Log Format Standardization** (Updated 2025-06-17):
-- All logs stored as pre-formatted strings for simplicity
-- Format: `[HH:MM:SS] WordPress: Message` or `[HH:MM:SS] Extension: Message`
-- Warnings prefixed with "Warning:", errors prefixed with "Error:"
-- No JSON parsing needed - what you see is what you copy
+See [Storage Format](#storage-format) section for complete details about log storage implementation.
 
 #### User Experience
 
@@ -1164,9 +827,9 @@ function captureLog(level, args) {
 - **Error Handling**: Graceful fallback if log capture unavailable
 - **Performance**: Minimal impact on normal operation, only captures SiP-related logs
 
-## 8. Storage Management
+## 10. Storage Management
 
-### 8.1 State Storage
+### 10.1 State Storage
 
 All UI state stored in Chrome storage for cross-tab sync:
 ```javascript
@@ -1180,45 +843,21 @@ chrome.storage.local.set({
 });
 ```
 
-### 8.2 Storage Limits
+### 10.2 Storage Limits
 
 - Chrome storage has 5MB limit
 - Monitor usage and prune old operation history
 - Use efficient data structures
 
-## 9. Configuration and Deployment
+## 11. Configuration and Deployment
 
-### 9.1 Extension Configuration
+### 11.1 Extension Configuration
 
-The extension supports two configuration modes:
+**Two modes**: Pre-configured (`assets/config.json` with wordpressUrl, apiKey, configured:true) or user-configured (via extension popup).
 
-#### Pre-configured Deployment
-Bundle the extension with a `config.json` file in the `assets/` directory:
+**⚠️ SECURITY**: Never commit `config.json` with real API keys. Already in `.gitignore`.
 
-```json
-{
-    "wordpressUrl": "https://your-wordpress-site.com",
-    "apiKey": "your-32-character-api-key",
-    "autoSync": false,
-    "configured": true
-}
-```
-
-**Fields:**
-- `wordpressUrl`: The WordPress site URL where SiP Printify Manager is installed
-- `apiKey`: 32-character API key from WordPress plugin settings
-- `autoSync`: Reserved for future use (currently unused)
-- `configured`: Must be `true` to use pre-configuration
-
-**⚠️ SECURITY WARNING**: Never commit `config.json` with real API keys to version control. The browser-extension directory includes a `.gitignore` file that properly excludes `assets/config.json` from version control.
-
-#### User-configured Deployment
-Ship without `config.json` or with `configured: false`. Users configure through:
-1. Extension popup/options page
-2. Settings stored in Chrome sync storage
-3. Persists across browser sessions
-
-### 9.2 Configuration Loading Order
+### 11.2 Configuration Loading Order
 
 1. On startup, router checks for `assets/config.json`
 2. If found AND `configured: true`, uses those values
@@ -1230,160 +869,31 @@ Ship without `config.json` or with `configured: false`. Users configure through:
 
 **Note**: The `config.json` file is included in manifest's `web_accessible_resources` to allow the background script to fetch it using `chrome.runtime.getURL()`.
 
-## 10. WordPress Integration
+## 12. WordPress Integration
 
-### 10.1 Extension Detection and Installation Flow
+### 12.1 Extension Detection and Installation Flow
 
-#### Chrome Content Script Injection Behavior
-
-**Critical Chrome Limitation**: When a Chrome extension is installed, its content scripts are NOT automatically injected into already-open tabs. This is a well-documented Chrome behavior that requires either:
-1. Manual page reload by the user
-2. Programmatic injection by the extension
-
-#### Understanding Content Scripts vs Widget UI
-
-**Content Scripts** are JavaScript files that run in the context of web pages:
-- `widget-relay.js` - Message bridge between WordPress and extension
-- `widget-tabs-actions.js` - Creates the floating widget UI
-- `widget-debug.js` & `widget-error.js` - Utility functions
-
-**Key Distinction**: 
-- `widget-relay.js` does NOT create any UI - it only handles messages
-- `widget-tabs-actions.js` is responsible for creating the floating widget interface
-- Both are content scripts but serve different purposes
+**Chrome Limitation**: Content scripts don't auto-inject into already-open tabs after installation. The extension handles this by programmatically injecting scripts on install.
 
 #### Installation Flow - Detailed
 
+```mermaid
+sequenceDiagram
+    User->>Chrome: Install Extension
+    Chrome->>Router: chrome.runtime.onInstalled
+    Router->>WordPress Tabs: Inject content scripts
+    Content Scripts->>WordPress: SIP_EXTENSION_READY
+    WordPress->>UI: Hide install button, show widget
+    Note over WordPress: State not persisted (fresh detection each load)
 ```
-USER INSTALLS EXTENSION:
-1. User clicks "Install Extension" button in WordPress
-2. Installation wizard guides user through Chrome extension installation
-3. Extension installed in Chrome
-
-PROGRAMMATIC INJECTION (Immediate activation):
-4. Background script (widget-router.js) detects installation via chrome.runtime.onInstalled
-5. Background script queries for all WordPress admin tabs
-6. For each WordPress tab, programmatically injects ALL content scripts:
-   - widget-debug.js (utilities)
-   - widget-error.js (error handling)
-   - widget-relay.js (message bridge)
-   - widget-tabs-actions.js (widget UI creator)
-7. Content scripts now active without page reload!
-
-EXTENSION ANNOUNCES ITSELF:
-8. widget-relay.js executes and sends SIP_EXTENSION_READY to WordPress
-9. WordPress receives announcement and:
-   - Sets extensionState.isInstalled = true (in memory only - NOT persisted)
-   - Hides "Install Extension" button
-   - May send SIP_SHOW_WIDGET message
-10. widget-tabs-actions.js creates/shows the floating widget
-
-IMPORTANT: Extension state is NOT persisted - fresh detection on each page load
-
-FIRST INSTALL DATA CHECK:
-11. For fresh installs only, router sends SIP_EXTENSION_INSTALLED message
-12. WordPress modules can check for data the extension can fetch:
-    - Mockup-actions checks for blueprints without mockups
-    - Prompts user to fetch missing data
-13. Provides seamless onboarding experience
-
-RESULT: Extension detected, page reload recommended for reliability
-```
-
-#### Why This Flow?
-
-1. **Programmatic Injection**: Solves Chrome's limitation by injecting scripts immediately
-2. **Push-Driven Detection**: Extension announces when ready, no polling needed
-3. **Separation of Concerns**: 
-   - Message relay separate from UI creation
-   - Each script has a single responsibility
-4. **Immediate Functionality**: User doesn't need to reload page manually
 
 #### Implementation Details
 
-**Extension Side - Programmatic Injection** (widget-router.js):
-```javascript
-chrome.runtime.onInstalled.addListener(async (details) => {
-    if (details.reason === 'install' || details.reason === 'update') {
-        // Find all WordPress admin tabs
-        const tabs = await chrome.tabs.query({ url: '*://*/wp-admin/*' });
-        
-        for (const tab of tabs) {
-            try {
-                // Inject content scripts in order
-                await chrome.scripting.executeScript({
-                    target: { tabId: tab.id },
-                    files: [
-                        'core-scripts/widget-debug.js',
-                        'core-scripts/widget-error.js',
-                        'core-scripts/widget-relay.js',
-                        'action-scripts/widget-tabs-actions.js'
-                    ]
-                });
-                
-                // Inject CSS
-                await chrome.scripting.insertCSS({
-                    target: { tabId: tab.id },
-                    files: ['core-scripts/widget-styles.css']
-                });
-            } catch (error) {
-                debug.log('Could not inject into tab:', tab.id, error);
-            }
-        }
-    }
-});
-```
+**Extension Side - Programmatic Injection** (widget-router.js): On install/update, automatically injects content scripts and CSS into open WordPress admin tabs for immediate availability without reload.
 
-**Extension Side - Announcement** (widget-relay.js):
-```javascript
-// Small delay ensures WordPress listeners are ready
-// NOTE: This setTimeout is a legitimate use - see Coding Guidelines "Legitimate setTimeout Usage"
-// It's an industry-standard pattern for content script announcements, not a timing workaround
-setTimeout(() => {
-    window.postMessage({
-        type: 'SIP_EXTENSION_READY',
-        source: 'sip-printify-extension',
-        version: chrome.runtime.getManifest().version,
-        capabilities: {
-            statusUpdates: true,
-            apiInterception: true,
-            navigation: true,
-            mockupFetching: true,
-            mockupUpdates: true,
-            productPublishing: true
-        }
-    }, window.location.origin);
-}, 100);
-```
+**Extension Side - Announcement** (widget-relay.js): After 100ms delay, posts `SIP_EXTENSION_READY` with version and capabilities.
 
-**WordPress Side - Detection** (browser-extension-manager.js):
-```javascript
-// Set up listener early in page lifecycle
-document.addEventListener('DOMContentLoaded', function() {
-    // Always start with extension not detected
-    extensionState.isInstalled = false;
-    extensionState.isConnected = false;
-    updateButtonState(); // Show install button by default
-    
-    window.addEventListener('message', function(event) {
-        if (event.data && event.data.type === 'SIP_EXTENSION_READY' && 
-            event.data.source === 'sip-printify-extension') {
-            // Extension detected - update UI (memory only, no persistence)
-            extensionState.isInstalled = true;
-            extensionState.version = event.data.version;
-            extensionState.isConnected = true;
-            extensionState.capabilities = event.data.capabilities;
-            updateButtonState();
-            
-            // Trigger jQuery event for other modules
-            $(document).trigger('extensionReady', {
-                version: event.data.version,
-                capabilities: event.data.capabilities
-            });
-        }
-    });
-});
-```
+**WordPress Side - Detection** (browser-extension-manager.js): WordPress initializes with extension not detected, listens for `SIP_EXTENSION_READY`, updates state in memory only, hides install button, and triggers jQuery event.
 
 #### Message Flow Directions
 
@@ -1405,7 +915,7 @@ document.addEventListener('DOMContentLoaded', function() {
 4. **Reliable Detection**: Push-driven model with no saved state ensures accuracy
 5. **Install Button Visibility**: Always shows when extension not detected
 
-### 10.2 Supported WordPress Commands
+### 12.2 Supported WordPress Commands
 
 The extension supports the following commands from WordPress:
 
@@ -1423,157 +933,41 @@ The extension supports the following commands from WordPress:
 
 **Note**: Any other command will receive an error response with code `UNKNOWN_ACTION`.
 
-### 10.3 Sending Commands
+### 12.3 Sending Commands
 
 From WordPress plugin:
-```javascript
-window.postMessage({
-    type: 'SIP_COMMAND_NAME',
-    source: 'sip-printify-manager',
-    requestId: generateUniqueId(),
-    // Command-specific data
-}, '*');
-```
+Commands are sent via `window.postMessage()` with a specific type, source identifier, unique request ID, and command-specific data.
 
 #### Example: Mockup Fetching
-```javascript
-// WordPress sends mockup fetch request
-window.postMessage({
-    type: 'SIP_FETCH_MOCKUPS',
-    source: 'sip-printify-manager',
-    requestId: 'mockup_6_1642351234567',  // Unique ID for response correlation
-    data: {
-        blueprint_id: '6',
-        product_id: '6740c96f6abac8a2d30d6a12',
-        shop_id: '17823150',
-        user_id: '14758458'  // Retrieved from global sipPrintifyManagerData
-    }
-}, '*');
-
-// Extension processes request and returns response via relay
-// Response wrapped as SIP_EXTENSION_RESPONSE with matching requestId
-
-// WordPress receives:
-{
-    type: 'SIP_EXTENSION_RESPONSE',
-    requestId: 'mockup_6_1642351234567',  // Matches the request
-    response: {
-        success: true,
-        type: 'SIP_MOCKUP_DATA',           // Original message type
-        source: 'sip-printify-extension',
-        blueprint_id: '6',
-        data: { /* mockup data */ }
-    }
-}
-```
+WordPress sends a `SIP_FETCH_MOCKUPS` message containing blueprint ID, product ID, shop ID, and user ID. The extension processes this request and returns a response wrapped as `SIP_EXTENSION_RESPONSE` with a matching request ID, containing the mockup data.
 
 #### Example: Update Product Mockups
-```javascript
-// WordPress sends request to update product mockups
-window.postMessage({
-    type: 'SIP_UPDATE_PRODUCT_MOCKUPS',
-    source: 'sip-printify-manager',
-    requestId: 'update_mockups_1642351234567',
-    data: {
-        product_id: '6740c96f6abac8a2d30d6a12',
-        printify_product_id: '123456789',
-        shop_id: '17823150',
-        selected_mockups: [
-            {
-                id: 'front',
-                mockup_type_id: '789',
-                label: 'Front'
-            },
-            {
-                id: 'back',
-                mockup_type_id: '790',
-                label: 'Back'
-            }
-        ]
-    }
-}, '*');
-
-// Extension navigates to product mockup page and makes internal API calls
-// Returns success/failure status for each mockup update
-```
+WordPress sends a `SIP_UPDATE_PRODUCT_MOCKUPS` message with product IDs, shop ID, and an array of selected mockups. The extension navigates to the product mockup page, makes internal API calls, and returns success/failure status for each mockup update.
 
 #### Example: Publish Products
-```javascript
-// WordPress sends request to publish products
-window.postMessage({
-    type: 'SIP_PUBLISH_PRODUCTS',
-    source: 'sip-printify-manager',
-    requestId: 'publish_1642351234567',
-    data: {
-        products: [
-            {
-                product_id: '6740c96f6abac8a2d30d6a12',
-                printify_product_id: '123456789',
-                title: 'Product Name'
-            }
-            // Additional products to publish
-        ],
-        shop_id: '17823150'
-    }
-}, '*');
+WordPress sends a `SIP_PUBLISH_PRODUCTS` message with an array of products (containing WordPress product ID, Printify product ID, and title) and shop ID. The extension makes internal API calls to publish each product and returns success/failure status for each.
 
-// Extension makes internal API calls to publish each product
-// Returns success/failure status for each product
-```
-
-### 10.3 jQuery Events
+### 12.4 jQuery Events
 
 The browser-extension-manager triggers these jQuery events for inter-module communication:
 
-- **`extensionReady`**: Triggered when extension announces it's ready via `SIP_EXTENSION_READY`
-  ```javascript
-  $(document).trigger('extensionReady', {
-      version: data.version,
-      capabilities: data.capabilities
-  });
-  ```
+- **`extensionReady`**: Triggered when extension announces it's ready via `SIP_EXTENSION_READY`, passing the extension version and capabilities.
 
-- **`extensionInstalled`**: Triggered when extension is first installed via `SIP_EXTENSION_INSTALLED`
-  ```javascript
-  $(document).trigger('extensionInstalled', {
-      firstInstall: true,
-      version: extensionState.version
-  });
-  ```
+- **`extensionInstalled`**: Triggered when extension is first installed via `SIP_EXTENSION_INSTALLED`, passing a flag indicating first install and the extension version.
 
-Modules can listen for these events to react to extension state changes:
-```javascript
-$(document).on('extensionReady', function(e, data) {
-    // React to extension becoming ready
-});
-```
+Modules can listen for these events to react to extension state changes using jQuery's event system.
 
-### 10.4 Extension Detection on Authentication Page
+### 12.5 Extension Detection on Authentication Page
 
 The SiP Printify Manager authentication page includes a two-step process where Step 1 checks for extension installation.
 
 #### Implementation Pattern
 
 **HTML Structure** (dashboard-html.php):
-```html
-<div id="extension-not-detected">
-    <!-- Shows install button and instructions -->
-</div>
-
-<div id="extension-detected" style="display: none;">
-    <!-- Shows success message - hidden by default -->
-</div>
-```
+Two div elements are used - one showing the install button and instructions (visible by default), and another showing the success message (hidden by default).
 
 **JavaScript Detection** (shop-actions.js):
-```javascript
-// Listen for extensionReady event from browser-extension-manager
-$(document).on('extensionReady', function(e, data) {
-    $('#extension-not-detected').hide();
-    $('#extension-detected').show();
-    $('#extension-install-section').addClass('completed');
-});
-```
+Listens for the `extensionReady` event from browser-extension-manager. When received, it hides the "not detected" div, shows the "detected" div, and marks the extension install section as completed.
 
 **Why This Pattern**:
 - Initial state is clear: extension not detected (only one div visible)
@@ -1586,7 +980,7 @@ $(document).on('extensionReady', function(e, data) {
 - No direct `window.addEventListener` for extension messages in individual modules
 - DOM marker detection used for extension presence verification
 
-### 10.5 Common Pitfalls - MUST READ
+### 12.6 Common Pitfalls - MUST READ
 
 **CRITICAL: Understanding Message Boundaries**
 
@@ -1610,7 +1004,7 @@ $(document).on('extensionReady', function(e, data) {
 
 **Why This Architecture**: Chrome's security model creates strict boundaries between web pages and extensions. The relay pattern is the ONLY reliable way to bridge these boundaries.
 
-### 10.5 REST API Endpoints
+### 12.7 REST API Endpoints
 
 Extension calls these WordPress endpoints:
 - `POST /wp-json/sip-printify/v1/extension-status`
@@ -1618,60 +1012,21 @@ Extension calls these WordPress endpoints:
 
 Authentication via header: `X-SiP-API-Key: [32-character-key]`
 
-## 11. Pause/Resume Error Recovery System
+## 13. Pause/Resume Error Recovery System
 
-### 11.1 Overview
+### 13.1 Overview
 
 The pause/resume system provides interactive error handling for page load failures during automated operations. When the extension encounters login requirements, 404 errors, or page load issues, it pauses operations, focuses the problematic tab, and provides clear instructions for users to resolve the issue before resuming.
 
-### 11.2 Architecture
+### 13.2 Architecture
 
 #### Core Components
 
-**Router State Management** (`widget-router.js`):
-```javascript
-let pausedOperation = null;  // Stores paused operation context
+**Router State Management** (`widget-router.js`): Maintains `pausedOperation` state variable. The `pauseOperation()` stores operation context, while `resumeOperation()` retrieves and clears the stored operation.
 
-function pauseOperation(operation) {
-    pausedOperation = operation;
-}
+**Error Detection** (`mockup-library-actions.js`): The `detectPageIssue()` function checks for login pages (URL contains '/login' or password input exists), 404 errors (title or content indicators), and general error pages (error class elements). Returns array of detected issues or null.
 
-function resumeOperation() {
-    const operation = pausedOperation;
-    pausedOperation = null;
-    return operation;
-}
-```
-
-**Error Detection** (`mockup-library-actions.js`):
-```javascript
-function detectPageIssue() {
-    const issues = [];
-    
-    // Check for login page
-    if (window.location.pathname.includes('/login') || 
-        document.querySelector('input[type="password"][name="password"]')) {
-        issues.push('login_required');
-    }
-    
-    // Check for 404/error pages
-    if (document.title.toLowerCase().includes('404') ||
-        document.title.toLowerCase().includes('not found') ||
-        document.querySelector('h1')?.textContent.includes("This site can't be reached")) {
-        issues.push('page_not_found');
-    }
-    
-    // Check for other errors
-    if (document.querySelector('.error-page') || 
-        document.querySelector('[class*="error"]')) {
-        issues.push('page_error');
-    }
-    
-    return issues.length > 0 ? issues : null;
-}
-```
-
-### 11.3 Operation Flow
+### 13.3 Operation Flow
 
 #### Pause Flow
 1. **Error Detection**: Content script detects page load issue
@@ -1686,66 +1041,15 @@ function detectPageIssue() {
 3. **Operation Continues**: Handler resumes from where it left off
 4. **Success Response**: Operation completes and responds to WordPress
 
-### 11.4 Implementation Example
+### 13.4 Implementation Example
 
-**Mockup Update Handler** (`mockup-update-handler.js`):
-```javascript
-async function waitForPageReady(tabId, expectedUrl, router) {
-    // Wait for page load
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    // Check page state
-    const pageState = await getPageState(tabId);
-    
-    if (pageState.issues) {
-        // Pause operation
-        await router.pauseOperation({
-            type: 'mockup_update',
-            tabId: tabId,
-            expectedUrl: expectedUrl,
-            resumeHandler: 'mockup-update'
-        });
-        
-        // Focus problematic tab
-        await chrome.tabs.update(tabId, { active: true });
-        
-        // Update widget UI
-        await router.sendTabMessage(tabId, {
-            type: 'updateOperationStatus',
-            status: 'paused',
-            message: getIssueMessage(pageState.issues[0])
-        });
-        
-        // Return pause indicator
-        return { paused: true };
-    }
-    
-    return { ready: true };
-}
-```
+**Mockup Update Handler** (`mockup-update-handler.js`): The `waitForPageReady()` function waits for page load, checks page state, and if issues are detected, pauses the operation with context, focuses the problematic tab, updates the widget UI with status message, and returns a pause indicator.
 
-### 11.5 Widget UI Integration
+### 13.5 Widget UI Integration
 
-**Status Display** (`widget-tabs-actions.js`):
-```javascript
-function updateOperationStatus(status, message) {
-    const statusElement = document.getElementById('sip-operation-status');
-    
-    if (status === 'paused') {
-        statusElement.innerHTML = `
-            <div class="sip-pause-status">
-                <div class="sip-pause-icon">⚠️</div>
-                <div class="sip-pause-message">${message}</div>
-                <button id="sip-resume-btn" class="sip-resume-button">
-                    Resume Operation
-                </button>
-            </div>
-        `;
-    }
-}
-```
+**Status Display** (`widget-tabs-actions.js`): The `updateOperationStatus()` function updates the widget UI to show pause status with warning icon, message, and resume button when status is 'paused'.
 
-### 11.6 Error Messages
+### 13.6 Error Messages
 
 The system provides user-friendly messages for common issues:
 
@@ -1756,7 +1060,7 @@ The system provides user-friendly messages for common issues:
 | `page_error` | "Page failed to load. Please refresh the page and click Resume" |
 | `permission_denied` | "Access denied. Please check your permissions and click Resume" |
 
-### 11.7 Best Practices
+### 13.7 Best Practices
 
 1. **Always Include Resume Handler**: Specify which handler should process the resume
 2. **Store Minimal Context**: Only store what's needed to resume the operation
@@ -1764,7 +1068,7 @@ The system provides user-friendly messages for common issues:
 4. **Tab Focus**: Always focus the problematic tab for user convenience
 5. **Graceful Degradation**: Operations should handle both pause and non-pause scenarios
 
-### 11.8 Adding Pause/Resume to New Operations
+### 13.8 Adding Pause/Resume to New Operations
 
 To add pause/resume support to a new operation:
 
@@ -1774,9 +1078,9 @@ To add pause/resume support to a new operation:
 4. **Handle Resume**: Add case in `widget-data-handler.js` for your operation type
 5. **Test Scenarios**: Test with login pages, 404s, and network errors
 
-## 12. Development Guidelines
+## 14. Development Guidelines
 
-### 12.1 Widget Visibility Requirements
+### 14.1 Widget Visibility Requirements
 
 **Widget Initialization**:
 - Widget MUST start with `sip-visible` class for immediate visibility
@@ -1795,7 +1099,7 @@ To add pause/resume support to a new operation:
 3. Inspect DOM for `#sip-floating-widget` element
 4. Verify position values in inline styles
 
-### 12.2 Adding New Operations
+### 14.2 Adding New Operations
 
 1. Start with the trigger (user action or page event)
 2. Define the message format
@@ -1805,14 +1109,14 @@ To add pause/resume support to a new operation:
 6. Update storage schema if needed
 7. Update UI components if needed
 
-### 12.3 Debugging
+### 14.3 Debugging
 
 - Enable debug mode: `chrome.storage.local.set({sip_printify_debug: true})`
 - Check router for message flow
 - Verify message formats match documentation
 - Check Chrome DevTools for both page and extension contexts
 
-### 11.4 Testing Checklist
+### 14.4 Testing Checklist
 
 - [ ] Run `node validate-manifest.js` to check manifest integrity
 - [ ] Check chrome://extensions for ANY errors or warnings
@@ -1827,7 +1131,7 @@ To add pause/resume support to a new operation:
 - [ ] Widget UI reflects state changes
 - [ ] Error cases return standardized error responses
 
-### 11.5 Common Pitfalls
+### 14.5 Common Pitfalls
 
 **Manifest Corruption**:
 - Chrome silently fails on manifest parsing errors
@@ -1840,7 +1144,7 @@ To add pause/resume support to a new operation:
 - Background scripts may load while content scripts don't
 - Programmatic injection can mask manifest issues
 
-### 11.6 Content Security Policy (CSP) Compliance
+### 14.6 Content Security Policy (CSP) Compliance
 
 **Why it matters**: WordPress and many web applications enforce Content Security Policy to prevent XSS attacks. Extensions must be CSP-compliant to function correctly.
 
@@ -1850,26 +1154,7 @@ To add pause/resume support to a new operation:
 - No `document.write()` or `eval()`
 - Limited inline styles (some CSPs block all inline styles)
 
-**Implementation Patterns**:
-
-```javascript
-// ❌ WRONG - Violates CSP
-function createPopup() {
-    const html = `
-        <button onclick="handleClick()">Click me</button>
-        <script>function handleClick() { alert('clicked'); }</script>
-    `;
-    document.write(html);
-}
-
-// ✅ CORRECT - CSP Compliant
-function createPopup() {
-    const button = document.createElement('button');
-    button.textContent = 'Click me';
-    button.addEventListener('click', () => alert('clicked'));
-    document.body.appendChild(button);
-}
-```
+**Implementation Patterns**: Avoid inline scripts and event handlers. Instead of using HTML strings with `onclick` attributes or `<script>` tags, create elements programmatically and attach event listeners with `addEventListener()`. Never use `document.write()` or `eval()`.
 
 **Widget CSP Compliance**:
 - All styles in `widget-styles.css` with CSS classes
@@ -1882,9 +1167,9 @@ function createPopup() {
 2. Check browser console for CSP violation errors
 3. Verify all functionality works without inline scripts/styles
 
-## 12. Chrome Web Store Troubleshooting
+## 15. Chrome Web Store Troubleshooting
 
-### 12.1 Obtaining OAuth Credentials
+### 15.1 Obtaining OAuth Credentials
 
 **Prerequisites**:
 1. Google Cloud Console account
@@ -1917,7 +1202,7 @@ function createPopup() {
    - Find your extension
    - Copy the ID from the URL or listing
 
-### 12.2 Common Error Scenarios
+### 15.2 Common Error Scenarios
 
 **Authentication Errors**:
 - **401 Unauthorized**: Check refresh token is valid
@@ -1933,7 +1218,7 @@ function createPopup() {
 - Timeout after 30 seconds - retry manually
 - Corporate proxy blocking - use manual upload
 
-### 12.3 Manual Publishing Fallback
+### 15.3 Manual Publishing Fallback
 
 If automated publishing fails:
 1. Extension ZIP is still created in local repository
@@ -1941,32 +1226,17 @@ If automated publishing fails:
 3. Manually upload via Chrome Web Store Developer Dashboard
 4. Extension remains available via stuffisparts update server regardless
 
-### 12.4 Testing Chrome Store Integration
+### 15.4 Testing Chrome Store Integration
 
-**Verify Configuration**:
-```powershell
-# From sip-development-tools/tools directory
-. .\SiP-ChromeWebStore.psm1
-Test-ChromeStoreConfig -ClientId $env:CHROME_CLIENT_ID -ClientSecret $env:CHROME_CLIENT_SECRET -RefreshToken $env:CHROME_REFRESH_TOKEN -ExtensionId $env:CHROME_EXTENSION_ID
-```
+**Verify Configuration**: Use the `Test-ChromeStoreConfig` function from `SiP-ChromeWebStore.psm1` with environment variables for Client ID, Secret, Refresh Token, and Extension ID.
 
-**Test Token Exchange**:
-```powershell
-$token = Get-ChromeAccessToken -ClientId $env:CHROME_CLIENT_ID -ClientSecret $env:CHROME_CLIENT_SECRET -RefreshToken $env:CHROME_REFRESH_TOKEN
-Write-Host "Token obtained: $($token.Substring(0,10))..."
-```
+**Test Token Exchange**: Use `Get-ChromeAccessToken` with the same credentials to verify OAuth token exchange is working.
 
 ## Appendices
 
 ### A. Chrome Assets
 
-Images requiring chrome.runtime.getURL must be in manifest.json:
-```json
-"web_accessible_resources": [{
-    "resources": ["assets/images/Scanning.gif"],
-    "matches": ["<all_urls>"]
-}]
-```
+Images requiring chrome.runtime.getURL must be declared in manifest.json under `web_accessible_resources` with appropriate resource paths and match patterns.
 
 ### B. Architecture Implementation Notes
 
@@ -1981,511 +1251,20 @@ Key implementation details:
 3. widget-relay.js handles WordPress postMessage relay in content script context
 4. All Chrome API execution happens directly in the router, no separate executor needed
 
-# SiP Printify Manager Browser Extension - TODO
+## 16. Common Issues and Troubleshooting
 
-## Low Priority Enhancements
-
-### 1. History View Feature ✅ COMPLETED
-- **Cross-tab console log viewer** - History button opens captured SiP-related console logs from both WordPress and Extension in a new window with copy/clear functionality
-
-### 2. Auto-Sync Feature  
-- The `autoSync` field in config.json is reserved for future use
-- Would enable automatic synchronization of data between WordPress and Printify
-
-### 3. Inventory Monitoring
-- Example feature mentioned in documentation
-- Would detect and report inventory changes on Printify pages
-
-## Completed Items
-- ✅ Central router architecture implemented
-- ✅ All handlers converted to singular naming
-- ✅ Service worker compatibility ensured
-- ✅ Push-driven communication model implemented
-- ✅ Widget visibility restricted to appropriate pages
-- ✅ Proper error handling with standardized responses
-- ✅ Configuration system with pre-configured and user-configured modes
-- ✅ Installation flow with automatic page reload
-- ✅ Cross-tab console log viewer with SiP-prefix filtering, chronological ordering, and copy/clear functionality
-- ✅ Clean codebase with singular handler names and streamlined action system
-- ✅ Documentation reflects current implementation
-
----
-
-# IMPLEMENTATION BACKLOG: Chrome Web Store Distribution
-
-## Phase 1: Repository & Release Infrastructure
-
-### 1.1 New Repository Setup
-- [ ] **Create `sip-printify-manager-extension` repository**
-  - [ ] Initialize with develop/master branch structure
-  - [ ] Copy extension files from current browser-extension directory
-  - [ ] Create .gitignore for extension-specific files
-  - [ ] Set up repository description and README
-
-### 1.2 Release Management Integration
-- [ ] **Create release-extension.ps1 script** (based on existing release-plugin.ps1)
-  - [ ] Adapt 16-step process for extension requirements
-  - [ ] Add Chrome Web Store API integration steps
-  - [ ] Add extension packaging and validation
-  - [ ] Update stuffisparts server data file
-
-- [ ] **Chrome Web Store API Integration**
-  - [ ] Set up Chrome Web Store API credentials
-  - [ ] Create extension upload automation
-  - [ ] Add store submission and review monitoring
-  - [ ] Implement rollback capabilities
-
-- [ ] **Modify SiP Development Tools**
-  - [ ] Add extension release UI option
-  - [ ] Create extension-specific release actions
-  - [ ] Add Chrome Web Store status monitoring
-
-## Phase 2: Data Storage Integration
-
-### 2.1 WordPress Data Storage Updates
-- [ ] **Update browser-extension-manager.js**
-  - [ ] Keep runtime-only state (no persistence of installation status)
-  - [ ] Store only user preferences (NOT extension detection state)
-  - [ ] Add auto-update preference toggle
-  - [ ] Implement update checking logic
-
-- [ ] **Create extension-functions.php**
-  - [ ] Add extension storage registration with sip_plugin_storage()
-  - [ ] Create extension update checking functions
-  - [ ] Add WordPress options management for extension preferences
-  - [ ] Implement AJAX handlers for extension operations
-
-- [ ] **Update WordPress Options Structure**
-  - [ ] Add `sip_extension_settings` option
-  - [ ] Store auto-update preferences
-  - [ ] Track extension installation methods
-  - [ ] Store last version check timestamps
-
-### 2.2 Client-Side State Management
-- [ ] **Runtime State Management**
-  - [ ] Keep extension detection state in memory only
-  - [ ] Update runtime state on version announcements
-  - [ ] Persist only user preferences in localStorage
-  - [ ] Never persist installation/detection state
-
-## Phase 3: SiP Core Dashboard Integration
-
-### 3.1 Dashboard Display Updates
-- [ ] **Modify SiP Plugins Core dashboard**
-  - [ ] Add extensions section alongside plugins
-  - [ ] Display extension version and status
-  - [ ] Show update available notifications
-  - [ ] Add Chrome Web Store installation links
-
-- [ ] **Create Extension Update UI**
-  - [ ] Add "Update Available" notifications
-  - [ ] Create auto-update toggle interface
-  - [ ] Add manual update/install buttons
-  - [ ] Display extension connection status
-
-### 3.2 Update Server Integration
-- [ ] **Extend stuffisparts data structure**
-  - [ ] Add `extensions` section to server data file
-  - [ ] Include Chrome Web Store URLs and IDs
-  - [ ] Track extension version information
-  - [ ] Support multiple installation methods
-
-- [ ] **Update Server Data Management**
-  - [ ] Modify release scripts to update extension data
-  - [ ] Ensure version synchronization between store and server
-  - [ ] Add extension-specific metadata fields
-
-## Phase 4: WordPress Plugin Updates
-
-### 4.1 Installation Flow Changes
-- [ ] **Update Installation Instructions**
-  - [ ] Replace filesystem path references with Chrome Web Store links
-  - [ ] Update user guidance in WordPress admin
-  - [ ] Create installation wizard for new users
-  - [ ] Add fallback for manual installation
-
-- [ ] **Remove Embedded Extension Files**
-  - [ ] Remove browser-extension directory from WordPress plugin
-  - [ ] Update plugin packaging to exclude extension files
-  - [ ] Clean up references to local extension files
-  - [ ] Update documentation and help text
-
-### 4.2 Extension Communication Updates
-- [ ] **Version Detection Enhancement**
-  - [ ] Ensure extension version is captured on ready announcement
-  - [ ] Store version persistently for offline comparison
-  - [ ] Add version validation and compatibility checking
-  - [ ] Handle extension not installed scenarios
-
-## Phase 5: Testing & Documentation
-
-### 5.1 Integration Testing
-- [ ] **Test Extension Installation Flow**
-  - [ ] Verify Chrome Web Store installation process
-  - [ ] Test automatic update functionality
-  - [ ] Validate version detection and storage
-  - [ ] Ensure dashboard integration works correctly
-
-- [ ] **Test Release Process**
-  - [ ] Verify automated Chrome Web Store publishing
-  - [ ] Test stuffisparts data file updates
-  - [ ] Validate version synchronization
-  - [ ] Test rollback procedures
-
-### 5.2 Documentation Updates
-- [ ] **Update User Documentation**
-  - [ ] Revise installation instructions
-  - [ ] Document new update process
-  - [ ] Update troubleshooting guides
-  - [ ] Create migration guide for existing users
-
-- [ ] **Update Developer Documentation**
-  - [ ] Document release process changes
-  - [ ] Update architecture documentation
-  - [ ] Document Chrome Web Store API integration
-  - [ ] Update data storage patterns documentation
-
-## Phase 6: Migration & Deployment
-
-### 6.1 User Migration
-- [ ] **Create Migration Strategy**
-  - [ ] Plan transition from embedded to Chrome Web Store
-  - [ ] Create user communication for migration
-  - [ ] Provide installation assistance
-  - [ ] Handle edge cases and troubleshooting
-
-### 6.2 Deployment Validation
-- [ ] **Production Testing**
-  - [ ] Test full release pipeline end-to-end
-  - [ ] Validate all integration points
-  - [ ] Verify update notifications work correctly
-  - [ ] Confirm auto-update functionality
-
----
-
-**Total Estimated Tasks: 47**  
-
-## 11. WordPress Plugin Implementation
-
-### 11.1 Current State
-
-**Version Communication**: Extension already announces version on load:
-```javascript
-// In widget-relay.js line 70
-version: chrome.runtime.getManifest().version
-```
-
-WordPress already captures version in browser-extension-manager.js:
-```javascript  
-// Line 112
-extensionState.version = data.version;
-```
-
-### 11.2 Required WordPress Plugin Changes
-
-#### Update browser-extension-manager.js
-**File**: `/wp-content/plugins/sip-printify-manager/assets/js/modules/browser-extension-manager.js`
-
-**Changes needed:**
-1. Keep local `extensionState` object for runtime state only (no persistence)
-2. Add Chrome Web Store installation detection
-3. Add update checking against stuffisparts server
-
-**Key sections to modify:**
-- Line 17-23: extensionState object → keep as-is for runtime state
-- Line 112: Where version is captured → keep in memory only
-- Add new function: `checkForExtensionUpdates()`
-
-**IMPORTANT**: Extension state is NOT persisted - fresh detection on each page load
-
-#### Create extension-functions.php
-**Create new file**: `/wp-content/plugins/sip-printify-manager/includes/extension-functions.php`
-
-```php
-<?php
-// Register extension storage following SiP patterns
-sip_plugin_storage()->register_plugin('sip-printify-manager-extension', array(
-    'folders' => array('data', 'logs', 'cache')
-));
-
-// AJAX handler for extension update checks
-function sip_handle_extension_update_check() {
-    // Implementation following SiP AJAX patterns
-    $current_version = isset($_POST['current_version']) ? sanitize_text_field($_POST['current_version']) : '';
-    
-    // Check stuffisparts for latest version
-    $response = wp_remote_get('https://updates.stuffisparts.com/update-api.php?extension=sip-printify-manager-extension');
-    
-    if (is_wp_error($response)) {
-        SiP_AJAX_Response::error('sip-printify-manager', 'extension_update', 'check', $response->get_error_message());
-        return;
-    }
-    
-    $data = json_decode(wp_remote_retrieve_body($response), true);
-    
-    // Compare versions and return update status
-    SiP_AJAX_Response::success('sip-printify-manager', 'extension_update', 'check', array(
-        'update_available' => version_compare($current_version, $data['version'], '<'),
-        'latest_version' => $data['version'],
-        'chrome_store_url' => $data['chrome_store_url']
-    ));
-}
-```
-
-#### Update WordPress Plugin Core Files
-
-1. **sip-printify-manager.php**:
-   - Add: `require_once plugin_dir_path(__FILE__) . 'includes/extension-functions.php';`
-   - Remove: Any references to embedded extension files
-
-2. **includes/printify-ajax-shell.php**:
-   - Add extension AJAX action handler:
-   ```php
-   case 'extension_update':
-       require_once plugin_dir_path(dirname(__FILE__)) . 'includes/extension-functions.php';
-       sip_handle_extension_update_check();
-       break;
-   ```
-
-3. **views/dashboard-html.php**:
-   - Update installation instructions to use Chrome Web Store link
-   - Add extension version display from runtime state only
-   - Remove embedded extension download links
-   - Ensure install button shows by default (no saved state)
-
-### 11.3 Data Structure Requirements
-
-#### Stuffisparts Server Data
-The update server needs to include extension data:
-
-```json
-{
-  "plugins": { 
-    // existing plugin entries
-  },
-  "extensions": {
-    "sip-printify-manager-extension": {
-      "name": "SiP Printify Manager Extension",
-      "version": "1.0.0",
-      "chrome_store_id": "[TBD after publication]",
-      "chrome_store_url": "https://chrome.google.com/webstore/detail/[TBD]",
-      "download_url": "https://updates.stuffisparts.com/extensions/sip-printify-manager-extension-1.0.0.zip",
-      "requires": {
-        "sip-printify-manager": "4.3.0"
-      },
-      "changelog": "Initial Chrome Web Store release"
-    }
-  }
-}
-```
-
-#### WordPress Options Storage
-Extension preferences stored following SiP patterns:
-```php
-// Option: sip_printify_manager_extension_preferences
-array(
-    'auto_update' => true,
-    'last_check' => '2025-01-21 12:00:00',
-    'installed_version' => '1.0.0',
-    'available_version' => '1.0.0'
-)
-```
-
-### 11.4 File Browser Integration
-
-The repository management system now uses simple text input fields for adding extension repositories:
-
-```javascript
-// In release-actions.js - Add Repository button handler
-$('#add-repository-btn').on('click', function() {
-    // Show dialog with text input for path
-    const dialogHtml = `
-        <div class="sip-modal">
-            <input type="text" id="repository-path" class="widefat" 
-                   placeholder="Enter repository path">
-            <button id="validate-path" class="button">Add Repository</button>
-        </div>
-    `;
-    // User enters path directly, validation done server-side
-});
-```
-
-This approach uses simple text input fields following WordPress standards for path entry.
-
-## 12. Conflicts and Standards Clarification
-
-Based on reviewing both documentation files, there are no significant conflicts. The implementation guide provides tactical details while this document provides the architectural overview. Key clarifications:
-
-1. **Version Independence**: Extension version (1.0.0) is completely independent from WordPress plugin version (4.3.4)
-2. **Repository Structure**: Extension has its own repository with standard SiP Git workflow
-3. **Update Mechanism**: Chrome Web Store handles updates, but SiP dashboard shows version info
-4. **Data Storage**: Uses standard SiP patterns for both client and server storage
-**Critical Path: Repository setup → Release integration → Dashboard integration → Testing**  
-**Success Criteria: Extension appears and behaves identically to other SiP plugins in dashboard with automatic updates functioning correctly**
-
-## 13. Common Issues and Troubleshooting
-
-### 13.1 Message Port Closed Error
+### 16.1 Message Port Closed Error
 
 **Error**: "The message port closed before a response was received"
 
 **Cause**: Handler function didn't return `true` for async operations
 
-**Solution**: 
-```javascript
-// WRONG - Missing return true
-async function handle(request, sender, sendResponse, router) {
-    try {
-        const result = await someAsyncOperation();
-        sendResponse({ success: true, data: result });
-    } catch (error) {
-        sendResponse({ success: false, error: error.message });
-    }
-    // Missing: return true;
-}
+**Solution**: Always return `true` at the end of async handler functions to keep the message channel open. Without this return statement, Chrome closes the channel before the async response can be sent.
 
-// CORRECT - Returns true for async
-async function handle(request, sender, sendResponse, router) {
-    try {
-        const result = await someAsyncOperation();
-        sendResponse({ success: true, data: result });
-    } catch (error) {
-        sendResponse({ success: false, error: error.message });
-    }
-    return true; // Keep channel open for async response
-}
-```
-
-### 13.2 Tab Navigation Issues
+### 16.2 Tab Navigation Issues
 
 **Issue**: Operations requiring Printify access fail when no Printify tab is open
 
-**Solution**: The `navigateTab` function in widget-router.js automatically:
-1. Checks for existing paired tabs
-2. Creates new tabs if needed
-3. Maintains tab pairing for future operations
+**Solution**: The `navigateTab` function in widget-router.js automatically checks for existing paired tabs, creates new tabs if needed, and maintains tab pairing. Handlers should always use `router.navigateTab()` for Printify operations to get the tab ID.
 
-Handlers should always use `router.navigateTab()` for Printify operations:
-```javascript
-const navResult = await router.navigateTab(url, 'printify', sender.tab?.id);
-if (!navResult.success) {
-    throw new Error(navResult.error);
-}
-const tabId = navResult.data.tabId;
-```
 
-### 13.3 Tab Pairing System Lifecycle
-
-**Overview**: The extension maintains bidirectional tab pairs between WordPress and Printify tabs to enable seamless navigation.
-
-**Tab Pairing Lifecycle**:
-
-1. **Initialization**:
-   - On startup, `loadTabPairs()` loads saved pairs from Chrome storage
-   - Tab pairs are stored in a Map: `tabPairs = new Map()`
-   - Pairs persist across browser sessions via `chrome.storage.local`
-
-2. **Tab Creation Flow** (`navigateTab` function):
-   ```
-   navigateTab(url, tabType, currentTabId)
-     ↓
-   IF currentTabId provided:
-     - Check if currentTabId has a paired tab
-     - IF paired tab exists AND is still open:
-       - Reuse paired tab (navigate to new URL)
-       - Return existing tab ID
-     - ELSE:
-       - Create new tab
-       - Create bidirectional pairing with currentTabId
-   ELSE (no currentTabId):
-     - Create new tab
-     - No pairing created
-   ```
-
-3. **Tab Pairing Storage**:
-   - Bidirectional: If tab A pairs with tab B, then B also pairs with A
-   - Stored format: `{ [tabId]: pairedTabId }`
-   - Updated immediately when pairs are created/removed
-
-4. **Tab Cleanup**:
-   - Chrome event `tabs.onRemoved` triggers `removeTabPair()`
-   - Removes both directions of the pairing
-   - Updates storage to reflect removal
-
-5. **Common Issues**:
-   - **No currentTabId**: When messages come through relay, `sender.tab?.id` may be undefined
-   - **Result**: New tab created but not paired, so subsequent operations create additional tabs
-   - **Fix**: Ensure the WordPress tab ID is properly passed through the message chain
-
-## 14. Pause/Resume System
-
-### 14.1 Overview
-
-The extension implements an interactive pause/resume system that handles page load failures gracefully by:
-1. Detecting specific issues (login required, 404, network errors)
-2. Pausing the operation and focusing the problematic tab
-3. Showing clear instructions to the user
-4. Allowing the user to fix the issue and resume
-
-**Why This Architecture**: Automated error recovery is unreliable for authentication and page errors. User intervention ensures proper resolution.
-
-### 14.2 Components
-
-#### Router State Management (widget-router.js)
-```javascript
-const operationState = {
-    paused: false,
-    pausedOperation: null,
-    pausedCallback: null
-};
-
-async function pauseOperation(tabId, issue, instructions) {
-    // 1. Set pause state
-    // 2. Focus problematic tab
-    // 3. Update widget UI with instructions
-    // 4. Return promise that resolves on resume
-}
-
-function resumeOperation() {
-    // 1. Clear pause state
-    // 2. Resolve pause promise
-    // 3. Update widget UI
-}
-```
-
-#### Error Detection (mockup-library-actions.js)
-```javascript
-function detectPageIssue() {
-    // Returns null if no issue, or:
-    return {
-        issue: 'Login Required',
-        instructions: 'Please sign in to your Printify account and click Resume.',
-        canContinue: true  // false for unrecoverable errors
-    };
-}
-```
-
-#### Widget UI (widget-tabs-actions.js)
-Displays pause status with:
-- Warning icon
-- Issue title
-- Clear instructions
-- Resume button
-
-### 14.3 Operation Flow
-
-1. **Page Check**: Handler requests page state via `CHECK_MOCKUP_PAGE_READY`
-2. **Issue Detection**: Content script detects login page, 404, or error
-3. **Pause**: Handler calls `router.pauseOperation()` with issue details
-4. **User Action**: Tab focuses, widget shows instructions
-5. **Fix & Resume**: User fixes issue, clicks Resume button
-6. **Continue**: Operation continues from where it paused
-
-### 14.4 Supported Issues
-
-| Issue | Detection | Instructions | Can Continue |
-|-------|-----------|--------------|--------------|
-| Login Required | URL contains `/login` or login form present | "Please sign in to your Printify account and click Resume." | Yes |
-| Product Not Found | 404 page or "Product not found" text | "This product may have been deleted. Check the product ID and try again." | No |
-| Page Load Error | Error page elements or "Something went wrong" | "Please refresh the page (Ctrl+R) and click Resume when the page loads correctly." | Yes |
-| Network Error | "ERR_" or "This site can't be reached" | "Check your internet connection, refresh the page, and click Resume." | Yes |
