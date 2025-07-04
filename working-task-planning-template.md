@@ -1,67 +1,72 @@
-## Task: Refactor Extension Logging from Console Mirror to Action-Based System
-**Date Started:** 2025-07-03 17:15
+## Task: Fix Mockup Preview Window Scaling and Translation Issues
+**Date Started:** 2025-07-04
 
 ### Task Understanding
-**What:** Remove the console log capture/relay system and implement an action-based logging system where the extension only logs meaningful actions it performs, not WordPress console output.
+**What:** Fix the mockup preview window in template-actions.js so that it scales properly from the edges (not the center) and translates correctly from the mouse click position.
 
-**Why:** The current system sends every WordPress console log to the extension, creating massive message traffic and duplicate logs. The extension should only log its own actions (navigation, API calls, data fetching) not mirror WordPress logs.
+**Why:** The current implementation has two issues:
+1. Scaling appears to expand outward from the middle instead of pulling from the edge being dragged
+2. Translation offsets the window from the point of the mouse click 
+3. Default window size on initial load was too small
 
 **Success Criteria:** 
-- No more "Relaying message from WordPress to background" logs
-- Extension only logs actions it takes, not WordPress console output
-- Clean, actionable logs showing extension operations
-- Reduced message traffic between WordPress and extension
+- Window scales correctly from the edge being dragged (like native OS windows)
+- Window appears at or near the mouse click position
+- Initial window size is reasonable (not too small)
+- Dragging and resizing feel natural and expected
 
 ### Documentation Review
-- [x] sip-printify-manager-extension-widget.md - Extension architecture and debug system
-- [x] sip-development-testing-debug.md - Debug levels and logging patterns
-- [x] Coding_Guidelines_Snapshot.txt - Fix root causes, single source of truth
+- [x] sip-printify-manager-architecture.md - Template mockup selection system (lines 207-493)
+- [x] sip-feature-ui-components.md - SiP modal system with draggable/resizable features (lines 470-636)
+- [x] Coding_Guidelines_Snapshot.txt - Fix root causes, verify data structures
+
+### Code Analysis
+From template-actions.js review:
+- Line 812: Modal is created using `SiP.Core.modal.create()` with draggable and resizable options
+- Lines 816-823: Modal options include width: 800, minWidth: 600, minHeight: 400
+- The modal system is from SiP Core (modal.js)
+
+From SiP Core modal.js review:
+- Lines 139-161: Draggable implementation uses jQuery UI with containment: 'window'
+- Lines 164-184: Resizable implementation uses jQuery UI with handles on all sides
+- Line 169: No containment specified for resizable (allows free resizing)
+- Lines 107-113 & 455-462: Modal position is set with CSS transform for centering
+
+From modals.css review:
+- Lines 31-38: Modal content has margin: 5% auto and max-width: 700px
+- Lines 42-44: Resizable modals remove max-width constraint
+- Lines 69-72: GPU acceleration enabled for smooth movement
+- Lines 199-212: Resizable modal body fills available space
+
+### Root Cause Analysis
+1. **Scaling Issue**: The modal is using CSS transform: translate(-50%, -50%) for centering, which causes the resize to appear to expand from center. When resizing, the transform remains active.
+
+2. **Translation Issue**: The saved position from localStorage may have the transform still applied, causing offset from click position.
+
+3. **Default Size**: Width of 800px is reasonable, but the modal may be constrained by CSS or appear smaller due to centering.
 
 ### Files to Modify
-1. `/sip-printify-manager/assets/js/modules/browser-extension-actions.js`
-   - Remove `setupConsoleLogCapture()` function (lines 644-719)
-   - Remove call to `setupConsoleLogCapture()` in init() (line 73)
-   - Clean up comments about console capture
+1. `/sip-plugins-core/assets/js/core/modal.js`
+   - Fix position/transform handling during resize operations
+   - Ensure transform is cleared when dragging starts
+   - Handle position correctly when loading from saved state
 
-2. `/sip-printify-manager-extension/core-scripts/widget-debug.js`
-   - Remove handling of `SIP_CONSOLE_LOG` messages
-   - Keep extension's own debug logging
-   - Update to focus on action logging
-
-3. `/sip-printify-manager-extension/core-scripts/action-logger.js` (NEW FILE)
-   - Create structured action logger
-   - Log categories: WORDPRESS_ACTION, NAVIGATION, DATA_FETCH, API_CALL, STATE_CHANGE, ERROR, AUTH
-   - Store in Chrome storage for cross-tab access
-
-4. `/sip-printify-manager-extension/core-scripts/widget-router.js`
-   - Add action logging for received WordPress messages
-   - Log navigation attempts and results
-   - Remove console relay handling
-
-5. `/sip-printify-manager-extension/handler-scripts/*.js`
-   - Add action logging to all handlers
-   - Log what they're doing, not console output
-
-6. `/sip-printify-manager-extension/action-scripts/*.js`
-   - Add action logging for data scraping
-   - Log found/not found results
+2. `/sip-printify-manager/assets/js/modules/template-actions.js`
+   - Potentially adjust initial size settings if needed
+   - No changes needed if core modal fix resolves issues
 
 ### Implementation Plan
-1. Remove console capture from WordPress side
-2. Create action logger module for extension
-3. Update router to log actions instead of console relay
-4. Update handlers to use action logger
-5. Update action scripts to log their operations
-6. Test that all key operations are logged
-7. Verify no console duplication
-8. Update documentation
+1. Analyze the exact transform/position state during resize operations
+2. Modify modal.js to clear transforms when dragging/resizing starts
+3. Ensure saved positions don't include transform offsets
+4. Test dragging from all edges to ensure natural behavior
+5. Verify saved state loads correctly without offset
+6. Test with different initial window sizes
 
 ### Questions/Blockers
-1. Should the action logger use the existing debug levels (OFF/NORMAL/VERBOSE)?
-   - Answer: Yes, maintain consistency with SiP debug system
-   
-2. Should we keep the History viewer feature but show action logs instead?
-   - Answer: Yes, repurpose for viewing action history
+None - the issue is clearly in the modal positioning/transform handling in the SiP Core modal system.
 
-3. What format should action logs use?
-   - Answer: Structured with timestamp, category, action, details
+### Notes
+- The modal system uses jQuery UI draggable/resizable
+- CSS transforms for centering interfere with resize behavior
+- Position persistence may be saving transformed coordinates

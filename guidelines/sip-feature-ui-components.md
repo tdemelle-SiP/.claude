@@ -632,6 +632,72 @@ The base CSS for the sip-modal pattern is provided by SiP Plugins Core and loade
 - Click-outside-to-close disabled to prevent accidental closure during resize
 - Escape key closes modal (can be disabled with `closeOnEscape: false`)
 
+#### jQuery UI Positioning Requirements
+
+**Why**: jQuery UI's draggable and resizable components calculate positions based on the element's actual CSS position properties (`top`, `left`). CSS transforms interfere with these calculations, causing offset issues during drag/resize operations.
+
+**Critical Rule**: Never use CSS `transform` for centering jQuery UI draggable/resizable elements.
+
+**❌ Incorrect Pattern - CSS Transform Centering:**
+```css
+/* This breaks jQuery UI positioning */
+.modal-content {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%); /* Breaks drag/resize calculations */
+}
+```
+
+**✅ Correct Pattern - Calculated Position:**
+```javascript
+function centerModalWithoutTransform($modalContent) {
+    const windowWidth = $(window).width();
+    const windowHeight = $(window).height();
+    const modalWidth = $modalContent.outerWidth();
+    const modalHeight = $modalContent.outerHeight();
+    
+    // Calculate center position
+    const top = Math.max(20, (windowHeight - modalHeight) / 2);
+    const left = Math.max(20, (windowWidth - modalWidth) / 2);
+    
+    $modalContent.css({
+        position: 'fixed',
+        top: top,
+        left: left,
+        transform: 'none', // Explicitly remove any transforms
+        margin: 0
+    });
+}
+```
+
+**Key Points:**
+- Use calculated `top` and `left` values for positioning
+- Remove all CSS transforms from draggable/resizable elements
+- Add viewport constraints to prevent modals from being positioned off-screen
+- Set `will-change: top, left, width, height` instead of `will-change: transform`
+
+**Example Implementation:**
+```javascript
+// Initialize jQuery UI with proper positioning
+$('.modal-content').draggable({
+    handle: '.modal-header',
+    start: function(event, ui) {
+        // Ensure no transforms during drag
+        $(this).css('transform', 'none');
+    }
+}).resizable({
+    minWidth: 300,
+    minHeight: 200,
+    handles: 'all'
+});
+
+// Center without transforms
+centerModalWithoutTransform($('.modal-content'));
+```
+
+This pattern ensures smooth dragging and resizing without the offset issues caused by CSS transforms.
+
 ## Progress Indicators
 
 ### Progress Dialog

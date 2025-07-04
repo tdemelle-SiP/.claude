@@ -1356,9 +1356,15 @@ Following SiP CSS Standards
 - Minimize redundant declarations
 - Consider critical CSS for above-fold content
 
+## jQuery UI Compatibility
+
+For CSS requirements when using jQuery UI draggable/resizable components, see [UI Components - jQuery UI Positioning Requirements](sip-feature-ui-components.md#jquery-ui-positioning-requirements).
+
+**Key Rule**: Never use CSS `transform` on jQuery UI draggable/resizable elements.
+
 ## Related Documentation
 
-- [UI Components](sip-feature-ui-components.md) - Component library including checkbox patterns
+- [UI Components](sip-feature-ui-components.md) - Component library including checkbox patterns and jQuery UI positioning
 - [DataTables](sip-feature-datatables.md) - DataTables implementation guide
 - [Plugin Architecture](sip-plugin-platform.md) - Overall plugin structure
 
