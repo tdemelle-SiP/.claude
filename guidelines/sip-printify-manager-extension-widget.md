@@ -27,7 +27,7 @@ The SiP Printify Manager browser extension is a standalone Chrome Web Store exte
 
 ```mermaid
 flowchart TD
-    WP[WordPress Admin Page] -->|User click / DOM event| CS[Content-script<br>(widget-tabs-actions.js)]
+    WP[WordPress Admin Page] -->|User click / DOM event| CS["Content-script<br/>(widget-tabs-actions.js)"]
     CS -- "chrome.runtime.sendMessage" --> BG[Background Router]
     BG -- "sendTabMessage()" --> CS
     CS -->|Calls| UI[SiPWidget.UI Module]
@@ -217,27 +217,27 @@ graph TB
     end
     
     subgraph "Background Script"
-        Router[widget-router.js<br/>- Receives all messages<br/>- Routes to handlers<br/>- Executes Chrome APIs]
+        Router["widget-router.js<br/>- Receives all messages<br/>- Routes to handlers<br/>- Executes Chrome APIs"]
         
         subgraph "Handlers"
-            WH[widget-data-handler.js<br/>- Widget operations<br/>- Navigation<br/>- Status updates]
-            PH[printify-data-handler.js<br/>- Data processing<br/>- Status updates]
-            WPH[wordpress-handler.js<br/>- WordPress routing]
+            WH["widget-data-handler.js<br/>- Widget operations<br/>- Navigation<br/>- Status updates"]
+            PH["printify-data-handler.js<br/>- Data processing<br/>- Status updates"]
+            WPH["wordpress-handler.js<br/>- WordPress routing"]
         end
     end
     
     WP -->|postMessage| WR
-    WR -->|chrome.runtime<br/>sendMessage| Router
-    PTA -->|chrome.runtime<br/>sendMessage| Router
-    WTA -->|chrome.runtime<br/>sendMessage| Router
+    WR -->|"chrome.runtime<br/>sendMessage"| Router
+    PTA -->|"chrome.runtime<br/>sendMessage"| Router
+    WTA -->|"chrome.runtime<br/>sendMessage"| Router
     
     Router -->|type: 'widget'| WH
     Router -->|type: 'printify'| PH
     Router -->|type: 'wordpress'| WPH
     
-    WH -.->|Direct access to<br/>router context| Router
-    PH -.->|Direct access to<br/>router context| Router
-    WPH -.->|Direct access to<br/>router context| Router
+    WH -.->|"Direct access to<br/>router context"| Router
+    PH -.->|"Direct access to<br/>router context"| Router
+    WPH -.->|"Direct access to<br/>router context"| Router
     
     subgraph "State Management"
         Storage[Chrome Storage]
