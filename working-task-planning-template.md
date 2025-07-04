@@ -1,72 +1,70 @@
-## Task: Fix Mockup Preview Window Scaling and Translation Issues
+## Task: Change "History" Button to "View Log" with Simple Modal Display
 **Date Started:** 2025-07-04
 
 ### Task Understanding
-**What:** Fix the mockup preview window in template-actions.js so that it scales properly from the edges (not the center) and translates correctly from the mouse click position.
+**What:** Update the SiP Printify Manager Chrome Extension to:
+1. Change the "History" button text to "View Log"
+2. Present the action log in a simpler modal window (similar to progress dialog's log viewer)
+3. Add a resizable, scrollable text window with copy and close buttons
 
-**Why:** The current implementation has two issues:
-1. Scaling appears to expand outward from the middle instead of pulling from the edge being dragged
-2. Translation offsets the window from the point of the mouse click 
-3. Default window size on initial load was too small
+**Why:** The current History implementation is too complex. The user wants a simpler presentation using a modal window similar to the progress dialog's log viewer functionality.
 
 **Success Criteria:** 
-- Window scales correctly from the edge being dragged (like native OS windows)
-- Window appears at or near the mouse click position
-- Initial window size is reasonable (not too small)
-- Dragging and resizing feel natural and expected
+- History button text changed to "View Log"
+- Clicking View Log opens a modal window (not a new browser window)
+- Modal contains scrollable text area with action logs
+- Modal has Copy Log and Close buttons
+- Modal is resizable and draggable
 
 ### Documentation Review
-- [x] sip-printify-manager-architecture.md - Template mockup selection system (lines 207-493)
-- [x] sip-feature-ui-components.md - SiP modal system with draggable/resizable features (lines 470-636)
-- [x] Coding_Guidelines_Snapshot.txt - Fix root causes, verify data structures
+- [x] sip-printify-manager-extension-widget.md - Extension architecture, action logger system (lines 783-862)
+- [x] Coding_Guidelines_Snapshot.txt - Process requirements and standards
+- [x] Current implementation in widget-tabs-actions.js (lines 345-350, 793-802)
 
 ### Code Analysis
-From template-actions.js review:
-- Line 812: Modal is created using `SiP.Core.modal.create()` with draggable and resizable options
-- Lines 816-823: Modal options include width: 800, minWidth: 600, minHeight: 400
-- The modal system is from SiP Core (modal.js)
+From widget-tabs-actions.js review:
+- Line 345-350: History button HTML with icon and "History" text
+- Line 793-802: `handleHistoryView()` function that opens new window
+- Line 808-1099: `openConsoleLogWindow()` creates full browser window with styled log viewer
 
-From SiP Core modal.js review:
-- Lines 139-161: Draggable implementation uses jQuery UI with containment: 'window'
-- Lines 164-184: Resizable implementation uses jQuery UI with handles on all sides
-- Line 169: No containment specified for resizable (allows free resizing)
-- Lines 107-113 & 455-462: Modal position is set with CSS transform for centering
+From action-logger.js review:
+- Structured action logging system with categories
+- `getLogs(callback)` method to retrieve stored logs
+- Logs include timestamp, category, action, status, details
 
-From modals.css review:
-- Lines 31-38: Modal content has margin: 5% auto and max-width: 700px
-- Lines 42-44: Resizable modals remove max-width constraint
-- Lines 69-72: GPU acceleration enabled for smooth movement
-- Lines 199-212: Resizable modal body fills available space
+From sip-printify-manager-extension-widget.md:
+- Action logger provides structured logging (not console logs)
+- Categories: WORDPRESS_ACTION, NAVIGATION, DATA_FETCH, API_CALL, STATE_CHANGE, ERROR, AUTH
+- Each log entry has timestamp, category, action, tabId, tabName, duration, status, details
 
 ### Root Cause Analysis
-1. **Scaling Issue**: The modal is using CSS transform: translate(-50%, -50%) for centering, which causes the resize to appear to expand from center. When resizing, the transform remains active.
-
-2. **Translation Issue**: The saved position from localStorage may have the transform still applied, causing offset from click position.
-
-3. **Default Size**: Width of 800px is reasonable, but the modal may be constrained by CSS or appear smaller due to centering.
+The current implementation opens a new browser window which is overly complex. User wants a simpler modal approach similar to how the progress dialog shows logs.
 
 ### Files to Modify
-1. `/sip-plugins-core/assets/js/core/modal.js`
-   - Fix position/transform handling during resize operations
-   - Ensure transform is cleared when dragging starts
-   - Handle position correctly when loading from saved state
-
-2. `/sip-printify-manager/assets/js/modules/template-actions.js`
-   - Potentially adjust initial size settings if needed
-   - No changes needed if core modal fix resolves issues
+1. `/action-scripts/widget-tabs-actions.js`
+   - Change button text from "History" to "View Log" (line 349)
+   - Replace `handleHistoryView()` to show modal instead of new window
+   - Add modal creation code using simple DOM manipulation
+   - Implement copy and close functionality within modal
 
 ### Implementation Plan
-1. Analyze the exact transform/position state during resize operations
-2. Modify modal.js to clear transforms when dragging/resizing starts
-3. Ensure saved positions don't include transform offsets
-4. Test dragging from all edges to ensure natural behavior
-5. Verify saved state loads correctly without offset
-6. Test with different initial window sizes
+1. Change button text from "History" to "View Log" in the HTML
+2. Create new `showLogModal()` function to replace window approach
+3. Build modal with:
+   - Title bar with "Action Log" title
+   - Scrollable text area showing formatted logs
+   - Copy Log button that copies to clipboard
+   - Close button (X) in title bar
+   - Resizable borders
+4. Use action-logger.js `getLogs()` to retrieve structured logs
+5. Format logs as simple text (timestamp, category, action, status)
+6. Style modal to match extension's existing UI patterns
 
 ### Questions/Blockers
-None - the issue is clearly in the modal positioning/transform handling in the SiP Core modal system.
+1. Should the modal use the extension's existing CSS classes or inline styles?
+2. Should we show all log details or just the essential fields?
 
 ### Notes
-- The modal system uses jQuery UI draggable/resizable
-- CSS transforms for centering interfere with resize behavior
-- Position persistence may be saving transformed coordinates
+- The action logger already provides structured logs, not console logs
+- Progress dialog shows a simpler approach we can emulate
+- Modal should be lighter weight than current full window implementation

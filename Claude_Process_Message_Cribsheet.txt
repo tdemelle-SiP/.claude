@@ -8,7 +8,11 @@ Standard messages for each stage of the development process:
 - REVIEW STAGE: Use after work/iteration is complete
 - RECOVERY: Use when context auto-compact occurs
 
+/mnt/c/Users/tdeme/Documents/VSCode_Images_Repo/
+
+-------------------------------------------------------------------------
 -------------------- PLAN STAGE - Task Initiation -----------------------
+-------------------------------------------------------------------------
 
 Before you begin, Read the guidelines at 
 
@@ -25,8 +29,9 @@ tools.
 
 When you have completed your preparation, post your working understanding and your plan concisely in the chat.  At that point, collaborate with the user to finalize any questions that you may have had or that the user has.  Do not code until explicitly instructed to do so by the user.
 
+-----------------------------------------------------------------------
 -------------------- ITERATION REQUIRED MESSAGE -----------------------
-
+-----------------------------------------------------------------------
 Issues have been identified that need to be addressed.
 Let's collaborate on the best approach to fix these while staying within our established guidelines.
 
