@@ -32,6 +32,80 @@ These two diagrams work together to provide a complete understanding of the exte
 
 Read the Message Flow diagram first to understand the communication patterns, then use the System Overview to see how components are organized and related.
 
+### Message Flow Diagram
+
+<!-- This diagram follows the SiP Mermaid guidelines showing every function in the data flow -->
+```mermaid
+graph TB
+    subgraph "WordPress Page Context"
+        subgraph "User Actions"
+            UserAction[User triggers action]
+        end
+        
+        subgraph "WordPress Code"
+            WPCode[PHP renders page<br/>-browser-extension-manager-]
+            SendMsg[JS sends message<br/>-sendMessageToExtension-]
+        end
+    end
+    
+    subgraph "Extension Content Scripts"
+        RelayListen[JS listens for postMessage<br/>-widget-relay.js-]
+        RelayConvert[JS converts format<br/>-handlePostMessage-]
+        RelaySend[JS sends to router<br/>-chrome.runtime.sendMessage-]
+        
+        PTAListen[JS monitors page<br/>-printify-tab-actions.js-]
+        PTASend[JS sends events<br/>-chrome.runtime.sendMessage-]
+        
+        WTACreate[JS creates widget<br/>-widget-tabs-actions.js-]
+        WTAListen[JS listens for storage<br/>-chrome.storage.onChanged-]
+    end
+    
+    subgraph "Extension Background"
+        RouterReceive[JS receives message<br/>-handleMessage-]
+        RouterRoute[JS routes by type<br/>-importHandlers-]
+        
+        WHProcess[JS handles widget ops<br/>-WidgetDataHandler.handle-]
+        PHProcess[JS handles Printify ops<br/>-PrintifyDataHandler.handle-]
+        WPHRoute[JS routes WordPress cmd<br/>-WordPressHandler.handle-]
+        
+        RouterAPI[JS executes Chrome APIs<br/>-createTab/queryTabs/etc-]
+    end
+    
+    subgraph "Storage"
+        ChromeLocal[(Chrome Storage<br/>-sipWidgetState-)]
+        TabPairs[(Chrome Storage<br/>-sipTabPairs-)]
+    end
+    
+    UserAction -->|triggers| SendMsg
+    SendMsg -->|window.postMessage| RelayListen
+    RelayListen -->|processes| RelayConvert
+    RelayConvert -->|chrome.runtime.sendMessage| RouterReceive
+    
+    PTAListen -->|detects changes| PTASend
+    PTASend -->|chrome.runtime.sendMessage| RouterReceive
+    
+    RouterReceive -->|analyzes type| RouterRoute
+    RouterRoute -->|type: widget| WHProcess
+    RouterRoute -->|type: printify| PHProcess
+    RouterRoute -->|type: wordpress| WPHRoute
+    
+    WHProcess -->|chrome.storage.set| ChromeLocal
+    PHProcess -->|chrome.storage.set| ChromeLocal
+    WHProcess -->|chrome.tabs API| RouterAPI
+    
+    RouterAPI -->|manages| TabPairs
+    ChromeLocal -->|onChange| WTAListen
+    WTAListen -->|updates| WTACreate
+```
+
+**Key Message Flow Patterns**:
+1. **WordPress → Extension**: Uses `window.postMessage` (only way to communicate from page to extension)
+2. **Content Script → Background**: Uses `chrome.runtime.sendMessage` (required for privileged operations)
+3. **Handler Delegation**: WordPressHandler translates commands and delegates to appropriate handlers
+4. **Response Path**: Follows same path in reverse, maintaining callback chain
+5. **State Updates**: Chrome Storage onChange events trigger UI updates without message passing
+6. **Single-Point Validation**: All message validation happens in the router, relay only performs security checks
+
 ### System Overview Diagram
 
 <!-- This diagram shows the system architecture and component relationships -->
@@ -118,6 +192,346 @@ Legend
 2. Reference the System Overview to understand which components are involved
 3. The Message Flow shows the "how" while System Overview shows the "what"
 4. Together they provide complete architectural understanding
+
+### Corrected Implementation Diagram
+
+<!-- This diagram shows actual functions and data flows from the code -->
+```mermaid
+graph TB
+    subgraph "WordPress Environment"
+        subgraph "User Events"
+            UserClick[User clicks button]
+            UserFetchMockup[User fetches mockups]
+        end
+        
+        subgraph "WordPress Plugin Code"
+            WPRender[PHP renders page<br/>-sip-printify-manager-]
+            WPAjax[PHP handles AJAX<br/>-admin-ajax.php-]
+            BrowserExtMgr[JS manages extension<br/>-browser-extension-manager.js-]
+            SendMsg[JS sends message<br/>-sendMessageToExtension-]
+            ListenResponse[JS listens for response<br/>-handleExtensionResponse-]
+            UpdateButtonState[JS updates UI<br/>-updateButtonState-]
+        end
+        
+        subgraph "WordPress Storage"
+            WPDatabase[(SQL Database<br/>-wp_options table-)]
+        end
+    end
+    
+    subgraph "Chrome Extension - Content Scripts"
+        subgraph "Message Relay"
+            RelayListen[JS listens for postMessage<br/>-handlePostMessage-]
+            RelayConvert[JS converts format<br/>-wrapMessage-]
+            RelaySend[JS sends to router<br/>-chrome.runtime.sendMessage-]
+            RelayReceive[JS receives response<br/>-sendResponse callback-]
+            RelayPost[JS posts to WordPress<br/>-window.postMessage-]
+        end
+        
+        subgraph "Widget UI Actions"
+            WTAInit[JS initializes widget<br/>-init-]
+            WTACreate[JS creates widget DOM<br/>-createWidget-]
+            WTAListen[JS listens for storage<br/>-chrome.storage.onChanged-]
+            WTAUpdate[JS updates display<br/>-updateWidgetDisplay-]
+            WTAHandleClick[JS handles clicks<br/>-handleButtonClick-]
+            WTASendNav[JS sends navigation<br/>-chrome.runtime.sendMessage-]
+        end
+        
+        subgraph "Printify Page Actions"
+            PTAInit[JS monitors page<br/>-init-]
+            PTADetect[JS detects changes<br/>-detectPageState-]
+            PTACapture[JS captures data<br/>-captureProductData-]
+            PTASend[JS sends events<br/>-chrome.runtime.sendMessage-]
+            PTACheckReady[JS checks mockup ready<br/>-handleMockupCheck-]
+        end
+        
+        subgraph "Mockup Library Actions"
+            MLAInit[JS initializes mockup<br/>-init-]
+            MLADetect[JS detects library<br/>-detectMockupLibrary-]
+            MLASelect[JS handles selection<br/>-updateMockupSelection-]
+            MLASend[JS sends update<br/>-chrome.tabs.sendMessage-]
+        end
+        
+        subgraph "Extension Detector"
+            EDInit[JS announces presence<br/>-announceExtension-]
+            EDPost[JS posts ready<br/>-window.postMessage-]
+        end
+        
+        subgraph "Error Capture"
+            ECSetup[JS sets up handlers<br/>-init-]
+            ECCapture[JS captures errors<br/>-captureError-]
+            ECLog[JS logs to action logger<br/>-logError-]
+        end
+    end
+    
+    subgraph "Chrome Extension - Background"
+        subgraph "Central Router"
+            RouterInit[JS initializes router<br/>-init-]
+            RouterReceive[JS receives message<br/>-handleMessage-]
+            RouterRoute[JS routes by type<br/>-routeMessage-]
+            RouterImport[JS imports handlers<br/>-importHandlers-]
+            RouterCreateTab[JS creates tab<br/>-createTab-]
+            RouterQueryTabs[JS queries tabs<br/>-queryTabs-]
+            RouterNavigate[JS navigates tab<br/>-navigateTab-]
+            RouterPairTabs[JS manages pairs<br/>-createTabPair-]
+            RouterPause[JS pauses operation<br/>-pauseOperation-]
+            RouterResume[JS resumes operation<br/>-resumeOperation-]
+            RouterCallAPI[JS calls WordPress<br/>-callWordPressAPI-]
+            RouterIconClick[JS handles icon click<br/>-chrome.action.onClicked-]
+        end
+        
+        subgraph "Widget Handler"
+            WHReceive[JS handles widget ops<br/>-handle-]
+            WHShowWidget[JS shows widget<br/>-showWidget-]
+            WHToggleWidget[JS toggles widget<br/>-toggleWidget-]
+            WHNavigate[JS processes navigate<br/>-handleNavigate-]
+            WHCheckStatus[JS checks status<br/>-checkPluginStatus-]
+            WHUpdateState[JS updates state<br/>-updateWidgetState-]
+            WHStoreState[JS stores state<br/>-chrome.storage.set-]
+            WHResume[JS handles resume<br/>-case: resumeOperation-]
+        end
+        
+        subgraph "Printify Handler"
+            PHReceive[JS handles Printify ops<br/>-handle-]
+            PHFetchMockups[JS routes fetch<br/>-case: fetchMockups-]
+            PHStoreData[JS stores data<br/>-chrome.storage.set-]
+        end
+        
+        subgraph "WordPress Handler"
+            WPHReceive[JS handles WP commands<br/>-handle-]
+            WPHTranslate[JS routes commands<br/>-switch statement-]
+            WPHSyncDebug[JS syncs debug level<br/>-handleDebugLevelSync-]
+        end
+        
+        subgraph "Mockup Fetch Handler"
+            MFHReceive[JS handles fetch<br/>-handle-]
+            MFHNavigate[JS navigates to library<br/>-navigateToMockupLibrary-]
+            MFHWaitPage[JS waits for ready<br/>-waitForPageReady-]
+            MFHIntercept[JS intercepts API<br/>-interceptAPIResponse-]
+            MFHReturn[JS returns data<br/>-sendResponse-]
+        end
+        
+        subgraph "Mockup Update Handler"
+            MUHReceive[JS handles update<br/>-handle-]
+            MUHNavigate[JS navigates product<br/>-navigateToProduct-]
+            MUHWaitReady[JS waits ready<br/>-waitForPageReady-]
+            MUHDetectIssue[JS detects issues<br/>-detectPageIssue-]
+            MUHCallAPI[JS calls internal API<br/>-updateMockupViaAPI-]
+            MUHReturn[JS returns status<br/>-sendResponse-]
+        end
+        
+        subgraph "Action Logger"
+            ALInit[JS initializes logger<br/>-init-]
+            ALLog[JS logs action<br/>-log-]
+            ALStore[JS stores log<br/>-storeLog-]
+        end
+    end
+    
+    subgraph "External Systems"
+        PrintifyWeb[Printify.com Pages]
+        PrintifyAPI[Printify API Endpoints]
+        ChromeTabs[Chrome Tabs API]
+        ChromeStorage[Chrome Storage API]
+        ChromeRuntime[Chrome Runtime API]
+    end
+    
+    subgraph "Storage Layer"
+        ChromeLocal[(Chrome Storage<br/>-sipWidgetState-)]
+        TabPairs[(Chrome Storage<br/>-sipTabPairs-)]
+        ActionLogs[(Chrome Storage<br/>-sipActionLogs-)]
+        DebugLevel[(Chrome Storage<br/>-sip_printify_debug_level-)]
+    end
+    
+    %% WordPress flows
+    UserClick -->|triggers| BrowserExtMgr
+    UserFetchMockup -->|triggers| BrowserExtMgr
+    BrowserExtMgr -->|calls| SendMsg
+    WPRender -->|includes| BrowserExtMgr
+    WPAjax -->|reads/writes| WPDatabase
+    
+    %% Extension announcement (self-initializing)
+    EDInit -->|on page load| EDPost
+    EDPost -->|SIP_EXTENSION_READY| BrowserExtMgr
+    
+    %% Message relay flow
+    SendMsg -->|window.postMessage| RelayListen
+    RelayListen -->|wraps| RelayConvert
+    RelayConvert -->|forwards| RelaySend
+    RelaySend -->|chrome.runtime| RouterReceive
+    
+    %% Router processing
+    RouterInit -->|loads| RouterImport
+    RouterReceive -->|checks type| RouterRoute
+    RouterRoute -->|type: widget| WHReceive
+    RouterRoute -->|type: printify| PHReceive
+    RouterRoute -->|type: wordpress| WPHReceive
+    
+    %% WordPress handler flow with correct connections
+    WPHReceive -->|routes| WPHTranslate
+    WPHTranslate -->|SIP_NAVIGATE| WHNavigate
+    WPHTranslate -->|SIP_SHOW_WIDGET| WHShowWidget
+    WPHTranslate -->|SIP_TOGGLE_WIDGET| WHToggleWidget
+    WPHTranslate -->|SIP_FETCH_MOCKUPS| PHFetchMockups
+    WPHTranslate -->|SIP_SYNC_DEBUG| WPHSyncDebug
+    WPHSyncDebug -->|chrome.storage.set| DebugLevel
+    
+    %% Widget handler operations
+    WHNavigate -->|calls| RouterNavigate
+    RouterNavigate -->|chrome.tabs| ChromeTabs
+    RouterNavigate -->|manages| RouterPairTabs
+    RouterPairTabs -->|stores| TabPairs
+    WHCheckStatus -->|updates| WHUpdateState
+    WHUpdateState -->|chrome.storage.set| ChromeLocal
+    WHCheckStatus -->|calls| RouterCallAPI
+    WHResume -->|calls| RouterResume
+    
+    %% Extension icon click
+    RouterIconClick -->|delegates| WHToggleWidget
+    
+    %% Printify handler operations
+    PHFetchMockups -->|delegates| MFHReceive
+    MFHReceive -->|navigates| MFHNavigate
+    MFHNavigate -->|uses| RouterCreateTab
+    RouterCreateTab -->|chrome.tabs.create| ChromeTabs
+    MFHWaitPage -->|monitors| PrintifyWeb
+    MFHIntercept -->|captures| PrintifyAPI
+    MFHReturn -->|via callback| RouterReceive
+    
+    %% Mockup update flow
+    MUHReceive -->|navigates| MUHNavigate
+    MUHWaitReady -->|checks| MUHDetectIssue
+    MUHDetectIssue -->|pauses if error| RouterPause
+    RouterPause -->|stores context| ChromeLocal
+    MUHCallAPI -->|POST request| PrintifyAPI
+    MUHReturn -->|sendResponse| RouterReceive
+    
+    %% Widget UI operations (self-initializing)
+    WTAInit -->|creates| WTACreate
+    WTAHandleClick -->|sends| WTASendNav
+    WTASendNav -->|chrome.runtime| RouterReceive
+    ChromeLocal -->|onChange| WTAListen
+    WTAListen -->|triggers| WTAUpdate
+    
+    %% Printify page monitoring (self-initializing)
+    PTAInit -->|monitors| PTADetect
+    PTADetect -->|captures| PTACapture
+    PTACapture -->|sends| PTASend
+    PTASend -->|chrome.runtime| RouterReceive
+    PTACheckReady -->|responds| RouterReceive
+    
+    %% Mockup library actions (self-initializing)
+    MLAInit -->|detects| MLADetect
+    MLADetect -->|on selection| MLASelect
+    MLASelect -->|sends| MLASend
+    MLASend -->|chrome.tabs| RouterReceive
+    
+    %% Error capture flow (self-initializing)
+    ECSetup -->|on window.error| ECCapture
+    ECCapture -->|logs| ECLog
+    ECLog -->|calls| ALLog
+    
+    %% Action logging (self-initializing)
+    ALLog -->|stores| ALStore
+    ALStore -->|writes| ActionLogs
+    
+    %% Response flow back
+    RouterReceive -->|sendResponse| RelayReceive
+    RelayReceive -->|formats| RelayPost
+    RelayPost -->|window.postMessage| ListenResponse
+    ListenResponse -->|updates| UpdateButtonState
+```
+
+This corrected diagram:
+- Removes all non-existent functions (UserNavigate, executeAPI, routeToHandler, processScrapedData, ALCleanup)
+- Shows accurate connections (WPHTranslate to showWidget/toggleWidget)
+- Shows ListenResponse updating the UI via UpdateButtonState
+- Marks self-initializing modules with appropriate comments
+- Shows actual function names from the code
+- Includes the extension icon click flow to toggleWidget
+
+The diagram now accurately reflects the actual implementation.
+
+### Data Flow Architecture Diagram
+
+<!-- This diagram shows the elegant data flow architecture through the central hub -->
+```mermaid
+graph TB
+    subgraph "Web Page Context"
+        WP[WordPress Pages<br/>window.postMessage]
+        CS[Content Scripts<br/>chrome.runtime.sendMessage]
+    end
+    
+    subgraph "Extension Context"
+        Hub[Central Router Hub<br/>Background Service Worker]
+        
+        subgraph "Message Formats"
+            External[External Format<br/>type: 'SIP_*']
+            Internal[Internal Format<br/>type: handler, action: name]
+        end
+    end
+    
+    subgraph "Chrome APIs Context"
+        Tabs[chrome.tabs API]
+        Storage[chrome.storage API]
+        Runtime[chrome.runtime API]
+    end
+    
+    subgraph "Storage Solutions"
+        ChromeLocal[(Chrome Local Storage<br/>Extension State)]
+        SessionState[Runtime Variables<br/>Tab Pairs, Paused Ops]
+        WPDatabase[(WordPress Database<br/>Plugin Settings)]
+    end
+    
+    subgraph "External Context"
+        Printify[Printify.com<br/>Web Pages & APIs]
+    end
+    
+    %% WordPress to Extension
+    WP -->|postMessage<br/>SIP_* format| CS
+    CS -->|Relay & Transform| Hub
+    
+    %% Hub as Central Mediator
+    Hub -->|chrome.tabs.sendMessage| CS
+    Hub -->|chrome.tabs.create/update| Tabs
+    Hub -->|chrome.storage.set/get| Storage
+    
+    %% Storage flows
+    Storage -->|Read/Write| ChromeLocal
+    Hub -->|Maintains| SessionState
+    WP -->|AJAX| WPDatabase
+    
+    %% Response flow
+    Hub -->|sendResponse| CS
+    CS -->|postMessage| WP
+    
+    %% Chrome Storage events
+    ChromeLocal -.->|onChange events| CS
+    
+    %% External interactions
+    Hub -->|via Tabs API| Printify
+    CS -->|DOM Monitoring| Printify
+    
+    %% Format transformation
+    External -.->|Transform| Internal
+    Internal -.->|Transform| External
+```
+
+**Key Architectural Principles:**
+
+1. **Context Isolation**: Each context (Web, Extension, Chrome APIs) has specific communication methods
+2. **Central Hub Pattern**: All messages flow through the router, no direct cross-context communication
+3. **Format Translation**: External (SIP_*) and Internal (handler/action) formats are translated at boundaries
+4. **Storage Separation**: 
+   - Chrome Storage for extension state (cross-tab sync)
+   - Runtime variables for session data (tab pairs)
+   - WordPress DB for plugin settings
+5. **Event-Driven Updates**: Chrome Storage onChange events push updates to UI without polling
+
+**Data Flow Elegance:**
+- Single entry point (Router) for all messages
+- Clear context boundaries with defined interfaces
+- Automatic state propagation via storage events
+- No circular dependencies or callback hell
+- Clean separation between persistent and session data
 
 ### 2.1 Distribution & Update Architecture
 
@@ -276,79 +690,6 @@ The router is the background script and the single message hub that:
 - Routes to appropriate handlers based on message type
 - Executes Chrome API commands directly (no separate widget-main.js)
 - Returns responses to the originator
-
-### Message Flow Diagram
-
-<!-- This diagram follows the SiP Mermaid guidelines showing every function in the data flow -->
-```mermaid
-graph TB
-    subgraph "WordPress Page Context"
-        subgraph "User Actions"
-            UserAction[User triggers action]
-        end
-        
-        subgraph "WordPress Code"
-            WPCode[PHP renders page<br/>-browser-extension-manager-]
-            SendMsg[JS sends message<br/>-sendMessageToExtension-]
-        end
-    end
-    
-    subgraph "Extension Content Scripts"
-        RelayListen[JS listens for postMessage<br/>-widget-relay.js-]
-        RelayConvert[JS converts format<br/>-handlePostMessage-]
-        RelaySend[JS sends to router<br/>-chrome.runtime.sendMessage-]
-        
-        PTAListen[JS monitors page<br/>-printify-tab-actions.js-]
-        PTASend[JS sends events<br/>-chrome.runtime.sendMessage-]
-        
-        WTACreate[JS creates widget<br/>-widget-tabs-actions.js-]
-        WTAListen[JS listens for storage<br/>-chrome.storage.onChanged-]
-    end
-    
-    subgraph "Extension Background"
-        RouterReceive[JS receives message<br/>-handleMessage-]
-        RouterRoute[JS routes by type<br/>-importHandlers-]
-        
-        WHProcess[JS handles widget ops<br/>-WidgetDataHandler.handle-]
-        PHProcess[JS handles Printify ops<br/>-PrintifyDataHandler.handle-]
-        WPHRoute[JS routes WordPress cmd<br/>-WordPressHandler.handle-]
-        
-        RouterAPI[JS executes Chrome APIs<br/>-createTab/queryTabs/etc-]
-    end
-    
-    subgraph "Storage"
-        ChromeLocal[(Chrome Storage<br/>-sipWidgetState-)]
-        TabPairs[(Chrome Storage<br/>-sipTabPairs-)]
-    end
-    
-    UserAction -->|triggers| SendMsg
-    SendMsg -->|window.postMessage| RelayListen
-    RelayListen -->|processes| RelayConvert
-    RelayConvert -->|chrome.runtime.sendMessage| RouterReceive
-    
-    PTAListen -->|detects changes| PTASend
-    PTASend -->|chrome.runtime.sendMessage| RouterReceive
-    
-    RouterReceive -->|analyzes type| RouterRoute
-    RouterRoute -->|type: widget| WHProcess
-    RouterRoute -->|type: printify| PHProcess
-    RouterRoute -->|type: wordpress| WPHRoute
-    
-    WHProcess -->|chrome.storage.set| ChromeLocal
-    PHProcess -->|chrome.storage.set| ChromeLocal
-    WHProcess -->|chrome.tabs API| RouterAPI
-    
-    RouterAPI -->|manages| TabPairs
-    ChromeLocal -->|onChange| WTAListen
-    WTAListen -->|updates| WTACreate
-```
-
-**Key Message Flow Patterns**:
-1. **WordPress → Extension**: Uses `window.postMessage` (only way to communicate from page to extension)
-2. **Content Script → Background**: Uses `chrome.runtime.sendMessage` (required for privileged operations)
-3. **Handler Delegation**: WordPressHandler translates commands and delegates to appropriate handlers
-4. **Response Path**: Follows same path in reverse, maintaining callback chain
-5. **State Updates**: Chrome Storage onChange events trigger UI updates without message passing
 
 ### 4.3 Message Formats
 
@@ -534,9 +875,10 @@ browser-extension/
 **Why it exists**: WordPress can only use window.postMessage() which content scripts can receive, but the router (background script) cannot. This relay bridges that gap.
 
 - Listens for postMessage events from WordPress
-- Validates message source and format
+- Performs minimal security checks (origin and source)
 - Relays WordPress messages to router via chrome.runtime.sendMessage
 - Returns responses back to WordPress via postMessage
+- All comprehensive validation happens in the router
 
 #### widget-debug.js (Core Debug Module)
 **Why it exists**: Provides centralized debug logging that respects WordPress debug levels and works across all extension contexts.
