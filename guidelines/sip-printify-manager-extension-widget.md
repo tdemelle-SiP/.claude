@@ -1,8 +1,5 @@
 # SiP Printify Manager Browser Extension
 
-**Version:** 1.0.0 (Independent Release)  
-**Last Updated:** January 21, 2025
-
 **Repository Location**: Flexible - can be located anywhere on the file system when added via SiP Development Tools  
 **GitHub:** https://github.com/tdemelle-SiP/sip-printify-manager-extension
 
@@ -193,262 +190,157 @@ Legend
 3. The Message Flow shows the "how" while System Overview shows the "what"
 4. Together they provide complete architectural understanding
 
-### Corrected Implementation Diagram
+### Message Validation Diagram
 
-<!-- This diagram shows actual functions and data flows from the code -->
+<!-- Shows how messages are validated and where security checks occur -->
+```mermaid
+flowchart TB
+    subgraph "Security Boundaries"
+        WP[WordPress postMessage]
+        Relay[widget-relay.js<br/>Security Checks Only]
+        Router[widget-router.js<br/>Comprehensive Validation]
+    end
+    
+    subgraph "Relay Security Checks"
+        Origin[Origin Check<br/>event.origin === allowedOrigin]
+        Source1[Source Filter 1<br/>Ignore 'sip-printify-extension']
+        Source2[Source Filter 2<br/>Accept 'sip-printify-manager' only]
+    end
+    
+    subgraph "Router Validation"
+        V1[Message Exists<br/>message != null]
+        V2[Type Required<br/>message.type exists]
+        V3[WORDPRESS_RELAY<br/>Special validation]
+        V4[Action Required<br/>For specific types]
+        V5[Handler Exists<br/>handlers[type] exists]
+    end
+    
+    WP -->|postMessage| Relay
+    Relay -->|1| Origin
+    Origin -->|2| Source1
+    Source1 -->|3| Source2
+    Source2 -->|chrome.runtime| Router
+    
+    Router -->|1| V1
+    V1 -->|2| V2
+    V2 -->|3| V3
+    V3 -->|4| V4
+    V4 -->|5| V5
+```
+
+### Component Organization Diagram
+
+<!-- Shows how components are organized across different contexts -->
 ```mermaid
 graph TB
     subgraph "WordPress Environment"
-        subgraph "User Events"
-            UserClick[User clicks button]
-            UserFetchMockup[User fetches mockups]
-        end
-        
-        subgraph "WordPress Plugin Code"
-            WPRender[PHP renders page<br/>-sip-printify-manager-]
-            WPAjax[PHP handles AJAX<br/>-admin-ajax.php-]
-            BrowserExtMgr[JS manages extension<br/>-browser-extension-manager.js-]
-            SendMsg[JS sends message<br/>-sendMessageToExtension-]
-            ListenResponse[JS listens for response<br/>-handleExtensionResponse-]
-            UpdateButtonState[JS updates UI<br/>-updateButtonState-]
-        end
-        
-        subgraph "WordPress Storage"
-            WPDatabase[(SQL Database<br/>-wp_options table-)]
+        PHP[PHP Plugin Code]
+        JS[JavaScript Modules]
+        DB[(WordPress Database)]
+    end
+    
+    subgraph "Content Scripts Context"
+        Relay[widget-relay.js<br/>Message Bridge]
+        Widget[widget-tabs-actions.js<br/>UI Manager]
+        Detector[extension-detector.js<br/>Presence Announcer]
+        Monitor[printify-tab-actions.js<br/>Page Monitor]
+    end
+    
+    subgraph "Background Context"
+        Router[widget-router.js<br/>Central Hub]
+        subgraph "Handlers"
+            WH[widget-data-handler.js]
+            PH[printify-data-handler.js]
+            WPH[wordpress-handler.js]
+            MFH[mockup-fetch-handler.js]
         end
     end
     
-    subgraph "Chrome Extension - Content Scripts"
-        subgraph "Message Relay"
-            RelayListen[JS listens for postMessage<br/>-handlePostMessage-]
-            RelayConvert[JS converts format<br/>-wrapMessage-]
-            RelaySend[JS sends to router<br/>-chrome.runtime.sendMessage-]
-            RelayReceive[JS receives response<br/>-sendResponse callback-]
-            RelayPost[JS posts to WordPress<br/>-window.postMessage-]
-        end
-        
-        subgraph "Widget UI Actions"
-            WTAInit[JS initializes widget<br/>-init-]
-            WTACreate[JS creates widget DOM<br/>-createWidget-]
-            WTAListen[JS listens for storage<br/>-chrome.storage.onChanged-]
-            WTAUpdate[JS updates display<br/>-updateWidgetDisplay-]
-            WTAHandleClick[JS handles clicks<br/>-handleButtonClick-]
-            WTASendNav[JS sends navigation<br/>-chrome.runtime.sendMessage-]
-        end
-        
-        subgraph "Printify Page Actions"
-            PTAInit[JS monitors page<br/>-init-]
-            PTADetect[JS detects changes<br/>-detectPageState-]
-            PTACapture[JS captures data<br/>-captureProductData-]
-            PTASend[JS sends events<br/>-chrome.runtime.sendMessage-]
-            PTACheckReady[JS checks mockup ready<br/>-handleMockupCheck-]
-        end
-        
-        subgraph "Mockup Library Actions"
-            MLAInit[JS initializes mockup<br/>-init-]
-            MLADetect[JS detects library<br/>-detectMockupLibrary-]
-            MLASelect[JS handles selection<br/>-updateMockupSelection-]
-            MLASend[JS sends update<br/>-chrome.tabs.sendMessage-]
-        end
-        
-        subgraph "Extension Detector"
-            EDInit[JS announces presence<br/>-announceExtension-]
-            EDPost[JS posts ready<br/>-window.postMessage-]
-        end
-        
-        subgraph "Error Capture"
-            ECSetup[JS sets up handlers<br/>-init-]
-            ECCapture[JS captures errors<br/>-captureError-]
-            ECLog[JS logs to action logger<br/>-logError-]
-        end
+    subgraph "Chrome APIs"
+        Tabs[chrome.tabs]
+        Storage[chrome.storage]
+        Runtime[chrome.runtime]
     end
     
-    subgraph "Chrome Extension - Background"
-        subgraph "Central Router"
-            RouterInit[JS initializes router<br/>-init-]
-            RouterReceive[JS receives message<br/>-handleMessage-]
-            RouterRoute[JS routes by type<br/>-routeMessage-]
-            RouterImport[JS imports handlers<br/>-importHandlers-]
-            RouterCreateTab[JS creates tab<br/>-createTab-]
-            RouterQueryTabs[JS queries tabs<br/>-queryTabs-]
-            RouterNavigate[JS navigates tab<br/>-navigateTab-]
-            RouterPairTabs[JS manages pairs<br/>-createTabPair-]
-            RouterPause[JS pauses operation<br/>-pauseOperation-]
-            RouterResume[JS resumes operation<br/>-resumeOperation-]
-            RouterCallAPI[JS calls WordPress<br/>-callWordPressAPI-]
-            RouterIconClick[JS handles icon click<br/>-chrome.action.onClicked-]
-        end
-        
-        subgraph "Widget Handler"
-            WHReceive[JS handles widget ops<br/>-handle-]
-            WHShowWidget[JS shows widget<br/>-showWidget-]
-            WHToggleWidget[JS toggles widget<br/>-toggleWidget-]
-            WHNavigate[JS processes navigate<br/>-handleNavigate-]
-            WHCheckStatus[JS checks status<br/>-checkPluginStatus-]
-            WHUpdateState[JS updates state<br/>-updateWidgetState-]
-            WHStoreState[JS stores state<br/>-chrome.storage.set-]
-            WHResume[JS handles resume<br/>-case: resumeOperation-]
-        end
-        
-        subgraph "Printify Handler"
-            PHReceive[JS handles Printify ops<br/>-handle-]
-            PHFetchMockups[JS routes fetch<br/>-case: fetchMockups-]
-            PHStoreData[JS stores data<br/>-chrome.storage.set-]
-        end
-        
-        subgraph "WordPress Handler"
-            WPHReceive[JS handles WP commands<br/>-handle-]
-            WPHTranslate[JS routes commands<br/>-switch statement-]
-            WPHSyncDebug[JS syncs debug level<br/>-handleDebugLevelSync-]
-        end
-        
-        subgraph "Mockup Fetch Handler"
-            MFHReceive[JS handles fetch<br/>-handle-]
-            MFHNavigate[JS navigates to library<br/>-navigateToMockupLibrary-]
-            MFHWaitPage[JS waits for ready<br/>-waitForPageReady-]
-            MFHIntercept[JS intercepts API<br/>-interceptAPIResponse-]
-            MFHReturn[JS returns data<br/>-sendResponse-]
-        end
-        
-        subgraph "Mockup Update Handler"
-            MUHReceive[JS handles update<br/>-handle-]
-            MUHNavigate[JS navigates product<br/>-navigateToProduct-]
-            MUHWaitReady[JS waits ready<br/>-waitForPageReady-]
-            MUHDetectIssue[JS detects issues<br/>-detectPageIssue-]
-            MUHCallAPI[JS calls internal API<br/>-updateMockupViaAPI-]
-            MUHReturn[JS returns status<br/>-sendResponse-]
-        end
-        
-        subgraph "Action Logger"
-            ALInit[JS initializes logger<br/>-init-]
-            ALLog[JS logs action<br/>-log-]
-            ALStore[JS stores log<br/>-storeLog-]
-        end
-    end
-    
-    subgraph "External Systems"
-        PrintifyWeb[Printify.com Pages]
-        PrintifyAPI[Printify API Endpoints]
-        ChromeTabs[Chrome Tabs API]
-        ChromeStorage[Chrome Storage API]
-        ChromeRuntime[Chrome Runtime API]
-    end
-    
-    subgraph "Storage Layer"
-        ChromeLocal[(Chrome Storage<br/>-sipWidgetState-)]
-        TabPairs[(Chrome Storage<br/>-sipTabPairs-)]
-        ActionLogs[(Chrome Storage<br/>-sipActionLogs-)]
-        DebugLevel[(Chrome Storage<br/>-sip_printify_debug_level-)]
-    end
-    
-    %% WordPress flows
-    UserClick -->|triggers| BrowserExtMgr
-    UserFetchMockup -->|triggers| BrowserExtMgr
-    BrowserExtMgr -->|calls| SendMsg
-    WPRender -->|includes| BrowserExtMgr
-    WPAjax -->|reads/writes| WPDatabase
-    
-    %% Extension announcement (self-initializing)
-    EDInit -->|on page load| EDPost
-    EDPost -->|SIP_EXTENSION_READY| BrowserExtMgr
-    
-    %% Message relay flow
-    SendMsg -->|window.postMessage| RelayListen
-    RelayListen -->|wraps| RelayConvert
-    RelayConvert -->|forwards| RelaySend
-    RelaySend -->|chrome.runtime| RouterReceive
-    
-    %% Router processing
-    RouterInit -->|loads| RouterImport
-    RouterReceive -->|checks type| RouterRoute
-    RouterRoute -->|type: widget| WHReceive
-    RouterRoute -->|type: printify| PHReceive
-    RouterRoute -->|type: wordpress| WPHReceive
-    
-    %% WordPress handler flow with correct connections
-    WPHReceive -->|routes| WPHTranslate
-    WPHTranslate -->|SIP_NAVIGATE| WHNavigate
-    WPHTranslate -->|SIP_SHOW_WIDGET| WHShowWidget
-    WPHTranslate -->|SIP_TOGGLE_WIDGET| WHToggleWidget
-    WPHTranslate -->|SIP_FETCH_MOCKUPS| PHFetchMockups
-    WPHTranslate -->|SIP_SYNC_DEBUG| WPHSyncDebug
-    WPHSyncDebug -->|chrome.storage.set| DebugLevel
-    
-    %% Widget handler operations
-    WHNavigate -->|calls| RouterNavigate
-    RouterNavigate -->|chrome.tabs| ChromeTabs
-    RouterNavigate -->|manages| RouterPairTabs
-    RouterPairTabs -->|stores| TabPairs
-    WHCheckStatus -->|updates| WHUpdateState
-    WHUpdateState -->|chrome.storage.set| ChromeLocal
-    WHCheckStatus -->|calls| RouterCallAPI
-    WHResume -->|calls| RouterResume
-    
-    %% Extension icon click
-    RouterIconClick -->|delegates| WHToggleWidget
-    
-    %% Printify handler operations
-    PHFetchMockups -->|delegates| MFHReceive
-    MFHReceive -->|navigates| MFHNavigate
-    MFHNavigate -->|uses| RouterCreateTab
-    RouterCreateTab -->|chrome.tabs.create| ChromeTabs
-    MFHWaitPage -->|monitors| PrintifyWeb
-    MFHIntercept -->|captures| PrintifyAPI
-    MFHReturn -->|via callback| RouterReceive
-    
-    %% Mockup update flow
-    MUHReceive -->|navigates| MUHNavigate
-    MUHWaitReady -->|checks| MUHDetectIssue
-    MUHDetectIssue -->|pauses if error| RouterPause
-    RouterPause -->|stores context| ChromeLocal
-    MUHCallAPI -->|POST request| PrintifyAPI
-    MUHReturn -->|sendResponse| RouterReceive
-    
-    %% Widget UI operations (self-initializing)
-    WTAInit -->|creates| WTACreate
-    WTAHandleClick -->|sends| WTASendNav
-    WTASendNav -->|chrome.runtime| RouterReceive
-    ChromeLocal -->|onChange| WTAListen
-    WTAListen -->|triggers| WTAUpdate
-    
-    %% Printify page monitoring (self-initializing)
-    PTAInit -->|monitors| PTADetect
-    PTADetect -->|captures| PTACapture
-    PTACapture -->|sends| PTASend
-    PTASend -->|chrome.runtime| RouterReceive
-    PTACheckReady -->|responds| RouterReceive
-    
-    %% Mockup library actions (self-initializing)
-    MLAInit -->|detects| MLADetect
-    MLADetect -->|on selection| MLASelect
-    MLASelect -->|sends| MLASend
-    MLASend -->|chrome.tabs| RouterReceive
-    
-    %% Error capture flow (self-initializing)
-    ECSetup -->|on window.error| ECCapture
-    ECCapture -->|logs| ECLog
-    ECLog -->|calls| ALLog
-    
-    %% Action logging (self-initializing)
-    ALLog -->|stores| ALStore
-    ALStore -->|writes| ActionLogs
-    
-    %% Response flow back
-    RouterReceive -->|sendResponse| RelayReceive
-    RelayReceive -->|formats| RelayPost
-    RelayPost -->|window.postMessage| ListenResponse
-    ListenResponse -->|updates| UpdateButtonState
+    PHP --> JS
+    JS -->|postMessage| Relay
+    Relay -->|runtime| Router
+    Widget -->|runtime| Router
+    Monitor -->|runtime| Router
+    Router --> Handlers
+    Router --> Chrome APIs
+    Storage -->|onChange| Widget
 ```
 
-This corrected diagram:
-- Removes all non-existent functions (UserNavigate, executeAPI, routeToHandler, processScrapedData, ALCleanup)
-- Shows accurate connections (WPHTranslate to showWidget/toggleWidget)
-- Shows ListenResponse updating the UI via UpdateButtonState
-- Marks self-initializing modules with appropriate comments
-- Shows actual function names from the code
-- Includes the extension icon click flow to toggleWidget
+### Storage & State Diagram
 
-The diagram now accurately reflects the actual implementation.
+<!-- Shows how state is managed across the extension with debug sync -->
+```mermaid
+graph LR
+    subgraph "Chrome Storage Keys"
+        Widget[sipWidgetState<br/>UI Position & Status]
+        Pairs[sipTabPairs<br/>Tab Relationships]
+        Logs[sipActionLogs<br/>Action History]
+        Debug[sip_printify_debug_level<br/>Debug Settings]
+        Config[sipExtensionConfig<br/>Optional config.json]
+    end
+    
+    subgraph "Runtime State"
+        TabMap[Tab Pairs Map<br/>In-memory cache]
+        Paused[Paused Operations<br/>Error recovery context]
+    end
+    
+    subgraph "Debug Sync Pattern"
+        WPMsg[Every WP Message<br/>includes debugLevel]
+        Relay[Relay extracts<br/>debug level]
+        Update[Auto-updates<br/>extension debug]
+    end
+    
+    subgraph "Event Flow"
+        Set[chrome.storage.set]
+        Get[chrome.storage.get]
+        Change[onChange events]
+    end
+    
+    WPMsg --> Relay
+    Relay --> Update
+    Update --> Debug
+    Set --> Widget
+    Set --> Debug
+    Widget --> Change
+    Change -->|Auto-update| UI[Widget UI]
+    TabMap -->|Persist| Pairs
+    Paused -->|Temporary| Memory[Router Memory]
+    Config -->|Loaded on startup| Router[Router State]
+```
+
+### Error Recovery Flow Diagram
+
+<!-- Shows the pause/resume error recovery pattern -->
+```mermaid
+sequenceDiagram
+    participant User
+    participant Handler
+    participant Router
+    participant Tab
+    participant Widget
+    
+    Handler->>Tab: Navigate to page
+    Tab-->>Handler: Login required (404/error)
+    Handler->>Router: pauseOperation(context)
+    Router->>Tab: chrome.tabs.update (focus)
+    Router->>Widget: Update status "paused"
+    Widget->>User: Show "Please login" + Resume button
+    
+    Note over User: User fixes issue
+    
+    User->>Widget: Click Resume
+    Widget->>Router: resumeOperation
+    Router->>Handler: Continue with context
+    Handler->>Tab: Retry operation
+    Tab-->>Handler: Success
+    Handler->>WordPress: Send response
+```
 
 ### Data Flow Architecture Diagram
 
@@ -533,15 +425,7 @@ graph TB
 - No circular dependencies or callback hell
 - Clean separation between persistent and session data
 
-### 2.1 Distribution & Update Architecture
-
-**Chrome Web Store Distribution**: Extension is published as "unlisted" on Chrome Web Store to provide automatic updates while maintaining privacy. Users install via direct Chrome Web Store link provided by the WordPress plugin.
-
-**Independent Release Management**: Extension follows the same Git workflow and automated release system as other SiP plugins, with its own repository and version numbering independent of the WordPress plugin.
-
-**SiP Ecosystem Integration**: Extension appears in SiP Plugins Core dashboard alongside other plugins, with version tracking, update notifications, and installation management integrated into the SiP platform.
-
-### 2.2 Core Principles
+### 2.1 Core Principles
 
 **Push-Driven Communication**: The extension uses a push-driven architecture where:
 - The extension announces its presence when ready (not polled by WordPress)
@@ -558,112 +442,10 @@ This approach reduces unnecessary message traffic, provides more responsive user
 
 **Fresh Detection Model**: Extension installation state is never persisted. The extension must announce itself on each page load to be considered installed. This ensures the "Install Extension" button always appears when the extension is not actually present, eliminating stale state issues.
 
-## 3. Distribution & Release Management
 
-### 2.1 Chrome Web Store Integration
+## 3. Technical Architecture
 
-**Publication Model**: Extension is published as "unlisted" on Chrome Web Store, making it accessible only via direct link while providing automatic update functionality.
-
-**Automatic Updates**: Chrome handles extension updates automatically every 5-6 hours when new versions are published to the store, eliminating manual installation requirements.
-
-**Installation Flow**: WordPress plugin provides direct Chrome Web Store installation link, replacing embedded extension files and manual filesystem access.
-
-### 2.2 Independent Repository Structure
-
-**Separate Repository**: Extension maintains its own `sip-printify-manager-extension` repository with standard SiP Git workflow (develop → master branches).
-
-**Version Independence**: Extension versioning is independent from WordPress plugin, starting at v1.0.0 and following semantic versioning.
-
-**Repository Management**: The extension repository is managed through the SiP Development Tools repository manager system, which allows flexible repository locations anywhere on the file system. See [Release Management Documentation](./sip-development-release-mgmt.md#repository-management) for details on adding and managing extension repositories.
-
-### 2.3 SiP Ecosystem Integration
-
-**SiP Core Dashboard Integration**: Extension appears as a first-class tool in SiP Plugins Core dashboard alongside WordPress plugins with:
-- Version display and update notifications
-- Installation status and connection monitoring  
-- Auto-update preference toggle
-- Chrome Web Store installation links
-
-**SiP Development Tools Integration**: For development and release management, the extension repository must be manually added to SiP Development Tools using the repository manager. Once added, it appears in the release management table with the same capabilities as WordPress plugins. The system supports dual distribution to both the stuffisparts update server and Chrome Web Store, with Chrome Store credentials optionally configured in the `.env` file.
-
-**Data Storage Compliance**: Extension preferences (NOT installation status) use SiP data storage patterns:
-- Client-side: Extension preferences only (NOT installation state)
-- Server-side: WordPress options for extension preferences
-- State management: Extension must announce itself each page load - no persistence of installation status
-
-**Update Server Integration**: Stuffisparts update server includes extension data for dashboard version checking and update notifications.
-
-### 2.4 Release Process Integration
-
-**Unified Release System**: The extension uses the same automated release system as WordPress plugins through SiP Development Tools. The system supports both plugin and extension releases with type-specific handling.
-
-**Extension-Specific Features**:
-
-#### Chrome Web Store API Integration
-The release system includes a dedicated PowerShell module (`SiP-ChromeWebStore.psm1`) that provides automated Chrome Web Store publishing capabilities:
-
-**Module Functions**:
-- `Test-ChromeStoreConfig` - Validates OAuth credentials are properly configured
-- `Get-ChromeAccessToken` - Exchanges refresh token for access token using OAuth 2.0
-- `Upload-ToChromeWebStore` - Uploads extension ZIP to Chrome Web Store
-- `Publish-ChromeExtension` - Publishes uploaded extension (or saves as draft)
-- `Get-ChromeExtensionStatus` - Retrieves current publication status
-
-**Authentication Configuration**:
-Chrome Web Store API credentials are stored in `/sip-development-tools/tools/.env`:
-```env
-CHROME_CLIENT_ID=your-client-id
-CHROME_CLIENT_SECRET=your-client-secret
-CHROME_REFRESH_TOKEN=your-refresh-token
-CHROME_EXTENSION_ID=your-extension-id
-```
-
-**Integration Features**:
-- Extension packaging and validation via `release-extension.ps1`
-- Store submission with optional draft mode (`-ChromeStoreDraft` parameter)
-- Automated upload to Chrome Web Store as step 15 in release process
-- Non-blocking integration - Chrome Store failures don't stop releases
-- Stuffisparts data file updates for version tracking
-- OAuth 2.0 authentication with automatic token refresh
-
-**Repository Requirements**: To enable release management:
-1. Extension repository must be added to SiP Development Tools via "Add Repository" button
-2. Repository must contain valid `manifest.json` file
-3. Repository must be a Git repository with `develop` and `master` branches
-
-**Version Synchronization**: Release system updates both Chrome Web Store and stuffisparts server data to maintain dashboard accuracy.
-
-**Rollback Capability**: Failed releases can be rolled back via Chrome Web Store developer console while maintaining version tracking integrity.
-
-#### Chrome Web Store Release Process
-
-The Chrome Web Store integration is executed as step 15 in the `release-extension.ps1` script:
-
-**Release Flow**:
-1. Extension ZIP is created and uploaded to stuffisparts update server (steps 1-14)
-2. Chrome Store configuration is checked via `Test-ChromeStoreConfig`
-3. If configured, OAuth access token is obtained via refresh token
-4. Extension ZIP is uploaded to Chrome Web Store API
-5. Based on `-ChromeStoreDraft` parameter:
-   - If set: Extension saved as draft for manual review
-   - If not set: Extension automatically published
-6. Status is checked and reported back to user
-
-**Error Handling**:
-- Chrome Store upload failures are logged but don't stop the release
-- Extension remains available via stuffisparts update server
-- Manual upload to Chrome Web Store can be done if automated upload fails
-- All Chrome Store operations have 30-second timeouts
-
-**Dual Distribution Strategy**:
-- Primary: Stuffisparts update server (always succeeds)
-- Secondary: Chrome Web Store (optional, non-blocking)
-- Users can install from either source
-- Both sources receive same version simultaneously
-
-## 4. Technical Architecture
-
-### 4.1 Version Communication Protocol
+### 3.1 Version Communication Protocol
 
 **Extension Ready Announcement**: Extension posts a message with type 'SIP_EXTENSION_READY', source identifier, version from manifest, and capabilities object to window.location.origin.
 
@@ -671,9 +453,9 @@ The Chrome Web Store integration is executed as step 15 in the `release-extensio
 
 **Update Checking**: WordPress compares local version against stuffisparts server data for update notifications.
 
-## 5. Architecture Rationale
+## 4. Architecture Rationale
 
-### 5.1 Why This Architecture?
+### 4.1 Why This Architecture?
 
 **Central Router Pattern**: All messages flow through widget-router.js because Chrome extensions don't allow content scripts to intercept runtime messages from other content scripts - they go directly to the background script.
 
@@ -705,16 +487,31 @@ The router is the background script and the single message hub that:
 
 The widget-relay.js converts external messages to internal format:
 
-```
-WordPress sends:          { type: 'SIP_SHOW_WIDGET', source: 'sip-printify-manager' }
-                            ↓
-Relay converts to:        { type: 'WORDPRESS_RELAY', data: { 
-                             type: 'wordpress', 
-                             action: 'SIP_SHOW_WIDGET',  // Original type becomes action
-                             data: {...} 
-                          }}
-                            ↓
-Router unwraps & routes:  { type: 'wordpress', action: 'SIP_SHOW_WIDGET', data: {...} }
+```javascript
+// Actual implementation from widget-relay.js
+function handlePostMessage(event) {
+    // 1. Security checks (origin, source)
+    if (event.origin !== allowedOrigin) return;
+    if (data.source !== 'sip-printify-manager') return;
+    
+    // 2. Wrap and forward to router
+    chrome.runtime.sendMessage({
+        type: 'WORDPRESS_RELAY',
+        data: {
+            type: 'wordpress',
+            action: data.type,        // SIP_SHOW_WIDGET becomes action
+            data: data,
+            requestId: data.requestId // Preserve for response correlation
+        }
+    }, function(response) {
+        // 3. Send response back to WordPress
+        window.postMessage({
+            type: 'SIP_EXTENSION_RESPONSE',
+            requestId: data.requestId,
+            ...response
+        }, allowedOrigin);
+    });
+}
 ```
 
 **Key Point**: Never mix formats. External messages MUST use 'SIP_' prefix. Internal messages MUST use handler/action pattern.
@@ -1124,9 +921,45 @@ const tabPairs = new Map(); // Map<tabId, pairedTabId>
 
 #### Implementation Details
 
-**Storage Functions**: The `loadTabPairs()` function loads pairs from chrome.storage.local on startup, parsing tab IDs and populating the runtime Map. The `createTabPair()` function creates bidirectional mappings in the Map and persists to storage.
+**Tab Pairing Code Example**:
+```javascript
+// From widget-router.js
+async function navigateTab(tabId, url, destination) {
+    // Check for existing paired tab
+    const pairedTabId = tabPairs.get(tabId);
+    
+    if (pairedTabId) {
+        // Verify paired tab still exists
+        const tabs = await chrome.tabs.query({ windowId: chrome.windows.WINDOW_ID_CURRENT });
+        const pairedTab = tabs.find(t => t.id === pairedTabId);
+        
+        if (pairedTab) {
+            // Check if already on target URL
+            if (pairedTab.url.includes(url)) {
+                // Just switch focus
+                await chrome.tabs.update(pairedTabId, { active: true });
+                return { success: true, action: 'switched-focus', tabId: pairedTabId };
+            } else {
+                // Navigate existing paired tab
+                await chrome.tabs.update(pairedTabId, { url: url, active: true });
+                return { success: true, action: 'reused-pair', tabId: pairedTabId };
+            }
+        }
+    }
+    
+    // Create new tab with pairing
+    const newTab = await chrome.tabs.create({ url: url, active: true });
+    createTabPair(tabId, newTab.id);
+    return { success: true, action: 'created-pair', tabId: newTab.id };
+}
 
-**Navigation with Pairing**: The `navigateTab()` function checks for existing paired tabs, verifies they still exist, and avoids unnecessary reloads by comparing URLs. If the paired tab is on the target URL, it just switches focus. Otherwise, it navigates the paired tab or creates a new tab with pairing. Returns success with action taken ('switched-focus', 'reused-pair', or 'created-pair').
+// Bidirectional pairing storage
+function createTabPair(tab1Id, tab2Id) {
+    tabPairs.set(tab1Id, tab2Id);
+    tabPairs.set(tab2Id, tab1Id);  // Bidirectional
+    saveTabPairs();
+}
+```
 
 #### Message Flow for Navigation
 
@@ -1508,7 +1341,63 @@ The pause/resume system provides interactive error handling for page load failur
 
 ### 14.4 Implementation Example
 
-**Mockup Update Handler** (`mockup-update-handler.js`): The `waitForPageReady()` function waits for page load, checks page state, and if issues are detected, pauses the operation with context, focuses the problematic tab, updates the widget UI with status message, and returns a pause indicator.
+**Error Detection and Pause Implementation**:
+```javascript
+// From mockup-update-handler.js
+async function waitForPageReady(tabId, router) {
+    // Wait for page to load
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    // Check for page issues
+    const issues = await chrome.tabs.sendMessage(tabId, {
+        type: 'checkPageState'
+    });
+    
+    if (issues && issues.length > 0) {
+        // Pause operation with context
+        await router.pauseOperation({
+            type: 'mockup-update',
+            handler: 'mockup-update',
+            context: {
+                tabId: tabId,
+                productId: this.currentProductId,
+                mockups: this.pendingMockups
+            },
+            reason: issues[0],
+            message: getErrorMessage(issues[0])
+        });
+        
+        // Focus problematic tab
+        await chrome.tabs.update(tabId, { active: true });
+        
+        // Update widget UI
+        await chrome.storage.local.set({
+            sipWidgetState: {
+                operationStatus: 'paused',
+                pauseReason: getErrorMessage(issues[0])
+            }
+        });
+        
+        return { paused: true };
+    }
+    
+    return { ready: true };
+}
+
+// From widget-data-handler.js - Resume handling
+case 'resumeOperation':
+    const pausedOp = await router.resumeOperation();
+    if (pausedOp && pausedOp.handler === 'mockup-update') {
+        // Re-dispatch to mockup handler with saved context
+        return handlers['mockup-update'].handle(
+            { action: 'updateMockups', data: pausedOp.context },
+            sender,
+            sendResponse,
+            router
+        );
+    }
+    break;
+```
 
 ### 14.5 Widget UI Integration
 
@@ -1543,9 +1432,9 @@ To add pause/resume support to a new operation:
 4. **Handle Resume**: Add case in `widget-data-handler.js` for your operation type
 5. **Test Scenarios**: Test with login pages, 404s, and network errors
 
-## 15. Development Guidelines
+## 14. Development Guidelines
 
-### 15.1 Widget Visibility Requirements
+### 14.1 Widget Visibility Requirements
 
 **Widget Initialization**:
 - Widget MUST start with `sip-visible` class for immediate visibility
@@ -1564,7 +1453,7 @@ To add pause/resume support to a new operation:
 3. Inspect DOM for `#sip-floating-widget` element
 4. Verify position values in inline styles
 
-### 15.2 Adding New Operations
+### 14.2 Adding New Operations
 
 1. Start with the trigger (user action or page event)
 2. Define the message format
@@ -1574,14 +1463,14 @@ To add pause/resume support to a new operation:
 6. Update storage schema if needed
 7. Update UI components if needed
 
-### 15.3 Debugging
+### 14.3 Debugging
 
 - Enable debug mode: `chrome.storage.local.set({sip_printify_debug: true})`
 - Check router for message flow
 - Verify message formats match documentation
 - Check Chrome DevTools for both page and extension contexts
 
-### 15.4 Testing Checklist
+### 14.4 Testing Checklist
 
 - [ ] Run `node validate-manifest.js` to check manifest integrity
 - [ ] Check chrome://extensions for ANY errors or warnings
@@ -1596,7 +1485,7 @@ To add pause/resume support to a new operation:
 - [ ] Widget UI reflects state changes
 - [ ] Error cases return standardized error responses
 
-### 15.5 Common Pitfalls
+### 14.5 Common Pitfalls
 
 **Manifest Corruption**:
 - Chrome silently fails on manifest parsing errors
@@ -1609,7 +1498,7 @@ To add pause/resume support to a new operation:
 - Background scripts may load while content scripts don't
 - Programmatic injection can mask manifest issues
 
-### 15.6 Content Security Policy (CSP) Compliance
+### 14.6 Content Security Policy (CSP) Compliance
 
 **Why it matters**: WordPress and many web applications enforce Content Security Policy to prevent XSS attacks. Extensions must be CSP-compliant to function correctly.
 
@@ -1632,70 +1521,6 @@ To add pause/resume support to a new operation:
 2. Check browser console for CSP violation errors
 3. Verify all functionality works without inline scripts/styles
 
-## 16. Chrome Web Store Troubleshooting
-
-### 16.1 Obtaining OAuth Credentials
-
-**Prerequisites**:
-1. Google Cloud Console account
-2. Chrome Web Store Developer account ($5 one-time fee)
-3. Extension must be uploaded to Chrome Web Store (can be draft)
-
-**Steps to Get Credentials**:
-1. **Create Google Cloud Project**:
-   - Go to https://console.cloud.google.com/
-   - Create new project or select existing
-   - Enable Chrome Web Store API
-
-2. **Create OAuth 2.0 Credentials**:
-   - Navigate to APIs & Services → Credentials
-   - Click "Create Credentials" → "OAuth client ID"
-   - Application type: "Web application"
-   - Add authorized redirect URI: `https://developers.google.com/oauthplayground`
-   - Save Client ID and Client Secret
-
-3. **Get Refresh Token**:
-   - Go to https://developers.google.com/oauthplayground
-   - Click settings (gear icon) → Use your own OAuth credentials
-   - Enter Client ID and Client Secret
-   - In Step 1, manually enter scope: `https://www.googleapis.com/auth/chromewebstore`
-   - Authorize and exchange for tokens
-   - Copy the Refresh Token
-
-4. **Get Extension ID**:
-   - Go to Chrome Web Store Developer Dashboard
-   - Find your extension
-   - Copy the ID from the URL or listing
-
-### 16.2 Common Error Scenarios
-
-**Authentication Errors**:
-- **401 Unauthorized**: Check refresh token is valid
-- **403 Forbidden**: Ensure Chrome Web Store API is enabled in Google Cloud Console
-- **Invalid Grant**: Refresh token expired - regenerate via OAuth playground
-
-**Upload Errors**:
-- **400 Bad Request**: Check ZIP file structure (manifest.json must be at root)
-- **409 Conflict**: Version already exists - increment version number
-- **413 Entity Too Large**: ZIP file exceeds 2GB limit
-
-**Network Errors**:
-- Timeout after 30 seconds - retry manually
-- Corporate proxy blocking - use manual upload
-
-### 16.3 Manual Publishing Fallback
-
-If automated publishing fails:
-1. Extension ZIP is still created in local repository
-2. Log shows location: `sip-printify-manager-extension/releases/[version]/`
-3. Manually upload via Chrome Web Store Developer Dashboard
-4. Extension remains available via stuffisparts update server regardless
-
-### 16.4 Testing Chrome Store Integration
-
-**Verify Configuration**: Use the `Test-ChromeStoreConfig` function from `SiP-ChromeWebStore.psm1` with environment variables for Client ID, Secret, Refresh Token, and Extension ID.
-
-**Test Token Exchange**: Use `Get-ChromeAccessToken` with the same credentials to verify OAuth token exchange is working.
 
 ## Appendices
 
@@ -1716,9 +1541,9 @@ Key implementation details:
 3. widget-relay.js handles WordPress postMessage relay in content script context
 4. All Chrome API execution happens directly in the router, no separate executor needed
 
-## 17. Common Issues and Troubleshooting
+## 15. Common Issues and Troubleshooting
 
-### 17.1 Message Port Closed Error
+### 15.1 Message Port Closed Error
 
 **Error**: "The message port closed before a response was received"
 
@@ -1726,7 +1551,7 @@ Key implementation details:
 
 **Solution**: Always return `true` at the end of async handler functions to keep the message channel open. Without this return statement, Chrome closes the channel before the async response can be sent.
 
-### 17.2 Tab Navigation Issues
+### 15.2 Tab Navigation Issues
 
 **Issue**: Operations requiring Printify access fail when no Printify tab is open
 
