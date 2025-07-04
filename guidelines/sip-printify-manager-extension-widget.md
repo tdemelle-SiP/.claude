@@ -203,8 +203,8 @@ flowchart TB
     
     subgraph "Relay Security Checks"
         Origin[Origin Check<br/>event.origin === allowedOrigin]
-        Source1[Source Filter 1<br/>Ignore 'sip-printify-extension']
-        Source2[Source Filter 2<br/>Accept 'sip-printify-manager' only]
+        Source1[Source Filter 1<br/>Ignore sip-printify-extension]
+        Source2[Source Filter 2<br/>Accept sip-printify-manager only]
     end
     
     subgraph "Router Validation"
@@ -212,7 +212,7 @@ flowchart TB
         V2[Type Required<br/>message.type exists]
         V3[WORDPRESS_RELAY<br/>Special validation]
         V4[Action Required<br/>For specific types]
-        V5[Handler Exists<br/>handlers[type] exists]
+        V5[Handler Exists<br/>handlers type exists]
     end
     
     WP -->|postMessage| Relay
@@ -239,20 +239,30 @@ graph TB
         DB[(WordPress Database)]
     end
     
-    subgraph "Content Scripts Context"
+    subgraph "Content Scripts - WordPress"
         Relay[widget-relay.js<br/>Message Bridge]
-        Widget[widget-tabs-actions.js<br/>UI Manager]
+        Widget1[widget-tabs-actions.js<br/>UI Manager]
         Detector[extension-detector.js<br/>Presence Announcer]
+        ErrorCap1[error-capture.js<br/>Error Logger]
+    end
+    
+    subgraph "Content Scripts - Printify"
+        Widget2[widget-tabs-actions.js<br/>UI Manager]
         Monitor[printify-tab-actions.js<br/>Page Monitor]
+        MockupLib[mockup-library-actions.js<br/>Mockup Selector]
+        APIInt[printify-api-interceptor-actions.js<br/>API Discovery]
+        ErrorCap2[error-capture.js<br/>Error Logger]
     end
     
     subgraph "Background Context"
-        Router[widget-router.js<br/>Central Hub]
+        Router[widget-router.js<br/>Central Hub & Validator]
         subgraph "Handlers"
             WH[widget-data-handler.js]
             PH[printify-data-handler.js]
             WPH[wordpress-handler.js]
             MFH[mockup-fetch-handler.js]
+            MUH[mockup-update-handler.js]
+            APIH[printify-api-interceptor-handler.js]
         end
     end
     
@@ -260,16 +270,26 @@ graph TB
         Tabs[chrome.tabs]
         Storage[chrome.storage]
         Runtime[chrome.runtime]
+        Action[chrome.action]
     end
     
     PHP --> JS
     JS -->|postMessage| Relay
     Relay -->|runtime| Router
-    Widget -->|runtime| Router
+    Widget1 -->|runtime| Router
+    Widget2 -->|runtime| Router
     Monitor -->|runtime| Router
+    MockupLib -->|runtime| Router
+    APIInt -->|runtime| Router
+    ErrorCap1 -->|ACTION_LOG| Router
+    ErrorCap2 -->|ACTION_LOG| Router
     Router --> Handlers
-    Router --> Chrome APIs
-    Storage -->|onChange| Widget
+    Router --> Tabs
+    Router --> Storage
+    Router --> Runtime
+    Router --> Action
+    Storage -->|onChange| Widget1
+    Storage -->|onChange| Widget2
 ```
 
 ### Storage & State Diagram
@@ -277,41 +297,43 @@ graph TB
 <!-- Shows how state is managed across the extension with debug sync -->
 ```mermaid
 graph LR
-    subgraph "Chrome Storage Keys"
+    subgraph "Chrome Storage Sync"
+        WPUrl[wordpressUrl]
+        APIKey[apiKey]
+        DebugFlag[debug]
+    end
+    
+    subgraph "Chrome Storage Local"
         Widget[sipWidgetState<br/>UI Position & Status]
         Pairs[sipTabPairs<br/>Tab Relationships]
         Logs[sipActionLogs<br/>Action History]
+        OpStatus[sipOperationStatus<br/>Current Operation]
         Debug[sip_printify_debug_level<br/>Debug Settings]
-        Config[sipExtensionConfig<br/>Optional config.json]
+        APIs[sipCapturedApis<br/>API Discovery]
+        APICount[sipNewApisCount]
+        Pending[pendingResearch]
+        FetchStatus[fetchStatus_*<br/>Dynamic Keys]
     end
     
     subgraph "Runtime State"
         TabMap[Tab Pairs Map<br/>In-memory cache]
         Paused[Paused Operations<br/>Error recovery context]
+        Handlers[Handler Registry]
     end
     
     subgraph "Debug Sync Pattern"
         WPMsg[Every WP Message<br/>includes debugLevel]
-        Relay[Relay extracts<br/>debug level]
+        RelaySync[Relay extracts<br/>debug level]
         Update[Auto-updates<br/>extension debug]
     end
     
-    subgraph "Event Flow"
-        Set[chrome.storage.set]
-        Get[chrome.storage.get]
-        Change[onChange events]
-    end
-    
-    WPMsg --> Relay
-    Relay --> Update
+    WPMsg --> RelaySync
+    RelaySync --> Update
     Update --> Debug
-    Set --> Widget
-    Set --> Debug
-    Widget --> Change
-    Change -->|Auto-update| UI[Widget UI]
+    Widget -->|onChange| UI[Widget UI]
     TabMap -->|Persist| Pairs
     Paused -->|Temporary| Memory[Router Memory]
-    Config -->|Loaded on startup| Router[Router State]
+    APIs -->|onChange| APIInt[API Interceptor UI]
 ```
 
 ### Error Recovery Flow Diagram
@@ -340,6 +362,56 @@ sequenceDiagram
     Handler->>Tab: Retry operation
     Tab-->>Handler: Success
     Handler->>WordPress: Send response
+```
+
+### Message Type & Routing Diagram
+
+<!-- Shows all message types and their routing through the system -->
+```mermaid
+flowchart LR
+    subgraph "Message Sources"
+        WP[WordPress<br/>SIP_* Commands]
+        CS[Content Scripts<br/>Various Types]
+        Icon[Extension Icon<br/>chrome.action]
+    end
+    
+    subgraph "Router Message Types"
+        RELAY[WORDPRESS_RELAY<br/>From widget-relay]
+        ACTION[ACTION_LOG<br/>From error-capture]
+        FORWARD[FORWARD_TO_TAB<br/>Internal routing]
+        TYPES[widget<br/>printify<br/>wordpress<br/>api-interceptor<br/>mockup-update]
+    end
+    
+    subgraph "WordPress Commands"
+        NAV[SIP_NAVIGATE]
+        OPEN[SIP_OPEN_TAB]
+        TOGGLE[SIP_TOGGLE_WIDGET]
+        SHOW[SIP_SHOW_WIDGET]
+        CHECK[SIP_CHECK_STATUS]
+        FETCH[SIP_FETCH_MOCKUPS]
+        UPDATE[SIP_UPDATE_PRODUCT_MOCKUPS]
+        CLEAR[SIP_CLEAR_STATUS]
+        SYNC[SIP_SYNC_DEBUG_LEVEL]
+    end
+    
+    subgraph "Handler Actions"
+        WH_A[navigate<br/>toggleWidget<br/>showWidget<br/>updateState<br/>getConfig<br/>testConnection<br/>checkPluginStatus<br/>resumeOperation]
+        PH_A[fetchMockups<br/>updateStatus]
+        API_A[apiCaptured<br/>getCapturedApis<br/>clearCapturedApis<br/>toggleApiInterceptor]
+    end
+    
+    WP --> RELAY
+    CS --> TYPES
+    CS --> ACTION
+    Icon --> TOGGLE
+    
+    RELAY --> wordpress
+    wordpress --> NAV --> WH_A
+    wordpress --> FETCH --> PH_A
+    
+    widget --> WH_A
+    printify --> PH_A
+    api-interceptor --> API_A
 ```
 
 ### Data Flow Architecture Diagram
@@ -583,15 +655,16 @@ const tabs = await router.queryTabs({ url: '*://printify.com/*' });
 ### 6.1 File Structure
 ```
 browser-extension/
-├── manifest.json               # Extension configuration
+├── manifest.json               # Extension configuration (Manifest V3)
 ├── background.js               # Service worker loader - imports all modules
 │   Why: Manifest V3 service workers require importScripts() to load modules
 ├── core-scripts/
 │   ├── widget-router.js        # Background script - Central message router & Chrome API executor
 │   ├── widget-relay.js         # Content script - Relays WordPress postMessages to router
-│   ├── widget-debug.js         # Debug utilities
+│   ├── widget-debug.js         # Debug utilities (dual context support)
 │   ├── widget-error.js         # Error response formatting
 │   ├── action-logger.js        # Structured action logging system
+│   ├── error-capture.js        # JavaScript error capture and logging
 │   └── widget-styles.css       # Widget styling
 ├── action-scripts/
 │   ├── extension-detector.js            # Extension presence announcer
@@ -606,7 +679,10 @@ browser-extension/
 │   ├── printify-api-interceptor-handler.js # API discovery processing
 │   ├── mockup-fetch-handler.js         # Blueprint mockup fetching
 │   └── mockup-update-handler.js        # Product mockup updates
-└── assets/                     # Images and static files
+├── assets/                     # Images and static files
+│   ├── config.json            # Optional pre-configuration
+│   └── images/                # Extension icons and UI assets
+└── validate-manifest.js        # Build tool for manifest validation
 ```
 
 **Manifest Configuration**:
@@ -754,6 +830,25 @@ debug.error('Operation failed:', error);         // Shows in NORMAL and VERBOSE
 - `clearLogs()` - Clear all logs
 - `setDebugLevel(level, levelName)` - Update debug level
 
+#### error-capture.js (JavaScript Error Capture)
+**Why it exists**: Captures all JavaScript errors, unhandled promise rejections, and console errors across all tabs for comprehensive debugging support.
+
+**Key Features**:
+- Window error handler for runtime errors
+- Unhandled promise rejection capture
+- Console.error interception
+- Sends errors to action logger when available
+- Falls back to background script logging
+
+**Error Types Captured**:
+- JavaScript runtime errors with stack traces
+- Unhandled promise rejections
+- Console.error calls
+- Includes URL, line/column numbers, timestamps
+
+**Message Types**:
+- Sends `ACTION_LOG` messages with category `'console-error'` to background script
+
 ### 6.3 Action Scripts
 
 #### extension-detector.js
@@ -790,9 +885,33 @@ debug.error('Operation failed:', error);         // Shows in NORMAL and VERBOSE
 #### printify-api-interceptor-actions.js
 **Why it exists**: API interception is a complex feature requiring significant code for request monitoring and pattern analysis. It warrants its own dedicated file for maintainability.
 
-- Intercepts Printify API calls
+- Intercepts Printify API calls via fetch and XMLHttpRequest
 - Captures API patterns and responses
+- Extracts path parameters and endpoint information
 - Sends captured data to router for processing
+- Manages interceptor state (enable/disable)
+- Dispatches custom DOM events for UI updates
+
+**Message Types Handled**:
+- `toggleApiInterceptor` - Enable/disable interception
+- `getApiInterceptorStatus` - Returns status and counts
+- `getCapturedApis` - Returns captured API data
+- `clearNewApisCount` - Resets new API counter
+
+#### mockup-library-actions.js
+**Why it exists**: Handles the complex task of detecting page state, updating mockup selections, and managing save operations on Printify's mockup library pages.
+
+- Detects page issues (login required, 404, errors)
+- Checks mockup library page readiness
+- Updates mockup checkbox selections programmatically
+- Triggers save operations
+- Monitors save completion status
+- Provides page state information to handlers
+
+**Message Types Handled**:
+- `CHECK_MOCKUP_PAGE_READY` - Returns page ready state
+- `UPDATE_MOCKUP_SELECTIONS` - Updates mockup selections
+- `CHECK_SAVE_STATUS` - Returns save operation status
 
 ### 6.4 Handler Scripts
 
