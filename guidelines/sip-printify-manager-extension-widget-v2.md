@@ -16,11 +16,9 @@ The SiP Printify Manager browser extension bridges the gap between WordPress and
 
 ### Diagram Notation Guide
 
-Following the SiP Mermaid guidelines, all diagrams use consistent notation:
-
 **Box Types**:
 - `[User action]` - User events (clicks, navigations)
-- `[JS does something<br/>-functionName-]` - Code execution with function name
+- `[JS does something<br/>-functionName-<br/>file.js]` - Code execution with function name and file
 - `[(Storage Type<br/>-key-)]` - Storage with actual key names (cylinder shape for persistence)
 
 **Connection Labels**:
@@ -28,8 +26,6 @@ Following the SiP Mermaid guidelines, all diagrams use consistent notation:
 - `-->|chrome.storage.set|` - Chrome API calls
 - `-->|window.postMessage|` - Browser APIs
 - `-.->|onChange|` - Event-driven connections
-
-**Why This Notation**: Every function that touches data must be visible for implementation validation.
 
 ### 2.1 Master System Architecture
 
@@ -43,73 +39,73 @@ graph TB
         end
         
         subgraph "Code Flow"
-            WP[PHP renders page<br/>-sip_printify_manager_page-]
-            BEM[JS sends message<br/>-sendMessageToExtension-]
+            WP[PHP renders page<br/>-sip_printify_manager_page-<br/>sip-printify-manager.php]
+            BEM[JS sends message<br/>-sendMessageToExtension-<br/>browser-extension.js]
         end
     end
     
     subgraph "Extension - Content Scripts"
         subgraph "WordPress Pages"
-            RelayListen[JS listens postMessage<br/>-window.addEventListener-]
-            RelayHandle[JS validates & wraps<br/>-handlePostMessage-]
-            RelaySend[JS sends to router<br/>-chrome.runtime.sendMessage-]
-            Detector[JS announces presence<br/>-announceExtension-]
-            Widget1[JS creates widget UI<br/>-createWidget-]
+            RelayListen[JS listens postMessage<br/>-window.addEventListener-<br/>widget-relay.js]
+            RelayHandle[JS validates & wraps<br/>-handlePostMessage-<br/>widget-relay.js]
+            RelaySend[JS sends to router<br/>-chrome.runtime.sendMessage-<br/>widget-relay.js]
+            Detector[JS announces presence<br/>-announceExtension-<br/>extension-detector.js]
+            Widget1[JS creates widget UI<br/>-createWidget-<br/>widget-tabs-actions.js]
         end
         
         subgraph "Printify Pages"
-            Widget2[JS creates widget UI<br/>-createWidget-]
-            Monitor[JS monitors page<br/>-observeDOM-]
-            Mockup[JS reads URL params<br/>-checkUrlParameters-]
-            AutoSelect[JS automates selection<br/>-executeSceneSelection-]
+            Widget2[JS creates widget UI<br/>-createWidget-<br/>widget-tabs-actions.js]
+            Monitor[JS monitors page<br/>-observeDOM-<br/>printify-tab-actions.js]
+            Mockup[JS reads URL params<br/>-checkUrlParameters-<br/>mockup-library-actions.js]
+            AutoSelect[JS automates selection<br/>-executeSceneSelection-<br/>mockup-library-actions.js]
         end
         
         subgraph "Shared Scripts"
-            Error[JS formats errors<br/>-formatError-]
-            ErrorCap[JS captures errors<br/>-window.onerror-]
-            Logger[JS logs actions<br/>-ActionLogger.log-]
-            LogHelper[JS log shortcuts<br/>-action.info/error/warn-]
-            DiagBtn[JS handle diagnostic<br/>-handleDiagnostic-]
-            RunDiag[JS run diagnostic<br/>-runPrintifyDiagnostic-]
-            MonBtn[JS handle monitor<br/>-handleMonitor-]
-            StartMon[JS start monitor<br/>-startInteractionMonitor-]
-            StopMon[JS stop monitor<br/>-stopInteractionMonitor-]
+            Error[JS formats errors<br/>-formatError-<br/>widget-error.js]
+            ErrorCap[JS captures errors<br/>-window.onerror-<br/>error-capture.js]
+            Logger[JS logs actions<br/>-ActionLogger.log-<br/>action-logger.js]
+            LogHelper[JS log shortcuts<br/>-action.info/error/warn-<br/>action-log-helper.js]
+            DiagBtn[JS handle diagnostic<br/>-handleDiagnostic-<br/>widget-tabs-actions.js]
+            RunDiag[JS run diagnostic<br/>-runPrintifyDiagnostic-<br/>widget-tabs-actions.js]
+            MonBtn[JS handle monitor<br/>-handleMonitor-<br/>widget-tabs-actions.js]
+            StartMon[JS start monitor<br/>-startInteractionMonitor-<br/>widget-tabs-actions.js]
+            StopMon[JS stop monitor<br/>-stopInteractionMonitor-<br/>widget-tabs-actions.js]
         end
     end
     
     subgraph "Extension - Background Service Worker"
-        BG[JS loads modules<br/>-importScripts-]
+        BG[JS loads modules<br/>-importScripts-<br/>background.js]
         
         subgraph "Router Functions"
-            RouterMsg[JS receives messages<br/>-handleMessage-]
-            RouterVal[JS validates message<br/>-validateMessage-]
-            RouterWrap[JS wraps response<br/>-wrapSendResponse-]
-            RouterRoute[JS routes by type<br/>-routeToHandler-]
-            RouterPause[JS pauses operation<br/>-pauseOperation-]
-            RouterResume[JS resumes operation<br/>-resumeOperation-]
+            RouterMsg[JS receives messages<br/>-handleMessage-<br/>widget-router.js]
+            RouterVal[JS validates message<br/>-validateMessage-<br/>widget-router.js]
+            RouterWrap[JS wraps response<br/>-wrapSendResponse-<br/>widget-router.js]
+            RouterRoute[JS routes by type<br/>-routeToHandler-<br/>widget-router.js]
+            RouterPause[JS pauses operation<br/>-pauseOperation-<br/>widget-router.js]
+            RouterResume[JS resumes operation<br/>-resumeOperation-<br/>widget-router.js]
         end
         
         subgraph "Handler Functions"
-            WHHandle[JS widget handler<br/>-handle-]
-            PHHandle[JS printify handler<br/>-handle-]
-            WPHRoute[JS routes wordpress<br/>-handle-]
-            MFHandle[JS mockup fetch<br/>-handle-]
-            MUHandle[JS mockup update<br/>-handle-]
+            WHHandle[JS widget handler<br/>-handle-<br/>widget-data-handler.js]
+            PHHandle[JS printify handler<br/>-handle-<br/>printify-data-handler.js]
+            WPHRoute[JS routes wordpress<br/>-handle-<br/>wordpress-handler.js]
+            MFHandle[JS mockup fetch<br/>-handle-<br/>mockup-fetch-handler.js]
+            MUHandle[JS mockup update<br/>-handle-<br/>mockup-update-handler.js]
         end
         
         subgraph "Chrome API Functions"
-            NavTab[JS navigates tabs<br/>-navigateTab-]
-            CreateTab[JS creates tab<br/>-chrome.tabs.create-]
-            QueryTab[JS queries tabs<br/>-chrome.tabs.query-]
-            SetStore[JS saves state<br/>-chrome.storage.set-]
-            GetStore[JS loads state<br/>-chrome.storage.get-]
-            InjectScript[JS injects scripts<br/>-chrome.scripting.executeScript-]
+            NavTab[JS navigates tabs<br/>-navigateTab-<br/>widget-router.js]
+            CreateTab[JS creates tab<br/>-chrome.tabs.create-<br/>widget-router.js]
+            QueryTab[JS queries tabs<br/>-chrome.tabs.query-<br/>widget-router.js]
+            SetStore[JS saves state<br/>-chrome.storage.set-<br/>widget-router.js]
+            GetStore[JS loads state<br/>-chrome.storage.get-<br/>widget-router.js]
+            InjectScript[JS injects scripts<br/>-chrome.scripting.executeScript-<br/>widget-router.js]
         end
         
         subgraph "Helper Functions"
-            TestConn[JS test connection<br/>-testWordPressConnection-]
-            CheckPlugin[JS check plugin<br/>-checkWordPressPluginStatus-]
-            ExtractScene[JS extract scenes<br/>-extractSceneNames-]
+            TestConn[JS test connection<br/>-testWordPressConnection-<br/>widget-router.js]
+            CheckPlugin[JS check plugin<br/>-checkWordPressPluginStatus-<br/>widget-router.js]
+            ExtractScene[JS extract scenes<br/>-extractSceneNames-<br/>mockup-update-handler.js]
         end
     end
     
@@ -172,7 +168,7 @@ graph TB
 ```
 
 **Reading the Master Diagram**:
-- **Box Format**: `[Language action<br/>-functionName-]` shows what the code does and which function
+- **Box Format**: `[Language action<br/>-functionName-<br/>file.js]` shows what the code does, which function, and which file
 - **Solid arrows (→)**: Active message/data flow with labels showing method calls
 - **Dashed arrows (--->)**: Configuration or dependency relationships
 - **Dotted arrows (-.->)**: Event-driven updates (storage onChange) or usage dependencies
@@ -181,11 +177,11 @@ graph TB
 
 **Key Architecture Points**:
 - **Router is the hub**: ALL runtime messages flow through handleMessage() in widget-router.js
-- **Content scripts are limited**: Can only use chrome.runtime.sendMessage and chrome.storage (except on Printify where chrome.runtime is blocked)
+- **Content scripts are limited**: Can only use chrome.runtime.sendMessage and chrome.storage
 - **Background has full access**: Service worker context with all Chrome APIs
-- **Function visibility**: Every function that touches data is shown
+- **Function visibility**: Every function that touches data is shown with its file location
 - **One-way message flow**: WordPress → Relay → Router → Handler → Response
-- **Printify limitation**: chrome.runtime blocked, mockup updates use URL parameters instead
+- **Printify limitation**: chrome.runtime blocked, mockup updates use URL parameters instead [NEEDS FIX]
 
 ### Understanding the Diagram Hierarchy
 
@@ -193,7 +189,7 @@ The Master System Architecture diagram above provides a complete view of the ext
 
 The following detail diagrams expand specific aspects of the master architecture to show:
 - **Every function that touches data** in that particular flow
-- **The exact function names** from the code (shown in `-functionName-` format)
+- **The exact function names** from the code
 - **The specific operations** each function performs
 - **Error handling paths** that might not be visible at the high level
 
@@ -203,8 +199,6 @@ Each detail diagram serves developers who need to:
 - Understand the complete chain of operations (e.g., "What happens between click and response?")
 
 ### 2.2 Complete Message Flow (Function Level)
-
-**Purpose**: This diagram details the complete message flow from WordPress through the extension and back, showing every function call in sequence. Use this when tracing end-to-end communication issues or understanding the full request/response cycle.
 
 This sequence diagram shows the exact function calls for a typical operation:
 
@@ -277,34 +271,32 @@ sequenceDiagram
 
 ### 2.3 Storage Architecture Detail (Function Level)
 
-**Purpose**: This diagram expands the storage components from the master diagram, showing every function that reads, writes, or transforms storage data. Use this when investigating storage issues, implementing new storage features, or understanding data persistence patterns.
-
 ```mermaid
 graph LR
     subgraph "Storage Functions"
         subgraph "Configuration"
-            InitConfig[JS loads config<br/>-initializeConfig-]
-            LoadConfig[JS reads storage<br/>-loadConfiguration-]
-            UpdateConfig[JS saves config<br/>-updateConfig-]
+            InitConfig[JS loads config<br/>-initializeConfig-<br/>widget-router.js]
+            LoadConfig[JS reads storage<br/>-loadConfiguration-<br/>widget-router.js]
+            UpdateConfig[JS saves config<br/>-updateConfig-<br/>widget-router.js]
         end
         
         subgraph "Tab Pairing"
-            LoadPairs[JS loads pairs<br/>-loadTabPairs-]
-            SavePairs[JS saves pairs<br/>-saveTabPairs-]
-            CreatePair[JS creates pair<br/>-createTabPair-]
-            RemovePair[JS removes pair<br/>-removeTabPair-]
-            GetPaired[JS gets pair<br/>-getPairedTab-]
+            LoadPairs[JS loads pairs<br/>-loadTabPairs-<br/>widget-router.js]
+            SavePairs[JS saves pairs<br/>-saveTabPairs-<br/>widget-router.js]
+            CreatePair[JS creates pair<br/>-createTabPair-<br/>widget-router.js]
+            RemovePair[JS removes pair<br/>-removeTabPair-<br/>widget-router.js]
+            GetPaired[JS gets pair<br/>-getPairedTab-<br/>widget-router.js]
         end
         
         subgraph "Action Logging"  
-            StoreLog[JS stores log<br/>-storeLog-]
-            GetLogs[JS retrieves logs<br/>-getActionLogs-]
-            ClearLogs[JS clears logs<br/>-clearActionLogs-]
+            StoreLog[JS stores log<br/>-storeLog-<br/>action-logger.js]
+            GetLogs[JS retrieves logs<br/>-getActionLogs-<br/>action-logger.js]
+            ClearLogs[JS clears logs<br/>-clearActionLogs-<br/>action-logger.js]
         end
         
         subgraph "Widget State"
-            SaveWidget[JS saves state<br/>-saveWidgetState-]
-            LoadWidget[JS loads state<br/>-loadWidgetState-]
+            SaveWidget[JS saves state<br/>-saveWidgetState-<br/>widget-router.js]
+            LoadWidget[JS loads state<br/>-loadWidgetState-<br/>widget-router.js]
         end
     end
     
@@ -356,15 +348,7 @@ graph LR
     WidgetState -.->|onChange event| LoadWidget
 ```
 
-**Storage Rationale**:
-- **Sync vs Local**: Config in sync (small, needs roaming), state in local (larger, device-specific)
-- **5MB Chrome limit**: Action logs auto-cleanup at 500 entries
-- **Runtime state**: Performance-critical data kept in memory
-- **Bidirectional pairs**: Enable navigation from either tab
-
 ### 2.4 Tab Pairing System Detail (Function Level)
-
-**Purpose**: This diagram details the tab pairing system from the master diagram, showing how WordPress and Printify tabs maintain their bidirectional relationship. Use this when investigating navigation issues, implementing new tab operations, or understanding the pairing lifecycle.
 
 ```mermaid
 sequenceDiagram
@@ -428,12 +412,6 @@ sequenceDiagram
     deactivate Router
 ```
 
-**Tab Pairing Rationale**:
-- **User expectation**: "Go to" should reuse tabs, not proliferate them
-- **Bidirectional**: Users navigate both directions equally
-- **Smart reuse**: Avoids reload if already on target page
-- **Automatic cleanup**: chrome.tabs.onRemoved ensures no orphaned pairs
-
 ## 3. Architectural Rationale
 
 ### 3.1 Why This Architecture?
@@ -446,31 +424,29 @@ sequenceDiagram
 **Core Design Principles**:
 
 1. **Push-Driven Architecture**: Extension announces presence; WordPress never polls
-   - *Why*: Reduces message traffic, ensures accurate state
-   - *Implementation*: Fresh detection on every page load
+   - Reduces message traffic, ensures accurate state
+   - Fresh detection on every page load
 
 2. **"Dumb Pipe" Principle**: Extension captures raw data; WordPress processes it
-   - *Why*: Keeps extension simple, business logic centralized
-   - *Implementation*: Handlers return raw API responses
+   - Keeps extension simple, business logic centralized
+   - Handlers return raw API responses
 
 3. **Central Router Pattern**: All messages flow through one hub
-   - *Why*: Chrome funnels all runtime messages to background script
-   - *Constraint*: Content scripts cannot intercept each other's messages
+   - Chrome funnels all runtime messages to background script
+   - Content scripts cannot intercept each other's messages
 
 4. **Infrastructure-Level Logging**: Response logging at router, not handlers
-   - *Why*: Cross-cutting concern, guaranteed coverage
-   - *Implementation*: Router wraps sendResponse before passing to handlers
+   - Cross-cutting concern, guaranteed coverage
+   - Router wraps sendResponse before passing to handlers
 
 5. **Fresh Detection Model**: Extension state never persisted between page loads
-   - *Why*: Eliminates false positives, ensures accurate detection
-   - *Implementation*: Extension must announce on every page load
+   - Eliminates false positives, ensures accurate detection
+   - Extension must announce on every page load
 
 ### 3.2 Component Purposes
 
-| Component | Purpose (WHY it exists) |
-|-----------|------------------------|
-| Component | Purpose (WHY it exists) | Constraint/Requirement |
-|-----------|------------------------|------------------------|
+| Component | Purpose | Constraint/Requirement |
+|-----------|---------|------------------------|
 | **widget-relay.js** | Bridge between postMessage and chrome.runtime | WordPress can only use postMessage |
 | **widget-router.js** | Central message hub and Chrome API executor | Chrome sends all messages to background |
 | **background.js** | Module loader for service worker | Manifest V3 requires importScripts |
@@ -485,12 +461,12 @@ sequenceDiagram
 
 ### 4.1 Architectural Constraints
 
-**Why Router MUST be the background script**:
+**Router MUST be the background script**:
 - Chrome doesn't allow content scripts to intercept runtime messages between other content scripts
 - ALL chrome.runtime.sendMessage() calls go directly to the background script
 - This is why we achieve "ALL messages flow through router"
 
-**Why extension state is never persisted**:
+**Extension state is never persisted**:
 - Ensures "Install Extension" button always appears when extension not present
 - Eliminates stale state from uninstalled extensions
 - Forces push-driven model (extension announces when ready)
@@ -515,25 +491,6 @@ sequenceDiagram
     data: { /* action data */ }
 }
 ```
-
-### 4.4 Adding New Features
-
-1. **Define the trigger** (user action or page event)
-2. **Create message in action script**: 
-   ```javascript
-   chrome.runtime.sendMessage({
-       type: 'printify',
-       action: 'newFeature',
-       data: { /* ... */ }
-   });
-   ```
-3. **Add handler method**:
-   ```javascript
-   case 'newFeature':
-       // Implementation
-       sendResponse({success: true});
-       return true; // CRITICAL for async
-   ```
 
 ### 4.3 Action Logging Shortcuts
 
@@ -593,7 +550,7 @@ function extractSceneNames(selectedMockups) {
 - scene: 102752 (maps to 'Front')
 - position: 1 (position in scene)
 
-**Why Hard-coded Mapping**: Printify's internal scene IDs are stable but not exposed in their UI. The mapping was determined by inspecting the mockup library page.
+**Hard-coded Mapping**: Printify's internal scene IDs are stable but not exposed in their UI. The mapping was determined by inspecting the mockup library page.
 
 ### 4.5 Chrome Architecture Constraints
 
@@ -607,7 +564,6 @@ function extractSceneNames(selectedMockups) {
 const isServiceWorker = typeof window === 'undefined';
 const globalScope = isServiceWorker ? self : window;
 ```
-*Why*: Chrome Manifest V3 service workers have no DOM
 
 **Content Script Constraints**:
 ```javascript
@@ -624,12 +580,11 @@ chrome.runtime.sendMessage({
 });
 
 // CRITICAL: On Printify.com, chrome.runtime is BLOCKED:
-chrome.runtime.sendMessage()  ❌  // Blocked by Printify
-chrome.runtime.onMessage  ❌  // Blocked by Printify  
-chrome.runtime.getURL()  ❌  // Blocked by Printify
-chrome.runtime.getManifest()  ❌  // Blocked by Printify
+chrome.runtime.sendMessage()  ❌  // Blocked by Printify [NEEDS FIX]
+chrome.runtime.onMessage  ❌  // Blocked by Printify [NEEDS FIX]
+chrome.runtime.getURL()  ❌  // Blocked by Printify [NEEDS FIX]
+chrome.runtime.getManifest()  ❌  // Blocked by Printify [NEEDS FIX]
 ```
-*Why*: Security isolation between web pages and browser + Printify's additional restrictions
 
 **Message Channel Constraints**:
 ```javascript
@@ -639,9 +594,8 @@ chrome.runtime.onMessage.addListener((message, sender) => {
     // Only receives from background script
 });
 ```
-*Why*: Chrome routes all runtime messages through background
 
-### 4.5 Critical Patterns
+### 4.6 Critical Patterns
 
 **Async Message Handling**:
 ```javascript
@@ -660,6 +614,25 @@ case 'asyncAction':
 const tab = await router.navigateTab(url);
 const result = await router.queryTabs({url: '*://printify.com/*'});
 ```
+
+### 4.7 Adding New Features
+
+1. **Define the trigger** (user action or page event)
+2. **Create message in action script**: 
+   ```javascript
+   chrome.runtime.sendMessage({
+       type: 'printify',
+       action: 'newFeature',
+       data: { /* ... */ }
+   });
+   ```
+3. **Add handler method**:
+   ```javascript
+   case 'newFeature':
+       // Implementation
+       sendResponse({success: true});
+       return true; // CRITICAL for async
+   ```
 
 ## 5. Storage Schema
 
@@ -714,8 +687,6 @@ const result = await router.queryTabs({url: '*://printify.com/*'});
 ```
 
 ### 5.1 Extension Detection & Installation Flow (Function Level)
-
-**Purpose**: This diagram details how the extension announces itself to WordPress pages and how the plugin detects the extension. Use this when investigating extension detection issues, implementing new announcement mechanisms, or understanding the push-driven architecture.
 
 ```mermaid
 sequenceDiagram
@@ -772,11 +743,11 @@ sequenceDiagram
     Note over BEM: State NOT persisted<br/>Must announce every page load
 ```
 
-**Why Programmatic Injection**: Content scripts don't auto-inject into already-open tabs after installation. Users expect immediate functionality without reload.
+**Programmatic Injection**: Content scripts don't auto-inject into already-open tabs after installation. Users expect immediate functionality without reload.
 
-**Why 100ms Delay**: Ensures all scripts are fully loaded before announcing presence.
+**100ms Delay**: Ensures all scripts are fully loaded before announcing presence.
 
-**Why No State Persistence**: Fresh detection eliminates false positives from uninstalled extensions.
+**No State Persistence**: Fresh detection eliminates false positives from uninstalled extensions.
 
 ## 6. Message Type Reference
 
@@ -798,12 +769,10 @@ sequenceDiagram
 
 ### 6.1 Message Format Transformation (Function Level)
 
-**Purpose**: This diagram details how WordPress commands are transformed as they pass through the extension layers. Use this when investigating message format issues, implementing new message types, or understanding why messages arrive in different formats at different layers.
-
 ```mermaid
 flowchart LR
     subgraph "WordPress Context"
-        WP[JS builds message<br/>-sendMessageToExtension-]
+        WP[JS builds message<br/>-sendMessageToExtension-<br/>browser-extension-manager.js]
         WPMsg["{
             type: 'SIP_UPDATE_PRODUCT_MOCKUPS',
             source: 'sip-printify-manager',
@@ -813,10 +782,10 @@ flowchart LR
     end
     
     subgraph "Relay Functions"
-        R1[JS receives event<br/>-handlePostMessage-]
-        R2[JS validates origin<br/>-event.origin check-]
-        R3[JS validates source<br/>-data.source check-]
-        R4[JS wraps message<br/>-chrome.runtime.sendMessage-]
+        R1[JS receives event<br/>-handlePostMessage-<br/>widget-relay.js]
+        R2[JS validates origin<br/>-event.origin check-<br/>widget-relay.js]
+        R3[JS validates source<br/>-data.source check-<br/>widget-relay.js]
+        R4[JS wraps message<br/>-chrome.runtime.sendMessage-<br/>widget-relay.js]
         RelayMsg["{
             type: 'WORDPRESS_RELAY',
             data: {
@@ -829,18 +798,18 @@ flowchart LR
     end
     
     subgraph "Router Functions"
-        RO1[JS receives message<br/>-handleMessage-]
-        RO2[JS detects relay<br/>-checkWordPressRelay-]
-        RO3[JS extracts nested<br/>-message = message.data-]
-        RO4[JS logs received<br/>-ActionLogger.log-]
-        RO5[JS gets handler<br/>-getHandlerByType-]
-        RO6[JS calls handler<br/>-handler.handle-]
+        RO1[JS receives message<br/>-handleMessage-<br/>widget-router.js]
+        RO2[JS detects relay<br/>-checkWordPressRelay-<br/>widget-router.js]
+        RO3[JS extracts nested<br/>-message = message.data-<br/>widget-router.js]
+        RO4[JS logs received<br/>-ActionLogger.log-<br/>action-logger.js]
+        RO5[JS gets handler<br/>-getHandlerByType-<br/>widget-router.js]
+        RO6[JS calls handler<br/>-handler.handle-<br/>widget-router.js]
     end
     
     subgraph "Handler Processing"
-        H1[JS routes command<br/>-wordpress-handler.handle-]
-        H2[JS converts to internal<br/>-mapWordPressAction-]
-        H3[JS delegates to handler<br/>-PrintifyDataHandler.handle-]
+        H1[JS routes command<br/>-wordpress-handler.handle-<br/>wordpress-handler.js]
+        H2[JS converts to internal<br/>-mapWordPressAction-<br/>wordpress-handler.js]
+        H3[JS delegates to handler<br/>-PrintifyDataHandler.handle-<br/>printify-data-handler.js]
         HandlerMsg["{
             type: 'printify',
             action: 'updateProductMockups',
@@ -866,7 +835,7 @@ flowchart LR
     H2 -->|delegates| H3
 ```
 
-**Why Transform**: External format identifies our messages among all postMessages. Internal format routes to correct handler.
+**Transform Reason**: External format identifies our messages among all postMessages. Internal format routes to correct handler.
 
 ## 7. Key Features
 
@@ -876,8 +845,6 @@ flowchart LR
 - Automatically cleans up when tabs close
 
 ### 7.2 Pause/Resume Error Recovery (Function Level)
-
-**Purpose**: This diagram details the pause/resume system that handles page errors (login required, 404, etc.) during operations. Use this when investigating error recovery, implementing new error types, or understanding how the extension maintains operation state across user interventions.
 
 ```mermaid
 sequenceDiagram
@@ -951,7 +918,7 @@ sequenceDiagram
     deactivate Handler
 ```
 
-**Why Pause/Resume**: Operations fail on login pages, 404s, permission errors. Users can fix issues without losing progress.
+**Pause/Resume Reason**: Operations fail on login pages, 404s, permission errors. Users can fix issues without losing progress.
 
 **Error Detection**:
 ```javascript
@@ -964,8 +931,6 @@ function detectPageIssue() {
 ```
 
 ### 7.3 Response Logging Architecture (Function Level)
-
-**Purpose**: This diagram shows how response logging is implemented at the infrastructure level in the router. Use this when investigating logging issues, understanding why certain actions aren't logged, or implementing new logging features.
 
 ```mermaid
 sequenceDiagram
@@ -1015,7 +980,7 @@ sequenceDiagram
     deactivate H
 ```
 
-**Why Infrastructure Level**: 
+**Infrastructure Level Reason**: 
 - DRY principle - implement once, not in every handler
 - Guaranteed coverage - can't forget to log
 - Evolution-friendly - change format in one place
@@ -1040,7 +1005,7 @@ element.innerHTML = '<div style="color: red">Text</div>';
 element.innerHTML = '<div class="error-text">Text</div>';
 ```
 
-**Why CSP Matters**: WordPress and many sites enforce CSP to prevent XSS. Extension must work everywhere.
+**CSP Importance**: WordPress and many sites enforce CSP to prevent XSS. Extension must work everywhere.
 
 ### 7.5 Public API Naming Standards
 
@@ -1060,11 +1025,9 @@ SiPWidget.UI.refreshWidget();
 SiPWidget.UI.resizeWidget();
 ```
 
-**Why**: Prevents race conditions where function is called before module loads. Makes API discoverable and extensible.
+**Namespace Reason**: Prevents race conditions where function is called before module loads. Makes API discoverable and extensible.
 
-### 7.5 URL Parameter Mockup Update Flow (Chrome.runtime Workaround)
-
-**Purpose**: This diagram shows how mockup updates work on Printify pages where chrome.runtime is blocked. The extension uses URL parameters to pass data to the content script, which then automates the UI interaction.
+### 7.6 URL Parameter Mockup Update Flow (Chrome.runtime Workaround) [NEEDS FIX]
 
 ```mermaid
 sequenceDiagram
@@ -1137,11 +1100,9 @@ const sceneIdToName = {
 };
 ```
 
-**Why URL Parameters**: Printify blocks chrome.runtime in content scripts, preventing traditional message passing. URL parameters provide a one-way data channel that doesn't require chrome.runtime.
+**URL Parameter Reason**: Printify blocks chrome.runtime in content scripts, preventing traditional message passing. URL parameters provide a one-way data channel that doesn't require chrome.runtime. [NEEDS FIX]
 
-### 7.6 Error Capture System Architecture
-
-**Purpose**: This diagram shows how the extension captures and handles errors globally. The error-capture.js script sets up handlers for uncaught errors and unhandled promise rejections.
+### 7.7 Error Capture System Architecture
 
 ```mermaid
 sequenceDiagram
@@ -1162,7 +1123,7 @@ sequenceDiagram
             EC->>WE: formatError(error || {message})
             WE-->>EC: formattedError
             EC->>BG: chrome.runtime.sendMessage({<br/>type: 'widget',<br/>action: 'logError',<br/>error: formattedError})
-        else Chrome.runtime blocked (Printify)
+        else Chrome.runtime blocked (Printify) [NEEDS FIX]
             EC->>EC: console.error('[SiP Error Capture]', details)
         end
         deactivate EC
@@ -1201,9 +1162,7 @@ window.addEventListener('unhandledrejection', function(event) {
 });
 ```
 
-### 7.7 Action Logging Helper Architecture
-
-**Purpose**: This diagram shows how the action-log-helper.js provides convenient shortcuts for logging throughout the extension. It wraps the ActionLogger with category-specific methods.
+### 7.8 Action Logging Helper Architecture
 
 ```mermaid
 sequenceDiagram
@@ -1256,13 +1215,13 @@ window.action = {
 };
 ```
 
-**Why Helper**: Reduces verbosity, ensures consistent categorization, and provides fallback when ActionLogger isn't available.
+**Helper Benefit**: Reduces verbosity, ensures consistent categorization, and provides fallback when ActionLogger isn't available.
 
-### 7.8 Diagnostic and Monitoring Tools
+### 7.9 Diagnostic and Monitoring Tools
 
-**Purpose**: These features were added to help users understand and debug Printify page interactions. The diagnostic tool analyzes DOM structure and the monitor tracks user interactions with API calls.
+These features were added to help users understand and debug Printify page interactions. The diagnostic tool analyzes DOM structure and the monitor tracks user interactions with API calls.
 
-**Why These Tools**: Users were repeatedly encountering issues with DOM structure changes on Printify pages. Rather than manually running console scripts each time, these tools are now integrated into the widget interface for easy access.
+**Tool Purpose**: Users were repeatedly encountering issues with DOM structure changes on Printify pages. Rather than manually running console scripts each time, these tools are now integrated into the widget interface for easy access.
 
 ```mermaid
 graph LR
@@ -1272,22 +1231,22 @@ graph LR
     end
     
     subgraph "Diagnostic Flow"
-        HandleDiag[JS handle click<br/>-handleDiagnostic-]
-        RunDiag[JS analyze page<br/>-runPrintifyDiagnostic-]
+        HandleDiag[JS handle click<br/>-handleDiagnostic-<br/>widget-tabs-actions.js]
+        RunDiag[JS analyze page<br/>-runPrintifyDiagnostic-<br/>widget-tabs-actions.js]
         DiagResult[Diagnostic Result<br/>{pageType, data, interactive}]
     end
     
     subgraph "Monitor Flow"
-        HandleMon[JS handle toggle<br/>-handleMonitor-]
-        StartMon[JS start tracking<br/>-startInteractionMonitor-]
-        StopMon[JS stop tracking<br/>-stopInteractionMonitor-]
+        HandleMon[JS handle toggle<br/>-handleMonitor-<br/>widget-tabs-actions.js]
+        StartMon[JS start tracking<br/>-startInteractionMonitor-<br/>widget-tabs-actions.js]
+        StopMon[JS stop tracking<br/>-stopInteractionMonitor-<br/>widget-tabs-actions.js]
         MonitorData[Monitor Data<br/>{clicks, apiCalls, stateChanges}]
     end
     
     subgraph "Output"
-        Logger[ActionLogger<br/>-log-]
-        Toast[Toast Messages<br/>-showToast-]
-        Progress[Progress Display<br/>-updateProgress-]
+        Logger[ActionLogger<br/>-log-<br/>action-logger.js]
+        Toast[Toast Messages<br/>-showToast-<br/>widget-tabs-actions.js]
+        Progress[Progress Display<br/>-updateProgress-<br/>widget-tabs-actions.js]
     end
     
     DiagButton -->|click| HandleDiag
@@ -1327,56 +1286,47 @@ graph LR
 ## 8. Development Quick Reference
 
 ### File Structure with Key Functions
+
+```mermaid
+graph TB
+    subgraph "Extension Root"
+        Manifest[manifest.json<br/>Extension configuration]
+        Background[background.js<br/>-importScripts-<br/>Loads all modules]
+    end
+    
+    subgraph "Core Scripts"
+        Router[widget-router.js<br/>-handleMessage-<br/>-navigateTab-<br/>-pauseOperation-]
+        Relay[widget-relay.js<br/>-handlePostMessage-<br/>-window.addEventListener-]
+        Error[widget-error.js<br/>-formatError-<br/>-standardizeError-]
+        Logger[action-logger.js<br/>-ActionLogger.log-<br/>-storeLog-<br/>-getActionLogs-]
+        LogHelper[action-log-helper.js<br/>-action.info-<br/>-action.error-<br/>-action.warn-]
+        ErrorCap[error-capture.js<br/>-window.onerror-<br/>-unhandledrejection handlers-]
+    end
+    
+    subgraph "Action Scripts"
+        Detector[extension-detector.js<br/>-announceExtension-<br/>-checkPageContext-]
+        WidgetActions[widget-tabs-actions.js<br/>-createWidget-<br/>-handleButtonClick-<br/>-updateUI-<br/>-handleDiagnostic-<br/>-runPrintifyDiagnostic-<br/>-handleMonitor-<br/>-startInteractionMonitor-<br/>-stopInteractionMonitor-]
+        PrintifyActions[printify-tab-actions.js<br/>-observeDOM-<br/>-detectPageChanges-]
+        MockupActions[mockup-library-actions.js<br/>-checkUrlParameters-<br/>-executeSceneSelection-]
+    end
+    
+    subgraph "Handler Scripts"
+        WidgetHandler[widget-data-handler.js<br/>-handle-<br/>navigate/showWidget/updateState]
+        PrintifyHandler[printify-data-handler.js<br/>-handle-<br/>fetchMockups/updateStatus]
+        WordPressHandler[wordpress-handler.js<br/>-handle-<br/>routes SIP_* to internal]
+        MockupFetch[mockup-fetch-handler.js<br/>-handle-<br/>navigates and captures]
+        MockupUpdate[mockup-update-handler.js<br/>-handle-<br/>opens URL with params]
+    end
+    
+    Background -->|loads| Router
+    Background -->|loads| Error
+    Background -->|loads| Logger
+    Background -->|loads| WidgetHandler
+    Background -->|loads| PrintifyHandler
+    Background -->|loads| WordPressHandler
+    Background -->|loads| MockupFetch
+    Background -->|loads| MockupUpdate
 ```
-extension/
-├── manifest.json              # Extension configuration
-├── background.js              # importScripts() loader for service worker:
-│                              # Loads: widget-error.js, action-logger.js,
-│                              # mockup-fetch-handler.js, mockup-update-handler.js,
-│                              # widget-data-handler.js, printify-data-handler.js,
-│                              # wordpress-handler.js, widget-router.js
-├── core-scripts/
-│   ├── widget-router.js      # handleMessage(), navigateTab(), pauseOperation()
-│   ├── widget-relay.js       # handlePostMessage(), window.addEventListener()
-│   ├── widget-error.js       # formatError(), standardizeError()
-│   ├── action-logger.js      # ActionLogger.log(), storeLog(), getActionLogs()
-│   ├── action-log-helper.js  # action.info(), action.error(), action.warn()
-│   └── error-capture.js      # window.onerror, unhandledrejection handlers
-├── action-scripts/
-│   ├── extension-detector.js # announceExtension(), checkPageContext()
-│   ├── widget-tabs-actions.js # createWidget(), handleButtonClick(), updateUI(),
-│   │                          # handleDiagnostic(), runPrintifyDiagnostic(),
-│   │                          # handleMonitor(), startInteractionMonitor(), stopInteractionMonitor()
-│   ├── printify-tab-actions.js # observeDOM(), detectPageChanges()
-│   └── mockup-library-actions.js # checkUrlParameters(), executeSceneSelection()
-└── handler-scripts/
-    ├── widget-data-handler.js # handle() with navigate/showWidget/updateState
-    ├── printify-data-handler.js # handle() with fetchMockups/updateStatus
-    ├── wordpress-handler.js   # handle() routes SIP_* to internal format
-    ├── mockup-fetch-handler.js # handle() navigates and captures mockup data
-    └── mockup-update-handler.js # handle() opens URL with scene parameters
-```
-
-### Common Issues
-
-**Widget not visible**: 
-- Widget must start with `sip-visible` class
-- Position must be in viewport: `x: window.innerWidth - 340, y: 20`
-- Check `#sip-floating-widget` exists in DOM
-
-**Messages not routing**: 
-- External format requires: `type: 'SIP_*'` and `source: 'sip-printify-manager'`
-- Internal format requires: `type: 'widget|printify|wordpress'` and `action: 'specificAction'`
-- On Printify: chrome.runtime blocked, messages won't work at all
-
-**Printify functionality limited**:
-- chrome.runtime.sendMessage() blocked - use URL parameters instead
-- Widget has reduced functionality on Printify pages
-- Mockup updates work via URL params: `?sip-action=update&scenes=Front,Back`
-
-**Manifest corruption**: 
-- Run `file manifest.json` - should show "ASCII text" not "UTF-8 Unicode (with BOM)"
-- Validate with `node validate-manifest.js`
 
 ### Testing Checklist with Function Verification
 - [ ] Run `node validate-manifest.js` to check manifest integrity

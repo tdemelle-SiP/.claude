@@ -28,6 +28,10 @@ These principles drive both code creation AND documentation creation:
 **Code**: No backward compatibility that preserves broken patterns  
 **Documentation**: No history, future plans, or deprecated information
 
+### 7. POSITIVE SPECIFICATION
+**Code**: Define what the system does, not what it doesn't do
+**Documentation**: Specify what IS, not what ISN'T (no defensive clarifications)
+
 ## Documentation Philosophy
 
 Documentation consists of two complementary parts that follow these principles:
@@ -92,15 +96,32 @@ The form validation occurs client-side before submission because:
 - Never duplicate between diagram and text
 
 ### 5. ROOT CAUSE DOCUMENTATION
-**Rule**: Document the fundamental reason, not the symptom.
+**Rule**: Document the fundamental reason, not the symptom. When code contains workarounds, document them accurately as issues needing correction.
 
-**Example**:
+**For Proper Implementation**:
 ```markdown
 User authentication occurs during the 'init' hook at priority 5 because:
 - WordPress core user functions are available after priority 0
 - Our user enhancement must run before template rendering at priority 10
 - This eliminates any race condition with user availability
 ```
+
+**For Existing Workarounds** (document honestly, mark for correction):
+```markdown
+### Grid Selection Workaround [NEEDS FIX]
+The code currently selects only the first grid because:
+- Printify renders 6-9 identical grids but only Grid 0 contains interactive checkboxes
+- Root cause unknown - requires investigation of Printify's rendering logic
+- This workaround prevents errors but should be replaced with proper grid identification
+
+Current implementation:
+```javascript
+const allGrids = document.querySelectorAll('[data-testid="mockupItemsGrid"]');
+const visibleGrid = allGrids[0]; // WORKAROUND: Only first grid has checkboxes
+```
+```
+
+**Key**: Symptoms in code should be documented as problems to fix, not hidden or justified.
 
 ## Diagram Guidelines (The WHAT)
 
@@ -119,12 +140,13 @@ Every significant element must be shown:
 #### 2. Verifiable References
 Every code element must include:
 ```
-[Language does action<br/>-functionName-<br/>file.ext:line]
+[Language does action<br/>-functionName-<br/>file.ext]
 ```
+Function name and file location enable verification without line-number maintenance burden.
 
 #### 3. Exact Naming
 - Use actual function/method names from code
-- Use actual file paths and line numbers
+- Use actual file paths
 - Use actual storage keys and table names
 
 #### 4. Connection Accuracy
@@ -138,21 +160,21 @@ Every arrow must represent an actual code connection:
 
 #### Node Types
 1. **Actor/User**: `[User does action]`
-2. **Code/Function**: `[JS validates input<br/>-validateForm-<br/>form.js:156]`
+2. **Code/Function**: `[JS validates input<br/>-validateForm-<br/>form.js]`
 3. **Storage**: `[(MySQL Database<br/>-users table-)]` (cylinder for persistent)
 4. **State**: `[Form State<br/>-formData-]` (rectangle for runtime)
 
 #### Connection Types by Diagram
 
 **Flow/Graph**:
-- Function calls: `-->|methodName() :89|`
+- Function calls: `-->|methodName()|`
 - Data flow: `-->|userData|`
 - Events: `-->|click|`
 - Conditions: `-->|[valid]|`
 
 **Sequence**:
-- Synchronous: `->>` with `:lineNumber`
-- Asynchronous: `-->>` with `:lineNumber`
+- Synchronous: `->>` with method name
+- Asynchronous: `-->>` with method name
 - Return: `-->>` with return value
 - Participants: `participant Service<br/>file.js`
 
@@ -322,10 +344,10 @@ add_action('init', function() {
 - [ ] Understand root causes, not symptoms
 
 ### For Diagrams
-- [ ] Every function has file:line reference
+- [ ] Every function has file reference
 - [ ] All connections verified in code
 - [ ] No WHY explanations included
-- [ ] Shows actual structure
+- [ ] Shows actual structure, including existing workarounds marked as such
 
 ### For Text
 - [ ] Explains WHY for each design decision
@@ -355,7 +377,7 @@ Brief description of what this feature does and why it exists.
 
 ```mermaid
 graph TD
-    A[Component<br/>-function-<br/>file.js:42] --> B[Component<br/>-function-<br/>file.js:89]
+    A[Component<br/>-function-<br/>file.js] --> B[Component<br/>-function-<br/>file.js]
 ```
 
 ### Why This Design
