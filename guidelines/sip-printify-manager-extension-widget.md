@@ -1179,7 +1179,7 @@ Handlers run in the background script context and have access to router methods.
 - **Extension Side** (`action-logger.js`): Logs structured actions with categories, timing, and status
 - **WordPress Side**: Sends only actionable requests (no console mirroring)
 - **Storage**: Chrome local storage with 1MB limit and automatic cleanup
-- **Categories**: WORDPRESS_ACTION, NAVIGATION, DATA_FETCH, API_CALL, STATE_CHANGE, ERROR, AUTH
+- **Categories**: WORDPRESS_ACTION, NAVIGATION, DATA_FETCH, API_CALL, STATE_CHANGE, ERROR, CONSOLE_ERROR, AUTH
 
 #### Action Categories
 
@@ -1219,11 +1219,6 @@ The system logs these types of extension actions:
     details: { /* action-specific data */ }
 }
 ```
-
-**Debug Level Integration**:
-- **OFF** (0): No action logging
-- **NORMAL** (1): Important operations (WordPress actions, navigation, errors)
-- **VERBOSE** (2): All actions including detailed traces
 
 **Storage Management**:
 - Key: 'sipActionLogs' in Chrome local storage
@@ -1347,6 +1342,7 @@ The extension supports the following commands from WordPress:
 | `SIP_FETCH_MOCKUPS` | Fetch mockup data from Printify | Printify handler |
 | `SIP_UPDATE_PRODUCT_MOCKUPS` | Update product mockups via internal API | Printify handler |
 | `SIP_PUBLISH_PRODUCTS` | Publish products via internal API | Printify handler |
+| `SIP_CLEAR_STATUS` | Clear operation status | Widget handler |
 
 **Note**: Any other command will receive an error response with code `UNKNOWN_ACTION`.
 
@@ -1551,9 +1547,9 @@ To add pause/resume support to a new operation:
 4. **Handle Resume**: Add case in `widget-data-handler.js` for your operation type
 5. **Test Scenarios**: Test with login pages, 404s, and network errors
 
-## 14. Development Guidelines
+## 17. Development Guidelines
 
-### 14.1 Widget Visibility Requirements
+### 17.1 Widget Visibility Requirements
 
 **Widget Initialization**:
 - Widget MUST start with `sip-visible` class for immediate visibility
@@ -1572,7 +1568,7 @@ To add pause/resume support to a new operation:
 3. Inspect DOM for `#sip-floating-widget` element
 4. Verify position values in inline styles
 
-### 14.2 Adding New Operations
+### 17.2 Adding New Operations
 
 1. Start with the trigger (user action or page event)
 2. Define the message format
@@ -1582,14 +1578,15 @@ To add pause/resume support to a new operation:
 6. Update storage schema if needed
 7. Update UI components if needed
 
-### 14.3 Debugging
+### 17.3 Debugging
 
-- Enable debug mode: `chrome.storage.local.set({sip_printify_debug: true})`
-- Check router for message flow
+- Check action logs via History button in widget
+- Check router for message flow in service worker console
 - Verify message formats match documentation
 - Check Chrome DevTools for both page and extension contexts
+- Look for paired "Received" and "SUCCESS/ERROR" log entries
 
-### 14.4 Testing Checklist
+### 17.4 Testing Checklist
 
 - [ ] Run `node validate-manifest.js` to check manifest integrity
 - [ ] Check chrome://extensions for ANY errors or warnings
@@ -1604,7 +1601,7 @@ To add pause/resume support to a new operation:
 - [ ] Widget UI reflects state changes
 - [ ] Error cases return standardized error responses
 
-### 14.5 Common Pitfalls
+### 17.5 Common Pitfalls
 
 **Manifest Corruption**:
 - Chrome silently fails on manifest parsing errors
@@ -1617,7 +1614,7 @@ To add pause/resume support to a new operation:
 - Background scripts may load while content scripts don't
 - Programmatic injection can mask manifest issues
 
-### 14.6 Content Security Policy (CSP) Compliance
+### 17.6 Content Security Policy (CSP) Compliance
 
 **Why it matters**: WordPress and many web applications enforce Content Security Policy to prevent XSS attacks. Extensions must be CSP-compliant to function correctly.
 
@@ -1660,9 +1657,161 @@ Key implementation details:
 3. widget-relay.js handles WordPress postMessage relay in content script context
 4. All Chrome API execution happens directly in the router, no separate executor needed
 
-## 15. Common Issues and Troubleshooting
+## 15. Simplified Logging System
 
-### 15.1 Message Port Closed Error
+### 15.1 Overview
+
+**Why the simplification**: The original debug level system (OFF/NORMAL/VERBOSE) was a remnant from when the extension echoed console logs. With curated action logging, debug levels added unnecessary complexity without value.
+
+### 15.2 What Changed
+
+**Removed**:
+- Debug level tracking and synchronization with WordPress
+- `normal()`, `verbose()`, `error()` methods in ActionLogger
+- `SIP_SYNC_DEBUG_LEVEL` message handling
+- Debug level storage keys and state management
+- Level-based filtering in log methods
+
+**Simplified to**:
+- Single `log()` method in ActionLogger
+- All curated actions are logged (no filtering)
+- Response logging uses appropriate status ('success' or 'error')
+- Clean, focused API without legacy complexity
+
+### 15.3 Current Logging API
+
+**ActionLogger**:
+```javascript
+// Log any action
+SiPWidget.ActionLogger.log(category, action, details);
+
+// Example usage
+SiPWidget.ActionLogger.log(
+    SiPWidget.ActionLogger.CATEGORIES.WORDPRESS_ACTION,
+    'Received: SIP_UPDATE_PRODUCT_MOCKUPS',
+    { tabId: 123, requestId: 'req_456' }
+);
+```
+
+**Debug Module**:
+```javascript
+// Simple debug logging
+const debug = SiPWidget.Debug;
+debug.log('Operation started');
+debug.error('Operation failed:', error);
+debug.warn('Potential issue');
+```
+
+### 15.4 Benefits
+
+1. **Simplicity**: One way to log, no levels to think about
+2. **Clarity**: Curated logs show what matters
+3. **Maintainability**: Less code, fewer bugs
+4. **Focus**: Log what's important, not everything
+
+## 16. Response Logging Architecture
+
+### 16.1 Overview
+
+**Why it exists**: Every extension action needs a visible outcome in the action log. Without response logging, operations that timeout or fail silently leave no trace, making debugging difficult.
+
+### 16.2 Infrastructure-Level Solution
+
+**Implementation**: The router wraps `sendResponse` before passing it to handlers, automatically logging all responses without modifying any handler code.
+
+```mermaid
+sequenceDiagram
+    participant WP as WordPress
+    participant R as Router
+    participant H as Handler
+    participant AL as ActionLogger
+    
+    WP->>R: Message (SIP_UPDATE_PRODUCT_MOCKUPS)
+    R->>AL: Log "Received: SIP_UPDATE_PRODUCT_MOCKUPS"
+    
+    Note over R: Router wraps sendResponse
+    
+    R->>H: handle(message, sender, wrappedSendResponse)
+    
+    alt Success Case
+        H->>R: wrappedSendResponse({success: true})
+        R->>AL: Log "SUCCESS: SIP_UPDATE_PRODUCT_MOCKUPS"
+        R->>WP: Original response
+    else Failure Case
+        H->>R: wrappedSendResponse({success: false, error: "..."})
+        R->>AL: Log "ERROR: SIP_UPDATE_PRODUCT_MOCKUPS - [error]"
+        R->>WP: Original response
+    else Timeout Case
+        Note over H: Handler never calls sendResponse
+        Note over AL: Only "Received" log exists = timeout/crash
+    end
+```
+
+### 16.3 Why Infrastructure-Level?
+
+1. **DRY Principle**: Implement logging once, not in every handler
+2. **Separation of Concerns**: Handlers handle business logic, infrastructure handles logging
+3. **Fail-Safe Design**: Can't forget to log when it's automatic
+4. **Evolution-Friendly**: Log format changes happen in one place
+
+### 16.4 Log Output Examples
+
+**Success Case**:
+```
+[4:16:15 PM] [WordPress Site] [INFO] WP-ACTION - Received: SIP_UPDATE_PRODUCT_MOCKUPS
+[4:16:20 PM] [WordPress Site] [SUCCESS] WP-ACTION - SUCCESS: SIP_UPDATE_PRODUCT_MOCKUPS
+```
+
+**Error Case**:
+```
+[4:16:15 PM] [WordPress Site] [INFO] WP-ACTION - Received: SIP_UPDATE_PRODUCT_MOCKUPS  
+[4:16:20 PM] [WordPress Site] [ERROR] WP-ACTION - ERROR: SIP_UPDATE_PRODUCT_MOCKUPS - Page not found
+```
+
+**Timeout Case**:
+```
+[4:16:15 PM] [WordPress Site] [INFO] WP-ACTION - Received: SIP_UPDATE_PRODUCT_MOCKUPS
+(No completion log indicates timeout/crash)
+```
+
+### 16.5 Implementation Details
+
+**Location**: `widget-router.js` lines 823-854
+
+**Key Code**:
+```javascript
+// Wrap sendResponse to add logging
+const originalSendResponse = sendResponse;
+const wrappedSendResponse = (response) => {
+    // Log the response with appropriate status
+    const responseStatus = response?.success ? 'success' : 'error';
+    SiPWidget.ActionLogger.log(
+        SiPWidget.ActionLogger.CATEGORIES.WORDPRESS_ACTION,
+        `${status}: ${action}${error ? ' - ' + error : ''}`,
+        {
+            success: response?.success,
+            error: error,
+            requestId: message.requestId,
+            status: responseStatus
+        }
+    );
+    
+    // Send original response
+    originalSendResponse(response);
+};
+```
+
+### 16.6 Benefits
+
+1. **Universal Coverage**: All handlers automatically log responses
+2. **Zero Handler Changes**: Existing handlers work without modification
+3. **Consistent Format**: All responses logged identically
+4. **Maintainable**: Single point of change for log format updates
+5. **Elegant**: Solves cross-cutting concern at the right level
+
+## 18. Common Issues and Troubleshooting
+
+### 18.1 Message Port Closed Error
 
 **Error**: "The message port closed before a response was received"
 
@@ -1670,7 +1819,7 @@ Key implementation details:
 
 **Solution**: Always return `true` at the end of async handler functions to keep the message channel open. Without this return statement, Chrome closes the channel before the async response can be sent.
 
-### 15.2 Tab Navigation Issues
+### 18.2 Tab Navigation Issues
 
 **Issue**: Operations requiring Printify access fail when no Printify tab is open
 
