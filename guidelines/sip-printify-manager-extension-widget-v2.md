@@ -80,12 +80,16 @@ graph TB
             RouterVal[JS validates message<br/>-validateMessage-]
             RouterWrap[JS wraps response<br/>-wrapSendResponse-]
             RouterRoute[JS routes by type<br/>-routeToHandler-]
+            RouterPause[JS pauses operation<br/>-pauseOperation-]
+            RouterResume[JS resumes operation<br/>-resumeOperation-]
         end
         
         subgraph "Handler Functions"
             WHHandle[JS widget handler<br/>-handle-]
             PHHandle[JS printify handler<br/>-handle-]
             WPHRoute[JS routes wordpress<br/>-handle-]
+            MFHandle[JS mockup fetch<br/>-handle-]
+            MUHandle[JS mockup update<br/>-handle-]
         end
         
         subgraph "Chrome API Functions"
@@ -94,6 +98,13 @@ graph TB
             QueryTab[JS queries tabs<br/>-chrome.tabs.query-]
             SetStore[JS saves state<br/>-chrome.storage.set-]
             GetStore[JS loads state<br/>-chrome.storage.get-]
+            InjectScript[JS injects scripts<br/>-chrome.scripting.executeScript-]
+        end
+        
+        subgraph "Helper Functions"
+            TestConn[JS test connection<br/>-testWordPressConnection-]
+            CheckPlugin[JS check plugin<br/>-checkWordPressPluginStatus-]
+            ExtractScene[JS extract scenes<br/>-extractSceneNames-]
         end
     end
     
@@ -117,6 +128,8 @@ graph TB
     RouterRoute -->|type:widget| WHHandle
     RouterRoute -->|type:wordpress| WPHRoute
     RouterRoute -->|type:printify| PHHandle
+    RouterRoute -->|SIP_FETCH_MOCKUPS| MFHandle
+    RouterRoute -->|SIP_UPDATE_PRODUCT_MOCKUPS| MUHandle
     
     %% Handler operations
     WHHandle -->|calls| NavTab
@@ -124,6 +137,11 @@ graph TB
     NavTab -->|uses| CreateTab
     WHHandle -->|saves| SetStore
     SetStore -->|chrome.storage.local.set| StateStore
+    MUHandle -->|calls| ExtractScene
+    MUHandle -->|opens tab with params| CreateTab
+    PHHandle -->|calls| InjectScript
+    RouterMsg -->|lifecycle| TestConn
+    RouterMsg -->|lifecycle| CheckPlugin
     
     %% Storage events
     StateStore -.->|onChange| Widget1
@@ -524,6 +542,42 @@ if (window.SiPWidget && window.SiPWidget.ActionLogger) {
 
 **Important**: Use action logging instead of console.log() to keep all log messages together in the action history. Console.log should only be used for critical environment issues (like chrome.runtime availability).
 
+### 4.4 Mockup Scene Mapping
+
+**Scene ID to Name Mapping** (mockup-update-handler.js):
+```javascript
+function extractSceneNames(selectedMockups) {
+    const sceneIdToName = {
+        '102752': 'Front',
+        '102753': 'Right', 
+        '102754': 'Back',
+        '102755': 'Left'
+    };
+    
+    const sceneNames = new Set();
+    selectedMockups.forEach(mockup => {
+        const parts = mockup.id.split('_');
+        if (parts.length >= 3) {
+            const sceneId = parts[2];
+            const sceneName = sceneIdToName[sceneId];
+            if (sceneName) {
+                sceneNames.add(sceneName);
+            }
+        }
+    });
+    
+    return Array.from(sceneNames);
+}
+```
+
+**Mockup ID Format**: `mockup_{variant}_{scene}_{position}`
+- Example: `mockup_19773102_102752_1`
+- variant: 19773102 (product variant ID)
+- scene: 102752 (maps to 'Front')
+- position: 1 (position in scene)
+
+**Why Hard-coded Mapping**: Printify's internal scene IDs are stable but not exposed in their UI. The mapping was determined by inspecting the mockup library page.
+
 ### 4.5 Chrome Architecture Constraints
 
 **Service Worker (Background) Constraints**:
@@ -634,7 +688,11 @@ const result = await router.queryTabs({url: '*://printify.com/*'});
         pausedOperation: {...},
         pausedCallback: Function
     },
-    sipActionTimings: {}      // Performance tracking by startTiming()/endTiming()
+    handlers: Map,            // Message type to handler mapping
+    config: {                 // Loaded from storage or config.json
+        wordpressUrl: string,
+        apiKey: string
+    }
 }
 ```
 
@@ -987,18 +1045,219 @@ SiPWidget.UI.resizeWidget();
 
 **Why**: Prevents race conditions where function is called before module loads. Makes API discoverable and extensible.
 
+### 7.5 URL Parameter Mockup Update Flow (Chrome.runtime Workaround)
+
+**Purpose**: This diagram shows how mockup updates work on Printify pages where chrome.runtime is blocked. The extension uses URL parameters to pass data to the content script, which then automates the UI interaction.
+
+```mermaid
+sequenceDiagram
+    participant WP as WordPress
+    participant BG as Background (Router)
+    participant MUH as mockup-update-handler.js
+    participant Chrome as Chrome API
+    participant PT as Printify Tab
+    participant CS as mockup-library-actions.js
+    
+    activate WP
+    WP->>BG: postMessage({<br/>type: 'SIP_UPDATE_PRODUCT_MOCKUPS',<br/>data: {mockupIds, productId, shopId}})
+    deactivate WP
+    
+    activate BG
+    BG->>MUH: handle(message, sender, sendResponse)
+    deactivate BG
+    
+    activate MUH
+    Note over MUH: Extract mockup data
+    MUH->>MUH: const mockupIds = message.data.mockupIds<br/>// [{id: 'mockup_123_102752_1', is_default: true}]
+    
+    MUH->>MUH: extractSceneNames(mockupIds)
+    Note over MUH: Map scene IDs to names<br/>102752 → 'Front'<br/>102753 → 'Right'<br/>102754 → 'Back'<br/>102755 → 'Left'
+    
+    MUH->>MUH: const sceneNames = ['Front', 'Back']<br/>const url = `https://printify.com/app/mockup-library/<br/>shops/${shopId}/products/${productId}<br/>?sip-action=update&scenes=${sceneNames.join(',')}`
+    
+    MUH->>Chrome: chrome.tabs.create({<br/>url: mockupUrl,<br/>active: true})
+    Chrome-->>MUH: {id: tabId}
+    
+    MUH->>MUH: setTimeout(() => {<br/>sendResponse({success: true})<br/>}, 10000) // 10 second timeout
+    deactivate MUH
+    
+    Chrome->>PT: Navigate to URL with parameters
+    
+    activate CS
+    Note over CS: Content script loads
+    CS->>CS: checkUrlParameters()
+    CS->>CS: const urlParams = new URLSearchParams(window.location.search)<br/>const action = urlParams.get('sip-action') // 'update'<br/>const scenes = urlParams.get('scenes') // 'Front,Back'
+    
+    CS->>CS: action.data('URL parameters detected', {<br/>scenes: ['Front', 'Back'],<br/>url: window.location.href})
+    
+    CS->>CS: waitForPageReady()
+    Note over CS: Wait for mockup elements
+    
+    CS->>CS: executeSceneSelection(['Front', 'Back'])
+    
+    loop For each scene
+        CS->>CS: findSceneButton(sceneLabel)
+        CS->>PT: button.click() // Select scene
+        CS->>CS: await delay(700ms)
+        CS->>CS: getSelectAllCheckbox()
+        CS->>PT: checkbox.click() // Select all in scene
+        CS->>CS: await delay(500ms)
+    end
+    
+    CS->>CS: findSaveButton()
+    CS->>PT: saveButton.click()
+    CS->>CS: action.info('Automated mockup selection completed', {<br/>scenes: sceneLabels,<br/>status: 'success'})
+    deactivate CS
+```
+
+**Scene ID Mapping** (hardcoded in mockup-update-handler.js):
+```javascript
+const sceneIdToName = {
+    '102752': 'Front',
+    '102753': 'Right', 
+    '102754': 'Back',
+    '102755': 'Left'
+};
+```
+
+**Why URL Parameters**: Printify blocks chrome.runtime in content scripts, preventing traditional message passing. URL parameters provide a one-way data channel that doesn't require chrome.runtime.
+
+### 7.6 Error Capture System Architecture
+
+**Purpose**: This diagram shows how the extension captures and handles errors globally. The error-capture.js script sets up handlers for uncaught errors and unhandled promise rejections.
+
+```mermaid
+sequenceDiagram
+    participant Page as Web Page
+    participant EC as error-capture.js
+    participant AL as ActionLogger
+    participant WE as widget-error.js
+    participant BG as Background (Router)
+    
+    alt Window Error Event
+        Page->>EC: window.onerror(message, source, lineno, colno, error)
+        activate EC
+        EC->>EC: captureError('window.onerror', {<br/>message, source, lineno, colno,<br/>stack: error?.stack})
+        
+        EC->>AL: ActionLogger.log('ERROR',<br/>`Uncaught error: ${message}`,<br/>{source, line: lineno, column: colno, stack})
+        
+        alt Chrome.runtime available
+            EC->>WE: formatError(error || {message})
+            WE-->>EC: formattedError
+            EC->>BG: chrome.runtime.sendMessage({<br/>type: 'widget',<br/>action: 'logError',<br/>error: formattedError})
+        else Chrome.runtime blocked (Printify)
+            EC->>EC: console.error('[SiP Error Capture]', details)
+        end
+        deactivate EC
+    
+    else Unhandled Promise Rejection
+        Page->>EC: unhandledrejection event
+        activate EC
+        EC->>EC: event.preventDefault() // Prevent default console error
+        EC->>EC: captureError('unhandledrejection', {<br/>reason: event.reason,<br/>promise: event.promise})
+        
+        EC->>AL: ActionLogger.log('ERROR',<br/>'Unhandled promise rejection',<br/>{reason, stack})
+        deactivate EC
+    
+    else Caught Error in Code
+        Page->>WE: formatError(error)
+        activate WE
+        WE->>WE: Check if already formatted
+        WE->>WE: standardizeError(error)
+        WE-->>Page: {<br/>message: string,<br/>stack: string,<br/>details: {...},<br/>timestamp: ISO string,<br/>context: 'content_script'<br/>}
+        deactivate WE
+    end
+```
+
+**Global Error Handlers**:
+```javascript
+// Captures all uncaught errors
+window.onerror = function(message, source, lineno, colno, error) {
+    captureError('window.onerror', {...});
+    return true; // Prevent default browser error handling
+};
+
+// Captures unhandled promise rejections
+window.addEventListener('unhandledrejection', function(event) {
+    event.preventDefault();
+    captureError('unhandledrejection', {...});
+});
+```
+
+### 7.7 Action Logging Helper Architecture
+
+**Purpose**: This diagram shows how the action-log-helper.js provides convenient shortcuts for logging throughout the extension. It wraps the ActionLogger with category-specific methods.
+
+```mermaid
+sequenceDiagram
+    participant Code as Extension Code
+    participant Helper as action-log-helper.js
+    participant AL as ActionLogger
+    participant Storage as Chrome Storage
+    
+    Note over Helper: Global shortcuts created on load
+    Helper->>Helper: window.action = {<br/>log(), info(), error(),<br/>warn(), data(), api(), navigation()<br/>}
+    
+    alt Direct Log Call
+        Code->>Helper: action.log('CUSTOM_CATEGORY', 'Message', {details})
+        Helper->>AL: SiPWidget.ActionLogger.log('CUSTOM_CATEGORY', 'Message', {details})
+    
+    else Info Log
+        Code->>Helper: action.info('User clicked button', {buttonId: 'save'})
+        activate Helper
+        Helper->>Helper: const category = SiPWidget?.ActionLogger?.CATEGORIES?.USER_ACTION || 'USER_ACTION'
+        Helper->>AL: SiPWidget.ActionLogger.log('USER_ACTION', 'User clicked button', {buttonId: 'save'})
+        deactivate Helper
+    
+    else Error Log
+        Code->>Helper: action.error('Failed to save', {error: 'Network error'})
+        Helper->>AL: SiPWidget.ActionLogger.log('ERROR', 'Failed to save', {error: 'Network error'})
+    
+    else Data Fetch Log
+        Code->>Helper: action.data('Fetched mockups', {count: 10})
+        Helper->>AL: SiPWidget.ActionLogger.log('DATA_FETCH', 'Fetched mockups', {count: 10})
+    end
+    
+    activate AL
+    AL->>AL: const log = {<br/>timestamp: new Date().toISOString(),<br/>category,<br/>message,<br/>details,<br/>url: window.location.href<br/>}
+    
+    AL->>AL: logs.push(log)<br/>if (logs.length > 1000) logs.shift()
+    
+    AL->>Storage: chrome.storage.local.set({<br/>sipActionLogs: logs<br/>})
+    deactivate AL
+```
+
+**Helper Method Mapping**:
+```javascript
+window.action = {
+    info: (msg, details) => log('USER_ACTION', msg, details),
+    error: (msg, details) => log('ERROR', msg, details),
+    warn: (msg, details) => log('WARNING', msg, details),
+    data: (msg, details) => log('DATA_FETCH', msg, details),
+    api: (msg, details) => log('API_CALL', msg, details),
+    navigation: (msg, details) => log('NAVIGATION', msg, details)
+};
+```
+
+**Why Helper**: Reduces verbosity, ensures consistent categorization, and provides fallback when ActionLogger isn't available.
+
 ## 8. Development Quick Reference
 
 ### File Structure with Key Functions
 ```
 extension/
 ├── manifest.json              # Extension configuration
-├── background.js              # importScripts() loader
+├── background.js              # importScripts() loader for service worker:
+│                              # Loads: widget-error.js, action-logger.js,
+│                              # mockup-fetch-handler.js, mockup-update-handler.js,
+│                              # widget-data-handler.js, printify-data-handler.js,
+│                              # wordpress-handler.js, widget-router.js
 ├── core-scripts/
 │   ├── widget-router.js      # handleMessage(), navigateTab(), pauseOperation()
 │   ├── widget-relay.js       # handlePostMessage(), window.addEventListener()
 │   ├── widget-error.js       # formatError(), standardizeError()
 │   ├── action-logger.js      # ActionLogger.log(), storeLog(), getActionLogs()
+│   ├── action-log-helper.js  # action.info(), action.error(), action.warn()
 │   └── error-capture.js      # window.onerror, unhandledrejection handlers
 ├── action-scripts/
 │   ├── extension-detector.js # announceExtension(), checkPageContext()
