@@ -213,8 +213,8 @@ Each guide presents standards and conventions in the context where they're used.
 | **💻 Development Standards** | | |
 | CSS Architecture | [sip-development-css.md](./guidelines/sip-development-css.md) | CSS architecture, BEM methodology, organization patterns |
 | Testing & Debug | [sip-development-testing-debug.md](./guidelines/sip-development-testing-debug.md) | Testing strategies, debugging workflows, three-level debug logging system |
-| Documentation Guidelines | [sip-documentation-guidelines.md](./guidelines/sip-documentation-guidelines.md) | The ten documentation rules with examples and templates |
-| Documentation | [sip-development-documentation.md](./guidelines/sip-development-documentation.md) | JSDoc/PHPDoc standards, interface documentation requirements |
+| Documentation Guidelines | [sip-documentation-guidelines-unified.md](./guidelines/sip-documentation-guidelines-unified.md) | Complete documentation approach: diagrams show WHAT, text explains WHY |
+| Code Documentation | [sip-development-documentation.md](./guidelines/sip-development-documentation.md) | JSDoc/PHPDoc standards, interface documentation requirements |
 | Release Process | [sip-development-release-mgmt.md](./guidelines/sip-development-release-mgmt.md) | Git workflow, versioning standards, 16-step automated release process |
 | **📊 Data Analysis** | | |
 | Mockup Analysis | [mockup-map-analysis.md](./guidelines/mockup-map-analysis.md) | Mockup data structure analysis and visualization guide |

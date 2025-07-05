@@ -37,8 +37,9 @@ Let's collaborate on the best approach to fix these while staying within our est
 
 Please keep your responses brief and practical to facilitate rapid communication. We'll refine the plan together before you begin any coding work.
 
-
+-------------------------------------------------------------------------
 -------------------- REVIEW STAGE - Work Complete -----------------------
+-------------------------------------------------------------------------
 
 Please confirm that your code updates do not violate any of the primary SiP coding rules:
 
@@ -103,8 +104,9 @@ When complete, provide a commit message that:
 □ Keeps first line under 50 characters
 □ Includes blank line before extended description (if needed)
 
-
--------------------- RECOVERY - Context Auto-Compact ------------------------
+-------------------------------------------------------------------------
+------------------ RECOVERY - Context Auto-Compact ----------------------
+-------------------------------------------------------------------------
 
 You just went through a context auto-compact. This has critically compromised your context and you should proceed with extreme caution and the assumption that you are likely to make errors. Please make sure to double check existing documentation, code and confirm goals and methods before making code changes. I will attempt to help you rehydrate with the following data:
 
@@ -125,3 +127,19 @@ To recover context:
 1. Re-read the current working-task-planning file
 2. Review recent file changes in the affected areas
 3. Confirm current task status before proceeding
+
+-------------------------------------------------------------------------
+----------------- DOCUMENTATION UPDATE FOR EXTENSION --------------------
+-------------------------------------------------------------------------
+
+Please review all of the extension code and make sure that all functions are represented in the diagrams in the extension documentation And that there are no functions in the diagrams that do not appear in the code. 
+
+**Every function that reads, writes, transforms, or passes data must be shown in the diagram.** This includes:
+- Functions that read from storage
+- Functions that write to storage
+- Functions that transform data between formats
+- Functions that pass data between components
+- Event handlers and callbacks
+- AJAX request and response handlers
+
+If a function participates in the data flow, it must have a box in the diagram. This ensures the implementation can be validated against the documented architecture.

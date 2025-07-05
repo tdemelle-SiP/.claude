@@ -69,6 +69,11 @@ graph TB
             ErrorCap[JS captures errors<br/>-window.onerror-]
             Logger[JS logs actions<br/>-ActionLogger.log-]
             LogHelper[JS log shortcuts<br/>-action.info/error/warn-]
+            DiagBtn[JS handle diagnostic<br/>-handleDiagnostic-]
+            RunDiag[JS run diagnostic<br/>-runPrintifyDiagnostic-]
+            MonBtn[JS handle monitor<br/>-handleMonitor-]
+            StartMon[JS start monitor<br/>-startInteractionMonitor-]
+            StopMon[JS stop monitor<br/>-stopInteractionMonitor-]
         end
     end
     
@@ -142,6 +147,18 @@ graph TB
     PHHandle -->|calls| InjectScript
     RouterMsg -->|lifecycle| TestConn
     RouterMsg -->|lifecycle| CheckPlugin
+    
+    %% Diagnostic and monitoring flows
+    Widget1 -->|button click| DiagBtn
+    Widget2 -->|button click| DiagBtn
+    DiagBtn -->|calls| RunDiag
+    RunDiag -->|logs to| Logger
+    Widget1 -->|button click| MonBtn
+    Widget2 -->|button click| MonBtn
+    MonBtn -->|calls| StartMon
+    MonBtn -->|calls| StopMon
+    StartMon -->|logs to| Logger
+    StopMon -->|logs to| Logger
     
     %% Storage events
     StateStore -.->|onChange| Widget1
@@ -1241,6 +1258,72 @@ window.action = {
 
 **Why Helper**: Reduces verbosity, ensures consistent categorization, and provides fallback when ActionLogger isn't available.
 
+### 7.8 Diagnostic and Monitoring Tools
+
+**Purpose**: These features were added to help users understand and debug Printify page interactions. The diagnostic tool analyzes DOM structure and the monitor tracks user interactions with API calls.
+
+**Why These Tools**: Users were repeatedly encountering issues with DOM structure changes on Printify pages. Rather than manually running console scripts each time, these tools are now integrated into the widget interface for easy access.
+
+```mermaid
+graph LR
+    subgraph "Widget Interface"
+        DiagButton[Diagnostic Button<br/>id='sip-diagnostic-btn']
+        MonButton[Monitor Button<br/>id='sip-monitor-btn']
+    end
+    
+    subgraph "Diagnostic Flow"
+        HandleDiag[JS handle click<br/>-handleDiagnostic-]
+        RunDiag[JS analyze page<br/>-runPrintifyDiagnostic-]
+        DiagResult[Diagnostic Result<br/>{pageType, data, interactive}]
+    end
+    
+    subgraph "Monitor Flow"
+        HandleMon[JS handle toggle<br/>-handleMonitor-]
+        StartMon[JS start tracking<br/>-startInteractionMonitor-]
+        StopMon[JS stop tracking<br/>-stopInteractionMonitor-]
+        MonitorData[Monitor Data<br/>{clicks, apiCalls, stateChanges}]
+    end
+    
+    subgraph "Output"
+        Logger[ActionLogger<br/>-log-]
+        Toast[Toast Messages<br/>-showToast-]
+        Progress[Progress Display<br/>-updateProgress-]
+    end
+    
+    DiagButton -->|click| HandleDiag
+    HandleDiag -->|calls| RunDiag
+    RunDiag -->|returns| DiagResult
+    DiagResult -->|logged to| Logger
+    HandleDiag -->|updates| Progress
+    HandleDiag -->|shows| Toast
+    
+    MonButton -->|click| HandleMon
+    HandleMon -->|starts/stops| StartMon
+    HandleMon -->|starts/stops| StopMon
+    StartMon -->|captures| MonitorData
+    MonitorData -->|logged to| Logger
+    HandleMon -->|shows| Toast
+```
+
+**Diagnostic Tool Features**:
+- Detects page type (mockup-library, product-editor, etc.)
+- Counts interactive elements (buttons, forms, images)
+- Identifies data-testid attributes
+- Page-specific analysis (e.g., mockup grids on library pages)
+
+**Monitor Tool Features**:
+- Tracks all click events with element details
+- Intercepts fetch() calls to capture API requests/responses
+- Monitors checkbox state changes
+- Logs mockup selection changes with IDs
+
+**Integration Benefits**:
+1. No need to open console and paste scripts
+2. Results automatically logged to action logger
+3. Visual feedback in widget interface
+4. Toggle monitoring on/off as needed
+5. Captures data that manual inspection might miss
+
 ## 8. Development Quick Reference
 
 ### File Structure with Key Functions
@@ -1261,7 +1344,9 @@ extension/
 │   └── error-capture.js      # window.onerror, unhandledrejection handlers
 ├── action-scripts/
 │   ├── extension-detector.js # announceExtension(), checkPageContext()
-│   ├── widget-tabs-actions.js # createWidget(), handleButtonClick(), updateUI()
+│   ├── widget-tabs-actions.js # createWidget(), handleButtonClick(), updateUI(),
+│   │                          # handleDiagnostic(), runPrintifyDiagnostic(),
+│   │                          # handleMonitor(), startInteractionMonitor(), stopInteractionMonitor()
 │   ├── printify-tab-actions.js # observeDOM(), detectPageChanges()
 │   └── mockup-library-actions.js # checkUrlParameters(), executeSceneSelection()
 └── handler-scripts/
