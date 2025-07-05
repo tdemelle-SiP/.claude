@@ -1,70 +1,63 @@
-## Task: Change "History" Button to "View Log" with Simple Modal Display
-**Date Started:** 2025-07-04
+# Action Logger Enhancement Task Plan
 
-### Task Understanding
-**What:** Update the SiP Printify Manager Chrome Extension to:
-1. Change the "History" button text to "View Log"
-2. Present the action log in a simpler modal window (similar to progress dialog's log viewer)
-3. Add a resizable, scrollable text window with copy and close buttons
+## Task Overview
+Enhance the action logger to provide better visual hierarchy for operations, fix progress bar display, and make log messages more informative.
 
-**Why:** The current History implementation is too complex. The user wants a simpler presentation using a modal window similar to the progress dialog's log viewer functionality.
+## Current State Analysis
+### What Works
+- Basic action logging functionality
+- Terminal display shows messages
+- Progress bar percentage updates
 
-**Success Criteria:** 
-- History button text changed to "View Log"
-- Clicking View Log opens a modal window (not a new browser window)
-- Modal contains scrollable text area with action logs
-- Modal has Copy Log and Close buttons
-- Modal is resizable and draggable
+### What Needs Implementation
+1. **Action Log Formatting**:
+   - Add visual hierarchy for operation start/end
+   - Use indentation for sub-operations
+   - Add operation boundary markers (🔻 start, 🔺 end)
 
-### Documentation Review
-- [x] sip-printify-manager-extension-widget.md - Extension architecture, action logger system (lines 783-862)
-- [x] Coding_Guidelines_Snapshot.txt - Process requirements and standards
-- [x] Current implementation in widget-tabs-actions.js (lines 345-350, 793-802)
+2. **Progress Bar Fix**:
+   - Ensure fill percentage matches displayed percentage
+   - Verify CSS width property is properly applied
 
-### Code Analysis
-From widget-tabs-actions.js review:
-- Line 345-350: History button HTML with icon and "History" text
-- Line 793-802: `handleHistoryView()` function that opens new window
-- Line 808-1099: `openConsoleLogWindow()` creates full browser window with styled log viewer
+3. **More Informative Messages**:
+   - Add specific details to navigation messages
+   - Include product names and counts in operations
+   - Add connection details to test messages
+   - Include error specifics
 
-From action-logger.js review:
-- Structured action logging system with categories
-- `getLogs(callback)` method to retrieve stored logs
-- Logs include timestamp, category, action, status, details
+## Implementation Steps
 
-From sip-printify-manager-extension-widget.md:
-- Action logger provides structured logging (not console logs)
-- Categories: WORDPRESS_ACTION, NAVIGATION, DATA_FETCH, API_CALL, STATE_CHANGE, ERROR, AUTH
-- Each log entry has timestamp, category, action, tabId, tabName, duration, status, details
+### Step 1: Add Operation Tracking to ActionLogger
+- Track when operations start/end
+- Add operation stack for hierarchy
+- Format logs with proper indentation
 
-### Root Cause Analysis
-The current implementation opens a new browser window which is overly complex. User wants a simpler modal approach similar to how the progress dialog shows logs.
+### Step 2: Fix Progress Bar Display
+- Debug why fill percentage doesn't match
+- Ensure inline style width is properly set
+- Check for CSS conflicts
 
-### Files to Modify
-1. `/action-scripts/widget-tabs-actions.js`
-   - Change button text from "History" to "View Log" (line 349)
-   - Replace `handleHistoryView()` to show modal instead of new window
-   - Add modal creation code using simple DOM manipulation
-   - Implement copy and close functionality within modal
+### Step 3: Enhance Log Messages
+- Update navigation messages with tab details
+- Add product info to mockup operations
+- Include URL/endpoint in connection tests
+- Add specific error details
 
-### Implementation Plan
-1. Change button text from "History" to "View Log" in the HTML
-2. Create new `showLogModal()` function to replace window approach
-3. Build modal with:
-   - Title bar with "Action Log" title
-   - Scrollable text area showing formatted logs
-   - Copy Log button that copies to clipboard
-   - Close button (X) in title bar
-   - Resizable borders
-4. Use action-logger.js `getLogs()` to retrieve structured logs
-5. Format logs as simple text (timestamp, category, action, status)
-6. Style modal to match extension's existing UI patterns
+## Technical Constraints
+- Must maintain backward compatibility
+- Cannot break existing log storage format
+- Must work in both service worker and content scripts
 
-### Questions/Blockers
-1. Should the modal use the extension's existing CSS classes or inline styles?
-2. Should we show all log details or just the essential fields?
+## Success Criteria
+- Operations show clear start/end boundaries
+- Sub-operations are visually indented
+- Progress bar fill matches percentage exactly
+- Log messages contain actionable details
+- No existing functionality is broken
 
-### Notes
-- The action logger already provides structured logs, not console logs
-- Progress dialog shows a simpler approach we can emulate
-- Modal should be lighter weight than current full window implementation
+## Questions
+None - requirements are clear.
+
+## Risks
+- Modifying core logging system could affect all operations
+- Need to ensure performance isn't impacted by additional tracking

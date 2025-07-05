@@ -83,19 +83,7 @@ Once code is confirmed compliant, please review the documentation to ensure accu
 □ Documentation answers "why it exists" not "how we got here"
 
 <!-- DOCUMENTATION RULES - See full guidelines at:
-/mnt/c/Users/tdeme/Local Sites/faux-stained-glass-panes/app/public/wp-content/plugins/.claude/guidelines/sip-documentation-guidelines.md
-
-Quick Reference:
-1. NO FUTURE OR HISTORY - Current state only
-2. ARCHITECTURAL WHY - Explain design decisions  
-3. EXAMPLES OVER EXPLANATIONS - Show working code
-4. DIAGRAM BEFORE PROSE - Visual first
-5. CODE LIMITS - <50 lines per example
-6. SINGLE SOURCE OF TRUTH - No duplication
-7. STRUCTURED HIERARCHY - Clear organization
-8. CONCISE HEADERS - Brief and descriptive
-9. ACTIVE VOICE - Direct language
-10. CONSISTENT TERMINOLOGY - Same terms throughout
+C:\Users\tdeme\Local Sites\faux-stained-glass-panes\app\public\wp-content\plugins\.claude\guidelines\sip-documentation-guidelines-unified.md
 -->
 
 When complete, provide a commit message that:
