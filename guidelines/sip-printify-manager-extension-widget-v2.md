@@ -10,6 +10,8 @@ The SiP Printify Manager browser extension bridges the gap between WordPress and
 
 **Solution**: A Chrome extension that acts as a privileged intermediary, capturing data and executing operations on behalf of the WordPress plugin.
 
+**Critical Limitation**: Printify blocks `chrome.runtime` access in content scripts, preventing traditional extension messaging. The extension uses URL parameters for mockup updates and has limited functionality on Printify pages.
+
 ## 2. Architecture
 
 ### Diagram Notation Guide
@@ -58,15 +60,15 @@ graph TB
         subgraph "Printify Pages"
             Widget2[JS creates widget UI<br/>-createWidget-]
             Monitor[JS monitors page<br/>-observeDOM-]
-            Mockup[JS updates selections<br/>-updateMockupSelections-]
-            APIInt[JS intercepts APIs<br/>-interceptFetch-]
+            Mockup[JS reads URL params<br/>-checkUrlParameters-]
+            AutoSelect[JS automates selection<br/>-executeSceneSelection-]
         end
         
         subgraph "Shared Scripts"
-            Debug[JS debug logging<br/>-SiPWidget.Debug.log-]
             Error[JS formats errors<br/>-formatError-]
             ErrorCap[JS captures errors<br/>-window.onerror-]
             Logger[JS logs actions<br/>-ActionLogger.log-]
+            LogHelper[JS log shortcuts<br/>-action.info/error/warn-]
         end
     end
     
@@ -97,7 +99,7 @@ graph TB
     
     subgraph "Storage"
         ConfigStore[(Chrome Sync<br/>-wordpressUrl-<br/>-apiKey-)]
-        StateStore[(Chrome Local<br/>-sipWidgetState-<br/>-sipTabPairs-<br/>-sipActionLogs-)]
+        StateStore[(Chrome Local<br/>-sipWidgetState-<br/>-sipTabPairs-<br/>-sipActionLogs-<br/>-sipOperationStatus-)]
     end
     
     %% User flow
@@ -144,10 +146,11 @@ graph TB
 
 **Key Architecture Points**:
 - **Router is the hub**: ALL runtime messages flow through handleMessage() in widget-router.js
-- **Content scripts are limited**: Can only use chrome.runtime.sendMessage and chrome.storage
+- **Content scripts are limited**: Can only use chrome.runtime.sendMessage and chrome.storage (except on Printify where chrome.runtime is blocked)
 - **Background has full access**: Service worker context with all Chrome APIs
 - **Function visibility**: Every function that touches data is shown
 - **One-way message flow**: WordPress → Relay → Router → Handler → Response
+- **Printify limitation**: chrome.runtime blocked, mockup updates use URL parameters instead
 
 ### Understanding the Diagram Hierarchy
 
@@ -160,13 +163,13 @@ The following detail diagrams expand specific aspects of the master architecture
 - **Error handling paths** that might not be visible at the high level
 
 Each detail diagram serves developers who need to:
-- Debug a specific flow (e.g., "Why isn't my WordPress command working?")
+- Trace a specific flow (e.g., "Why isn't my WordPress command working?")
 - Implement changes to that flow (e.g., "Where do I add validation for tab operations?")
 - Understand the complete chain of operations (e.g., "What happens between click and response?")
 
 ### 2.2 Complete Message Flow (Function Level)
 
-**Purpose**: This diagram details the complete message flow from WordPress through the extension and back, showing every function call in sequence. Use this when debugging end-to-end communication issues or understanding the full request/response cycle.
+**Purpose**: This diagram details the complete message flow from WordPress through the extension and back, showing every function call in sequence. Use this when tracing end-to-end communication issues or understanding the full request/response cycle.
 
 This sequence diagram shows the exact function calls for a typical operation:
 
@@ -239,7 +242,7 @@ sequenceDiagram
 
 ### 2.3 Storage Architecture Detail (Function Level)
 
-**Purpose**: This diagram expands the storage components from the master diagram, showing every function that reads, writes, or transforms storage data. Use this when debugging storage issues, implementing new storage features, or understanding data persistence patterns.
+**Purpose**: This diagram expands the storage components from the master diagram, showing every function that reads, writes, or transforms storage data. Use this when investigating storage issues, implementing new storage features, or understanding data persistence patterns.
 
 ```mermaid
 graph LR
@@ -326,7 +329,7 @@ graph LR
 
 ### 2.4 Tab Pairing System Detail (Function Level)
 
-**Purpose**: This diagram details the tab pairing system from the master diagram, showing how WordPress and Printify tabs maintain their bidirectional relationship. Use this when debugging navigation issues, implementing new tab operations, or understanding the pairing lifecycle.
+**Purpose**: This diagram details the tab pairing system from the master diagram, showing how WordPress and Printify tabs maintain their bidirectional relationship. Use this when investigating navigation issues, implementing new tab operations, or understanding the pairing lifecycle.
 
 ```mermaid
 sequenceDiagram
@@ -439,9 +442,9 @@ sequenceDiagram
 | **Handlers** | Separate business logic from infrastructure | Easier testing, single responsibility |
 | **Action Scripts** | Detect page events and user interactions | Content scripts have limited API access |
 | **widget-error.js** | Standardize error responses | Consistent error format for WordPress |
-| **action-logger.js** | Structured action history | Log extension actions for debugging |
+| **action-logger.js** | Structured action history | Log extension actions for analysis |
 | **Tab Pairing** | Reuse existing tabs | Users expect "Go to Printify" to reuse tabs |
-| **Response Logging** | Visible operation outcomes | Timeout/failures need to be debuggable |
+| **Response Logging** | Visible operation outcomes | Timeout/failures need to be traceable |
 
 ## 4. Implementation Guide
 
@@ -478,7 +481,7 @@ sequenceDiagram
 }
 ```
 
-### 4.3 Adding New Features
+### 4.4 Adding New Features
 
 1. **Define the trigger** (user action or page event)
 2. **Create message in action script**: 
@@ -497,7 +500,31 @@ sequenceDiagram
        return true; // CRITICAL for async
    ```
 
-### 4.3 Chrome Architecture Constraints
+### 4.3 Action Logging Shortcuts
+
+**New Global Helper** (action-log-helper.js):
+```javascript
+// Available in all content scripts
+action.info('User action', { details });      // USER_ACTION category
+action.error('Something failed', { error });  // ERROR category  
+action.warn('Warning message', { data });     // WARNING category
+action.data('Data fetched', { results });     // DATA_FETCH category
+action.api('API called', { endpoint });       // API_CALL category
+action.navigation('Tab navigated', { url });  // NAVIGATION category
+
+// Replaces verbose calls like:
+if (window.SiPWidget && window.SiPWidget.ActionLogger) {
+    window.SiPWidget.ActionLogger.log(
+        window.SiPWidget.ActionLogger.CATEGORIES.ERROR,
+        'Something failed',
+        { error: details }
+    );
+}
+```
+
+**Important**: Use action logging instead of console.log() to keep all log messages together in the action history. Console.log should only be used for critical environment issues (like chrome.runtime availability).
+
+### 4.5 Chrome Architecture Constraints
 
 **Service Worker (Background) Constraints**:
 ```javascript
@@ -515,7 +542,7 @@ const globalScope = isServiceWorker ? self : window;
 ```javascript
 // Limited Chrome API access:
 chrome.storage.local.get()  ✓  // Allowed
-chrome.runtime.sendMessage()  ✓  // Allowed
+chrome.runtime.sendMessage()  ✓  // Allowed (except on Printify)
 chrome.tabs.create()  ❌  // Not allowed
 
 // Must request privileged operations from background:
@@ -524,8 +551,14 @@ chrome.runtime.sendMessage({
     action: 'navigate',
     data: { url: 'https://...' }
 });
+
+// CRITICAL: On Printify.com, chrome.runtime is BLOCKED:
+chrome.runtime.sendMessage()  ❌  // Blocked by Printify
+chrome.runtime.onMessage  ❌  // Blocked by Printify  
+chrome.runtime.getURL()  ❌  // Blocked by Printify
+chrome.runtime.getManifest()  ❌  // Blocked by Printify
 ```
-*Why*: Security isolation between web pages and browser
+*Why*: Security isolation between web pages and browser + Printify's additional restrictions
 
 **Message Channel Constraints**:
 ```javascript
@@ -583,8 +616,6 @@ const result = await router.queryTabs({url: '*://printify.com/*'});
         instructions: string,
         showResumeButton: boolean
     },
-    sipCapturedApis: {...},    // Managed by API interceptor handler
-    sipNewApisCount: number,
     pendingResearch: {...},
     fetchStatus_*: {...}       // Dynamic keys for fetch operations
 }
@@ -609,7 +640,7 @@ const result = await router.queryTabs({url: '*://printify.com/*'});
 
 ### 5.1 Extension Detection & Installation Flow (Function Level)
 
-**Purpose**: This diagram details how the extension announces itself to WordPress pages and how the plugin detects the extension. Use this when debugging extension detection issues, implementing new announcement mechanisms, or understanding the push-driven architecture.
+**Purpose**: This diagram details how the extension announces itself to WordPress pages and how the plugin detects the extension. Use this when investigating extension detection issues, implementing new announcement mechanisms, or understanding the push-driven architecture.
 
 ```mermaid
 sequenceDiagram
@@ -629,7 +660,7 @@ sequenceDiagram
     Chrome-->>Router: Array of WordPress admin tabs
     
     loop For each WordPress tab
-        Router->>Chrome: chrome.scripting.executeScript({<br/>target: {tabId: tab.id},<br/>files: ['widget-debug.js',<br/>'widget-error.js',<br/>'widget-relay.js',<br/>'extension-detector.js']})
+        Router->>Chrome: chrome.scripting.executeScript({<br/>target: {tabId: tab.id},<br/>files: ['widget-error.js',<br/>'widget-relay.js',<br/>'extension-detector.js']})
         
         Chrome->>Detector: Script injected and executed
         activate Detector
@@ -681,7 +712,7 @@ sequenceDiagram
 | SIP_SHOW_WIDGET | Show widget UI | widget |
 | SIP_CHECK_STATUS | Check connection | widget |
 | SIP_FETCH_MOCKUPS | Get mockup data | printify |
-| SIP_UPDATE_PRODUCT_MOCKUPS | Update mockups | printify |
+| SIP_UPDATE_PRODUCT_MOCKUPS | Update mockups (via URL params) | printify |
 
 ### Internal Actions
 | Type | Actions | Purpose |
@@ -692,7 +723,7 @@ sequenceDiagram
 
 ### 6.1 Message Format Transformation (Function Level)
 
-**Purpose**: This diagram details how WordPress commands are transformed as they pass through the extension layers. Use this when debugging message format issues, implementing new message types, or understanding why messages arrive in different formats at different layers.
+**Purpose**: This diagram details how WordPress commands are transformed as they pass through the extension layers. Use this when investigating message format issues, implementing new message types, or understanding why messages arrive in different formats at different layers.
 
 ```mermaid
 flowchart LR
@@ -771,7 +802,7 @@ flowchart LR
 
 ### 7.2 Pause/Resume Error Recovery (Function Level)
 
-**Purpose**: This diagram details the pause/resume system that handles page errors (login required, 404, etc.) during operations. Use this when debugging error recovery, implementing new error types, or understanding how the extension maintains operation state across user interventions.
+**Purpose**: This diagram details the pause/resume system that handles page errors (login required, 404, etc.) during operations. Use this when investigating error recovery, implementing new error types, or understanding how the extension maintains operation state across user interventions.
 
 ```mermaid
 sequenceDiagram
@@ -859,7 +890,7 @@ function detectPageIssue() {
 
 ### 7.3 Response Logging Architecture (Function Level)
 
-**Purpose**: This diagram shows how response logging is implemented at the infrastructure level in the router. Use this when debugging logging issues, understanding why certain actions aren't logged, or implementing new logging features.
+**Purpose**: This diagram shows how response logging is implemented at the infrastructure level in the router. Use this when investigating logging issues, understanding why certain actions aren't logged, or implementing new logging features.
 
 ```mermaid
 sequenceDiagram
@@ -973,15 +1004,13 @@ extension/
 │   ├── extension-detector.js # announceExtension(), checkPageContext()
 │   ├── widget-tabs-actions.js # createWidget(), handleButtonClick(), updateUI()
 │   ├── printify-tab-actions.js # observeDOM(), detectPageChanges()
-│   ├── mockup-library-actions.js # updateMockupSelections(), detectPageIssue()
-│   └── api-interceptor-actions.js # interceptFetch(), captureAPI()
+│   └── mockup-library-actions.js # checkUrlParameters(), executeSceneSelection()
 └── handler-scripts/
     ├── widget-data-handler.js # handle() with navigate/showWidget/updateState
     ├── printify-data-handler.js # handle() with fetchMockups/updateStatus
     ├── wordpress-handler.js   # handle() routes SIP_* to internal format
     ├── mockup-fetch-handler.js # handle() navigates and captures mockup data
-    ├── mockup-update-handler.js # handle() updates product mockups
-    └── api-interceptor-handler.js # handle() processes captured APIs
+    └── mockup-update-handler.js # handle() opens URL with scene parameters
 ```
 
 ### Common Issues
@@ -994,6 +1023,12 @@ extension/
 **Messages not routing**: 
 - External format requires: `type: 'SIP_*'` and `source: 'sip-printify-manager'`
 - Internal format requires: `type: 'widget|printify|wordpress'` and `action: 'specificAction'`
+- On Printify: chrome.runtime blocked, messages won't work at all
+
+**Printify functionality limited**:
+- chrome.runtime.sendMessage() blocked - use URL parameters instead
+- Widget has reduced functionality on Printify pages
+- Mockup updates work via URL params: `?sip-action=update&scenes=Front,Back`
 
 **Manifest corruption**: 
 - Run `file manifest.json` - should show "ASCII text" not "UTF-8 Unicode (with BOM)"
