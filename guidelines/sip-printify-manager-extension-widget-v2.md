@@ -438,23 +438,14 @@ sequenceDiagram
 | **background.js** | Module loader for service worker | Manifest V3 requires importScripts |
 | **Handlers** | Separate business logic from infrastructure | Easier testing, single responsibility |
 | **Action Scripts** | Detect page events and user interactions | Content scripts have limited API access |
-| **widget-debug.js** | Consistent logging across contexts | Service workers use `self`, pages use `window` |
 | **widget-error.js** | Standardize error responses | Consistent error format for WordPress |
-| **action-logger.js** | Structured action history | Debug what extension does, not console output |
+| **action-logger.js** | Structured action history | Log extension actions for debugging |
 | **Tab Pairing** | Reuse existing tabs | Users expect "Go to Printify" to reuse tabs |
 | **Response Logging** | Visible operation outcomes | Timeout/failures need to be debuggable |
 
 ## 4. Implementation Guide
 
 ### 4.1 Architectural Constraints
-
-**Why widget-debug.js checks `typeof window`**:
-```javascript
-// Service workers have no window object
-const isServiceWorker = typeof window === 'undefined';
-const globalScope = isServiceWorker ? self : window;
-```
-This is NOT defensive coding - it's required by Chrome's dual-context architecture.
 
 **Why Router MUST be the background script**:
 - Chrome doesn't allow content scripts to intercept runtime messages between other content scripts
@@ -975,7 +966,6 @@ extension/
 ├── core-scripts/
 │   ├── widget-router.js      # handleMessage(), navigateTab(), pauseOperation()
 │   ├── widget-relay.js       # handlePostMessage(), window.addEventListener()
-│   ├── widget-debug.js       # SiPWidget.Debug.log(), error(), warn()
 │   ├── widget-error.js       # formatError(), standardizeError()
 │   ├── action-logger.js      # ActionLogger.log(), storeLog(), getActionLogs()
 │   └── error-capture.js      # window.onerror, unhandledrejection handlers
