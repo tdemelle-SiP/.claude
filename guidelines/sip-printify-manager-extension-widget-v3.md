@@ -178,9 +178,10 @@ graph TB
     UpdateDisplay -->|updates| Widget1
     UpdateDisplay -->|updates| Widget2
     
-    %% Storage events
-    StateStore -.->|onChange sipOperationStatus| WidgetUpdate1
-    StateStore -.->|onChange sipOperationStatus| WidgetUpdate2
+    %% Operation status updates via router
+    StateStore -.->|onChange sipOperationStatus| Router
+    Router -->|sendMessage updateOperationStatus| WidgetUpdate1
+    Router -->|sendMessage updateOperationStatus| WidgetUpdate2
     
     %% Configuration
     GetStore -->|chrome.storage.sync.get| ConfigStore
@@ -542,17 +543,17 @@ sequenceDiagram
    - Extension must announce on every page load
 
 6. **Dual Display Update Paths**: Two systems update the terminal display
-   - Operation progress via storage changes (handlers → storage → widget)
+   - Operation progress via hub messaging (handlers → storage → router → widget)
    - One-off messages via direct function calls (logger → updateWidgetDisplay)
 
 ### 3.2 Why Dual Display Update Paths?
 
 The widget terminal display receives updates through two distinct paths because:
 
-1. **Stateful Operations Need Storage**: Multi-step operations like mockup updates require state persistence across page reloads
+1. **Stateful Operations Need Hub Coordination**: Multi-step operations like mockup updates require centralized message routing
    - Handlers run in service worker context without DOM access
-   - Storage changes trigger reliable cross-context events
-   - Progress updates continue even if user switches tabs
+   - Router ensures messages only go to paired tabs that exist
+   - Progress updates are coordinated through the hub architecture
 
 2. **Instant Feedback Needs Direct Updates**: User interactions and transient events need immediate visual feedback
    - Navigation clicks should show instant response
