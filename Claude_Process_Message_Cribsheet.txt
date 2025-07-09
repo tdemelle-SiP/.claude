@@ -55,12 +55,11 @@ Please confirm that your code updates do not violate any of the primary SiP codi
 Once code is confirmed compliant, please review the documentation to ensure accuracy:
 
 **PREPARATION**
-□ Re-read /mnt/c/Users/tdeme/Local Sites/faux-stained-glass-panes/app/public/wp-content/plugins/.claude/index.md
 □ Identify which /guidelines/ files relate to your changes      
 
 **ACCURACY CHECK**
 □ Documentation reflects current code functionality (not past or future state)
-□ All code references use correct file paths and line numbers
+□ All code references use correct file references
 □ Message types, handler names, and API calls match implementation
 □ No orphaned documentation for removed features
 

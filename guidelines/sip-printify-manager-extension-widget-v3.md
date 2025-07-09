@@ -47,7 +47,7 @@ graph TB
     subgraph "Extension - Content Scripts"
         subgraph "WordPress Pages"
             RelayListen[JS listens postMessage<br/>-window.addEventListener-<br/>widget-relay.js]
-            RelayHandle[JS validates & wraps<br/>-handlePostMessage-<br/>widget-relay.js]
+            RelayHandle[JS validates & forwards<br/>-handlePostMessage-<br/>widget-relay.js]
             RelaySend[JS sends to router<br/>-chrome.runtime.sendMessage-<br/>widget-relay.js]
             Detector[JS announces presence<br/>-announceExtension-<br/>extension-detector.js]
             Widget1[JS creates widget UI<br/>-createWidget-<br/>widget-tabs-actions.js]
@@ -244,17 +244,19 @@ sequenceDiagram
     Relay->>Relay: validateOrigin(event.origin)
     Relay->>Relay: checkSource(data.source)
     
-    Relay->>Router: chrome.runtime.sendMessage({<br/>type: 'WORDPRESS_RELAY',<br/>data: originalMessage})
+    Relay->>Router: chrome.runtime.sendMessage(originalMessage)
     deactivate Relay
     
     activate Router
     Note over Router: handleMessage(message, sender, sendResponse)
     Router->>Router: validateMessage(message)
+    Router->>Router: detectWordPressMessage(SIP_ prefix)
     Router->>Logger: ActionLogger.log('WORDPRESS_ACTION', 'Received: SIP_UPDATE_MOCKUPS')
     
+    Router->>Router: convertToInternal({type: 'wordpress', action: 'SIP_UPDATE_MOCKUPS'})
     Router->>Router: importHandlers()
     Router->>Router: wrapSendResponse(sendResponse)
-    Router->>Router: getHandler(message.type)
+    Router->>Router: getHandler('wordpress')
     
     Router->>Handler: handle(message, sender, wrappedResponse, routerContext)
     deactivate Router
@@ -536,7 +538,7 @@ sequenceDiagram
 
 4. **Infrastructure-Level Logging**: Response logging at router, not handlers
    - Cross-cutting concern, guaranteed coverage
-   - Router wraps sendResponse before passing to handlers
+   - Router wraps sendResponse for logging before passing to handlers
 
 5. **Fresh Detection Model**: Extension state never persisted between page loads
    - Eliminates false positives, ensures accurate detection
@@ -589,10 +591,15 @@ The widget terminal display receives updates through two distinct paths because:
 - ALL chrome.runtime.sendMessage() calls go directly to the background script
 - This is why we achieve "ALL messages flow through router"
 
-**Extension state is never persisted**:
-- Ensures "Install Extension" button always appears when extension not present
-- Eliminates stale state from uninstalled extensions
-- Forces push-driven model (extension announces when ready)
+**Extension announces presence on each page load**:
+- Fresh detection eliminates false positives from uninstalled extensions
+- WordPress receives accurate extension state for each session
+- Enables reliable "Install Extension" button visibility
+
+**WordPress manages mockup detection**:
+- Checks filesystem for mockups when rendering blueprint rows
+- Initiates fetch after confirming extension readiness
+- Maintains filesystem as single source of truth
 
 **Service Worker Context**:
 - No DOM access in background scripts
@@ -968,6 +975,7 @@ sequenceDiagram
     deactivate BEM
     
     Note over BEM: State NOT persisted<br/>Must announce every page load
+    Note over BEM: WordPress handles mockup checking<br/>when blueprint rows draw
 ```
 
 **Programmatic Injection**: Content scripts don't auto-inject into already-open tabs after installation. Users expect immediate functionality without reload.
@@ -1012,22 +1020,13 @@ flowchart LR
         R1[JS receives event<br/>-handlePostMessage-<br/>widget-relay.js]
         R2[JS validates origin<br/>-event.origin check-<br/>widget-relay.js]
         R3[JS validates source<br/>-data.source check-<br/>widget-relay.js]
-        R4[JS wraps message<br/>-chrome.runtime.sendMessage-<br/>widget-relay.js]
-        RelayMsg["{
-            type: 'WORDPRESS_RELAY',
-            data: {
-                type: 'wordpress',
-                action: 'SIP_UPDATE_PRODUCT_MOCKUPS',
-                data: originalMessage,
-                requestId: 'req_123'
-            }
-        }"]
+        R4[JS forwards message<br/>-chrome.runtime.sendMessage-<br/>widget-relay.js]
     end
     
     subgraph "Router Functions"
         RO1[JS receives message<br/>-handleMessage-<br/>widget-router.js]
-        RO2[JS detects relay<br/>-checkWordPressRelay-<br/>widget-router.js]
-        RO3[JS extracts nested<br/>-message = message.data-<br/>widget-router.js]
+        RO2[JS detects WordPress<br/>-checks SIP_ prefix-<br/>widget-router.js]
+        RO3[JS converts format<br/>-type: 'wordpress'-<br/>widget-router.js]
         RO4[JS logs received<br/>-ActionLogger.log-<br/>action-logger.js]
         RO5[JS gets handler<br/>-getHandlerByType-<br/>widget-router.js]
         RO6[JS calls handler<br/>-handler.handle-<br/>widget-router.js]
@@ -1048,11 +1047,10 @@ flowchart LR
     WPMsg -->|window.postMessage| R1
     R1 -->|validates| R2
     R2 -->|checks| R3
-    R3 -->|wraps| R4
-    R4 -->|creates| RelayMsg
-    RelayMsg -->|chrome.runtime| RO1
+    R3 -->|forwards| R4
+    R4 -->|chrome.runtime| RO1
     RO1 -->|checks| RO2
-    RO2 -->|extracts| RO3
+    RO2 -->|converts| RO3
     RO3 -->|logs| RO4
     RO4 -->|routes| RO5
     RO5 -->|calls| RO6
@@ -1062,7 +1060,7 @@ flowchart LR
     H2 -->|delegates| H3
 ```
 
-**Transform Reason**: External format identifies our messages among all postMessages. Internal format routes to correct handler.
+**Transform Reason**: Router converts WordPress messages (SIP_* prefix) to internal format for handler routing. No relay wrapping needed - messages are forwarded directly.
 
 ## 7. Key Features
 
