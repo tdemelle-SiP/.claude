@@ -14,7 +14,7 @@ These principles drive both code creation AND documentation creation:
 
 ### 3. ZERO ASSUMPTIONS
 **Code**: Verify all data structures, timing, and dependencies  
-**Documentation**: Verify all elements against actual implementation with file:line references
+**Documentation**: Verify all elements against actual implementation with file references
 
 ### 4. STRUCTURAL CORRECTNESS
 **Code**: Build systems that work by design, not by defensive programming  

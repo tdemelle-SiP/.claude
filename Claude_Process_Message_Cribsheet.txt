@@ -87,9 +87,6 @@ C:\Users\tdeme\Local Sites\faux-stained-glass-panes\app\public\wp-content\plugin
 
 When complete, provide a commit message that:
 □ Summarizes the functional change (not the documentation update)
-□ Uses present tense ("Add" not "Added", "Fix" not "Fixed")     
-□ Keeps first line under 50 characters
-□ Includes blank line before extended description (if needed)
 
 -------------------------------------------------------------------------
 ------------------ RECOVERY - Context Auto-Compact ----------------------
