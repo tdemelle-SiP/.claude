@@ -29,90 +29,38 @@ The SiP Printify Manager browser extension bridges the gap between WordPress and
 
 ### 2.1 Master System Architecture
 
-This diagram shows the complete extension architecture with key functions:
+This diagram shows the complete extension architecture:
 
 ```mermaid
 graph TB
     subgraph "WordPress Context"
-        subgraph "User Events"
-            UserAction[User clicks action button]
-        end
-        
-        subgraph "Code Flow"
-            WP[PHP renders page<br/>-sip_printify_manager_page-<br/>sip-printify-manager.php]
-            BEM[JS sends message<br/>-sendMessageToExtension-<br/>browser-extension.js]
-        end
+        UserAction[User action]
+        WordPress[WordPress plugin<br/>-browser-extension-manager.js]
     end
     
     subgraph "Extension - Content Scripts"
         subgraph "WordPress Pages"
-            RelayListen[JS listens postMessage<br/>-window.addEventListener-<br/>widget-relay.js]
-            RelayHandle[JS validates & forwards<br/>-handlePostMessage-<br/>widget-relay.js]
-            RelaySend[JS sends to router<br/>-chrome.runtime.sendMessage-<br/>widget-relay.js]
-            Detector[JS announces presence<br/>-announceExtension-<br/>extension-detector.js]
-            Widget1[JS creates widget UI<br/>-createWidget-<br/>widget-tabs-actions.js]
-            WidgetUpdate1[JS updates terminal<br/>-updateOperationStatus-<br/>widget-tabs-actions.js]
+            Relay[Message relay<br/>-handlePostMessage-<br/>widget-relay.js]
+            Detector[Extension detector<br/>-announceExtension-<br/>extension-detector.js]
+            Widget[Widget UI<br/>-widget-tabs-actions.js]
         end
         
         subgraph "Printify Pages"
-            Widget2[JS creates widget UI<br/>-createWidget-<br/>widget-tabs-actions.js]
-            WidgetUpdate2[JS updates terminal<br/>-updateOperationStatus-<br/>widget-tabs-actions.js]
-            Monitor[JS monitors page<br/>-observeDOM-<br/>printify-tab-actions.js]
-            Mockup[JS reads URL params<br/>-checkUrlParameters-<br/>mockup-library-actions.js]
-            AutoSelect[JS automates selection<br/>-executeSceneSelection-<br/>mockup-library-actions.js]
+            MockupAutomation[Scene automation<br/>-checkUrlParameters-<br/>mockup-library-actions.js]
+            PageMonitor[Page monitor<br/>-observeDOM-<br/>printify-tab-actions.js]
         end
         
-        subgraph "Shared Scripts"
-            Error[JS formats errors<br/>-formatError-<br/>widget-error.js]
-            ErrorCap[JS captures errors<br/>-window.onerror-<br/>error-capture.js]
-            Logger[JS logs actions<br/>-ActionLogger.log-<br/>action-logger.js]
-            OpStart[JS detect op start<br/>-isOperationStart-<br/>action-logger.js]
-            OpEnd[JS detect op end<br/>-isOperationEnd-<br/>action-logger.js]
-            UpdateDisplay[JS updates widget<br/>-updateWidgetDisplay-<br/>action-logger.js]
-            LogHelper[JS log shortcuts<br/>-action.info/error/warn-<br/>action-log-helper.js]
-            DiagBtn[JS handle diagnostic<br/>-handleDiagnostic-<br/>widget-tabs-actions.js]
-            RunDiag[JS run diagnostic<br/>-runPrintifyDiagnostic-<br/>widget-tabs-actions.js]
-            MonBtn[JS handle monitor<br/>-handleMonitor-<br/>widget-tabs-actions.js]
-            StartMon[JS start monitor<br/>-startInteractionMonitor-<br/>widget-tabs-actions.js]
-            StopMon[JS stop monitor<br/>-stopInteractionMonitor-<br/>widget-tabs-actions.js]
+        subgraph "Shared Components"
+            ActionLogger[Action logger<br/>-ActionLogger-<br/>action-logger.js]
+            ErrorHandler[Error handler<br/>-formatError-<br/>widget-error.js]
         end
     end
     
-    subgraph "Extension - Background Service Worker"
-        BG[JS loads modules<br/>-importScripts-<br/>background.js]
-        
-        subgraph "Router Functions"
-            RouterMsg[JS receives messages<br/>-handleMessage-<br/>widget-router.js]
-            RouterVal[JS validates message<br/>-validateMessage-<br/>widget-router.js]
-            RouterWrap[JS wraps response<br/>-wrapSendResponse-<br/>widget-router.js]
-            RouterRoute[JS routes by type<br/>-routeToHandler-<br/>widget-router.js]
-            RouterPause[JS pauses operation<br/>-pauseOperation-<br/>widget-router.js]
-            RouterResume[JS resumes operation<br/>-resumeOperation-<br/>widget-router.js]
-        end
-        
-        subgraph "Handler Functions"
-            WHHandle[JS widget handler<br/>-handle-<br/>widget-data-handler.js]
-            PHHandle[JS printify handler<br/>-handle-<br/>printify-data-handler.js]
-            WPHRoute[JS routes wordpress<br/>-handle-<br/>wordpress-handler.js]
-            MFHandle[JS mockup fetch<br/>-handle-<br/>mockup-fetch-handler.js]
-            MUHandle[JS mockup update<br/>-handle-<br/>mockup-update-handler.js]
-            ReportStatus[JS reports progress<br/>-reportStatus-<br/>handlers]
-        end
-        
-        subgraph "Chrome API Functions"
-            NavTab[JS navigates tabs<br/>-navigateTab-<br/>widget-router.js]
-            CreateTab[JS creates tab<br/>-chrome.tabs.create-<br/>widget-router.js]
-            QueryTab[JS queries tabs<br/>-chrome.tabs.query-<br/>widget-router.js]
-            SetStore[JS saves state<br/>-chrome.storage.set-<br/>widget-router.js]
-            GetStore[JS loads state<br/>-chrome.storage.get-<br/>widget-router.js]
-            InjectScript[JS injects scripts<br/>-chrome.scripting.executeScript-<br/>widget-router.js]
-        end
-        
-        subgraph "Helper Functions"
-            TestConn[JS test connection<br/>-testWordPressConnection-<br/>widget-router.js]
-            CheckPlugin[JS check plugin<br/>-checkWordPressPluginStatus-<br/>widget-router.js]
-            ExtractScene[JS extract scenes<br/>-extractSceneNames-<br/>mockup-update-handler.js]
-        end
+    subgraph "Extension - Background"
+        Router[Message router<br/>-handleMessage-<br/>widget-router.js]
+        MessageHandlers[All message handlers<br/>widget, printify, wordpress,<br/>mockup-fetch, mockup-update]
+        TabOps[Tab operations<br/>-navigateTab-<br/>widget-router.js]
+        StorageOps[Storage operations<br/>-chrome.storage API-]
     end
     
     subgraph "Storage"
@@ -120,397 +68,104 @@ graph TB
         StateStore[(Chrome Local<br/>-sipWidgetState-<br/>-sipTabPairs-<br/>-sipActionLogs-<br/>-sipOperationStatus-)]
     end
     
-    %% User flow
-    UserAction -->|click| BEM
-    BEM -->|window.postMessage| RelayListen
-    RelayListen -->|event| RelayHandle
-    RelayHandle -->|validated| RelaySend
-    RelaySend -->|chrome.runtime| RouterMsg
-    
-    %% Router flow
-    BG -->|imports| RouterMsg
-    RouterMsg -->|validates| RouterVal
-    RouterVal -->|wraps| RouterWrap
-    RouterWrap -->|routes| RouterRoute
-    RouterRoute -->|type:widget| WHHandle
-    RouterRoute -->|type:wordpress| WPHRoute
-    RouterRoute -->|type:printify| PHHandle
-    RouterRoute -->|SIP_FETCH_MOCKUPS| MFHandle
-    RouterRoute -->|SIP_UPDATE_PRODUCT_MOCKUPS| MUHandle
+    %% Primary message flow
+    UserAction -->|triggers| WordPress
+    WordPress -->|postMessage| Relay
+    Relay -->|chrome.runtime| Router
+    Router -->|routes to| MessageHandlers
     
     %% Handler operations
-    WHHandle -->|calls| NavTab
-    NavTab -->|uses| QueryTab
-    NavTab -->|uses| CreateTab
-    WHHandle -->|saves| SetStore
-    SetStore -->|chrome.storage.local.set| StateStore
-    MUHandle -->|calls| ExtractScene
-    MUHandle -->|opens tab with params| CreateTab
-    PHHandle -->|calls| InjectScript
-    RouterMsg -->|lifecycle| TestConn
-    RouterMsg -->|lifecycle| CheckPlugin
+    MessageHandlers -->|use| TabOps
+    MessageHandlers -->|save state| StorageOps
+    StorageOps -->|persist| StateStore
+    StorageOps -->|sync| ConfigStore
     
-    %% Progress reporting
-    MFHandle -->|calls| ReportStatus
-    MUHandle -->|calls| ReportStatus
-    ReportStatus -->|chrome.storage.local.set| StateStore
+    %% Widget updates
+    ActionLogger -->|direct update| Widget
+    StateStore -.->|onChange| Widget
     
-    %% Diagnostic and monitoring flows
-    Widget1 -->|button click| DiagBtn
-    Widget2 -->|button click| DiagBtn
-    DiagBtn -->|calls| RunDiag
-    RunDiag -->|logs to| Logger
-    Widget1 -->|button click| MonBtn
-    Widget2 -->|button click| MonBtn
-    MonBtn -->|calls| StartMon
-    MonBtn -->|calls| StopMon
-    StartMon -->|logs to| Logger
-    StopMon -->|logs to| Logger
+    %% Printify automation
+    Router -->|opens URL| MockupAutomation
     
-    %% Operation detection flow
-    Logger -->|checks| OpStart
-    Logger -->|checks| OpEnd
-    OpStart -->|returns boolean| Logger
-    OpEnd -->|returns boolean| Logger
+    %% Extension detection
+    Detector -->|announces| WordPress
     
-    %% Widget display updates
-    Logger -->|calls| UpdateDisplay
-    UpdateDisplay -->|updates| Widget1
-    UpdateDisplay -->|updates| Widget2
-    
-    %% Operation status updates via router
-    StateStore -.->|onChange sipOperationStatus| Router
-    Router -->|sendMessage updateOperationStatus| WidgetUpdate1
-    Router -->|sendMessage updateOperationStatus| WidgetUpdate2
-    
-    %% Configuration
-    GetStore -->|chrome.storage.sync.get| ConfigStore
-    
-    style RouterMsg fill:#f9f,stroke:#333,stroke-width:4px
-    style RelayHandle fill:#bbf,stroke:#333,stroke-width:2px
-    style UpdateDisplay fill:#9f9,stroke:#333,stroke-width:2px
+    style Router fill:#f9f,stroke:#333,stroke-width:4px
+    style Relay fill:#bbf,stroke:#333,stroke-width:2px
+    style ActionLogger fill:#9f9,stroke:#333,stroke-width:2px
 ```
 
-**Reading the Master Diagram**:
-- **Box Format**: `[Language action<br/>-functionName-<br/>file.js]` shows what the code does, which function, and which file
-- **Solid arrows (→)**: Active message/data flow with labels showing method calls
-- **Dashed arrows (--->)**: Configuration or dependency relationships
-- **Dotted arrows (-.->)**: Event-driven updates (storage onChange) or usage dependencies
-- **Storage Format**: `[(Storage Type<br/>-key name-)]` shows actual storage keys
-- **Subgraphs**: Execution contexts with different Chrome API capabilities
-
 **Key Architecture Points**:
-- **Router is the hub**: ALL runtime messages flow through handleMessage() in widget-router.js
+- **Router is the hub**: ALL runtime messages flow through the central router
 - **Content scripts are limited**: Can only use chrome.runtime.sendMessage and chrome.storage
 - **Background has full access**: Service worker context with all Chrome APIs
-- **Function visibility**: Every function that touches data is shown with its file location
 - **One-way message flow**: WordPress → Relay → Router → Handler → Response
-- **Printify limitation**: chrome.runtime blocked, mockup updates use URL parameters instead [NEEDS FIX]
+- **Printify limitation**: chrome.runtime blocked, mockup updates use URL parameters instead
 - **Two display update paths**: Storage-driven for stateful operations, direct updates for instant feedback
-- **Operation hierarchy**: ActionLogger detects operation start/end patterns to provide visual structure
 
-### Understanding the Diagram Hierarchy
-
-The Master System Architecture diagram above provides a complete view of the extension system, showing all major components and their relationships. However, to truly understand the implementation and validate that code matches architecture, we need function-level detail for specific flows.
-
-The following detail diagrams expand specific aspects of the master architecture to show:
-- **Every function that touches data** in that particular flow
-- **The exact function names** from the code
-- **The specific operations** each function performs
-- **Error handling paths** that might not be visible at the high level
-
-Each detail diagram serves developers who need to:
-- Trace a specific flow (e.g., "Why isn't my WordPress command working?")
-- Implement changes to that flow (e.g., "Where do I add validation for tab operations?")
-- Understand the complete chain of operations (e.g., "What happens between click and response?")
-
-### 2.2 Complete Message Flow (Function Level)
-
-This sequence diagram shows the exact function calls for a typical operation:
+### 2.2 Message Flow
 
 ```mermaid
 sequenceDiagram
     participant WP as WordPress
-    participant Relay as widget-relay.js
-    participant Router as widget-router.js  
-    participant Handler as mockup-update-handler.js
-    participant Chrome as Chrome APIs
-    participant Logger as ActionLogger
-    participant Widget as widget-tabs-actions.js
+    participant Ext as Extension
+    participant Widget as Widget UI
     
-    WP->>Relay: postMessage({type: 'SIP_UPDATE_MOCKUPS'})
-    activate Relay
-    Note over Relay: handlePostMessage(event)
-    Relay->>Relay: validateOrigin(event.origin)
-    Relay->>Relay: checkSource(data.source)
-    
-    Relay->>Router: chrome.runtime.sendMessage(originalMessage)
-    deactivate Relay
-    
-    activate Router
-    Note over Router: handleMessage(message, sender, sendResponse)
-    Router->>Router: validateMessage(message)
-    Router->>Router: detectWordPressMessage(SIP_ prefix)
-    Router->>Logger: ActionLogger.log('WORDPRESS_ACTION', 'Received: SIP_UPDATE_MOCKUPS')
-    
-    Router->>Router: convertToInternal({type: 'wordpress', action: 'SIP_UPDATE_MOCKUPS'})
-    Router->>Router: importHandlers()
-    Router->>Router: wrapSendResponse(sendResponse)
-    Router->>Router: getHandler('wordpress')
-    
-    Router->>Handler: handle(message, sender, wrappedResponse, routerContext)
-    deactivate Router
-    
-    activate Handler
-    Handler->>Handler: validateMockupData(message.data)
-    Handler->>Handler: reportStatus('Updating Mockups', 'Opening library', 25)
-    Handler->>Chrome: chrome.storage.local.set({sipOperationStatus: {...}})
-    
-    Note over Widget: Storage onChange listener
-    Chrome->>Widget: sipOperationStatus changed
-    Widget->>Widget: updateOperationStatus(status)
-    Note over Widget: Shows PROCESSING state with progress
-    
-    Handler->>Chrome: routerContext.navigateTab(url, 'printify', tabId)
-    activate Chrome
-    Chrome->>Chrome: getPairedTab(tabId)
-    Chrome->>Chrome: chrome.tabs.create({url: url})
-    Chrome-->>Handler: {success: true, tabId: 123, action: 'created-pair'}
-    deactivate Chrome
-    
-    alt Success Path
-        Handler->>Handler: waitForPageReady(tabId)
-        Handler->>Handler: reportStatus('Update Complete', 'Success', 100, details)
-        Handler->>Chrome: chrome.storage.local.set({sipOperationStatus: {...}})
-        Chrome->>Widget: sipOperationStatus changed
-        Widget->>Widget: updateOperationStatus shows completion
-        
-        Handler->>Chrome: setTimeout(() => set state: 'idle', 2000)
-        Note over Widget: After 2s, returns to READY state
-        
-        Handler->>Router: wrappedResponse({success: true, data: {...}})
-        activate Router
-        Router->>Logger: ActionLogger.log('WORDPRESS_ACTION', 'SUCCESS: SIP_UPDATE_MOCKUPS')
-        Router->>Relay: originalSendResponse({success: true})
-        deactivate Router
-        activate Relay
-        Relay->>WP: postMessage({type: 'SIP_EXTENSION_RESPONSE', success: true})
-        deactivate Relay
-    else Error Path
-        Handler->>Handler: detectPageIssue()
-        Handler->>Router: routerContext.pauseOperation(context)
-        Handler->>Router: wrappedResponse({success: false, error: 'Login required'})
-        activate Router
-        Router->>Logger: ActionLogger.log('WORDPRESS_ACTION', 'ERROR: SIP_UPDATE_MOCKUPS - Login required')
-        Router->>Relay: originalSendResponse({success: false, error: 'Login required'})
-        deactivate Router
-    else Timeout Path
-        Note over Handler: Never calls wrappedResponse
-        Note over Logger: Only "Received" log exists
-        Note over WP: Chrome times out after ~5 minutes
-    end
-    deactivate Handler
+    WP->>Ext: Send command
+    Note over Ext: Relay validates<br/>Router routes<br/>Handler processes
+    Ext->>Ext: Update storage
+    Ext-->>WP: Response
+    Ext-->>Widget: Storage change event
 ```
 
-### 2.3 Widget Terminal Display Architecture
-
-The widget includes a retro terminal-style display (black background, colored text) that shows real-time action messages and operation progress. See visual mockups at `C:\Users\tdeme\Documents\VSCode_Images_Repo\WidgetWindowDesign01-03.png`.
+### 2.3 Widget Terminal Display
 
 ```mermaid
 graph TD
-    subgraph "Display Update Flows"
-        subgraph "Operation Progress Flow"
-            Handler[Handler calls<br/>-reportStatus-] -->|chrome.storage.set| OpStatus[(sipOperationStatus)]
-            OpStatus -.->|onChange| Widget1[widget-tabs-actions.js<br/>-updateOperationStatus-]
-            Widget1 --> Terminal1[Terminal Display<br/>PROCESSING state]
-        end
-        
-        subgraph "One-off Message Flow"
-            Action[Action occurs] --> Logger[ActionLogger.log()]
-            Logger --> UpdateDisp[updateWidgetDisplay()]
-            UpdateDisp --> Terminal2[Terminal Display<br/>Transient message]
-        end
+    subgraph "Update Paths"
+        StorageUpdate[Storage-driven<br/>-updateOperationStatus-<br/>widget-tabs-actions.js] --> Processing[PROCESSING state]
+        DirectUpdate[Direct update<br/>-updateWidgetDisplay-<br/>action-logger.js] --> Transient[Transient message]
     end
     
-    subgraph "Terminal Display States"
-        Ready[READY State<br/>- Bottom: READY<br/>- Center: ... dots<br/>- Top: Empty/dimmed]
-        
-        Processing[PROCESSING State<br/>- Bottom: PROCESSING...<br/>- Center: Progress bar + task<br/>- Top: Operation name]
-        
-        Transient[Transient Message<br/>- Bottom: READY (unchanged)<br/>- Center: Action message<br/>- Top: Status type]
+    subgraph "Display States"
+        Processing --> Ready[READY state]
+        Transient --> Ready
     end
-    
-    subgraph "Color Coding"
-        StatusColors[Status Header Colors<br/>INFO: #cccccc (grey)<br/>SUCCESS: #00ff00 (green)<br/>ERROR: #ff3333 (red)<br/>WARNING: #ffaa00 (orange)]
-        
-        MessageColors[Action Message Colors<br/>WordPress on WP: #00ccff (bright blue)<br/>WordPress on Printify: #0088cc (dim blue)<br/>Printify on Printify: #00ff00 (bright green)<br/>Printify on WP: #00cc00 (dim green)]
-    end
-    
-    Terminal1 --> Processing
-    Terminal2 --> Transient
-    OpStatus -->|state: 'idle'| Ready
 ```
 
-**Terminal Display Components**:
-1. **Status Header** (top): Shows message status (INFO, SUCCESS, ERROR, WARNING) with appropriate colors
-2. **Message Area** (center): Shows either dots (...), action messages, or progress bar with task
-3. **Status Line** (bottom): Shows READY or PROCESSING...
-
-**Message Dimming**: Messages and headers dim to 50% opacity after 5 seconds but remain visible until replaced.
-
-### 2.4 Storage Architecture Detail (Function Level)
+### 2.4 Storage Architecture
 
 ```mermaid
 graph LR
-    subgraph "Storage Functions"
-        subgraph "Configuration"
-            InitConfig[JS loads config<br/>-initializeConfig-<br/>widget-router.js]
-            LoadConfig[JS reads storage<br/>-loadConfiguration-<br/>widget-router.js]
-            UpdateConfig[JS saves config<br/>-updateConfig-<br/>widget-router.js]
-        end
-        
-        subgraph "Tab Pairing"
-            LoadPairs[JS loads pairs<br/>-loadTabPairs-<br/>widget-router.js]
-            SavePairs[JS saves pairs<br/>-saveTabPairs-<br/>widget-router.js]
-            CreatePair[JS creates pair<br/>-createTabPair-<br/>widget-router.js]
-            RemovePair[JS removes pair<br/>-removeTabPair-<br/>widget-router.js]
-            GetPaired[JS gets pair<br/>-getPairedTab-<br/>widget-router.js]
-        end
-        
-        subgraph "Action Logging"  
-            StoreLog[JS stores log<br/>-storeLog-<br/>action-logger.js]
-            GetLogs[JS retrieves logs<br/>-getActionLogs-<br/>action-logger.js]
-            ClearLogs[JS clears logs<br/>-clearActionLogs-<br/>action-logger.js]
-            TrackOp[JS tracks operations<br/>-operationStack-<br/>action-logger.js]
-        end
-        
-        subgraph "Widget State"
-            SaveWidget[JS saves state<br/>-saveWidgetState-<br/>widget-router.js]
-            LoadWidget[JS loads state<br/>-loadWidgetState-<br/>widget-router.js]
-        end
-        
-        subgraph "Operation Status"
-            ReportOp[JS reports status<br/>-reportStatus-<br/>handlers]
-            UpdateOp[JS listens for changes<br/>-updateOperationStatus-<br/>widget-tabs-actions.js]
-        end
+    subgraph "Storage Operations"
+        Config[Configuration<br/>-initializeConfig-<br/>widget-router.js]
+        TabPairs[Tab pairing<br/>-navigateTab-<br/>widget-router.js]
+        Logging[Action logging<br/>-ActionLogger-<br/>action-logger.js]
+        Status[Operation status<br/>-reportStatus-<br/>handlers]
     end
     
     subgraph "Chrome Storage"
-        subgraph "Sync Storage"
-            WPUrl[(chrome.storage.sync<br/>-wordpressUrl-)]  
-            APIKey[(chrome.storage.sync<br/>-apiKey-)]
-        end
-        
-        subgraph "Local Storage"
-            WidgetState[(chrome.storage.local<br/>-sipWidgetState-)]
-            TabPairs[(chrome.storage.local<br/>-sipTabPairs-)]
-            ActionLogs[(chrome.storage.local<br/>-sipActionLogs-)]
-            OpStatus[(chrome.storage.local<br/>-sipOperationStatus-)]
-        end
+        Sync[(Sync Storage<br/>wordpressUrl, apiKey)]
+        Local[(Local Storage<br/>sipWidgetState, sipTabPairs,<br/>sipActionLogs, sipOperationStatus)]
     end
     
-    subgraph "Runtime Cache"
-        ConfigCache[config object]
-        TabMapCache[tabPairs Map]
-        TimingsCache[sipActionTimings]
-    end
+    Config <-->|config data| Sync
+    TabPairs <-->|tab pairs| Local
+    Logging <-->|action logs| Local
+    Status <-->|status updates| Local
     
-    %% Configuration flow
-    InitConfig -->|calls| LoadConfig
-    LoadConfig -->|chrome.storage.sync.get| WPUrl
-    LoadConfig -->|chrome.storage.sync.get| APIKey
-    LoadConfig -->|populates| ConfigCache
-    UpdateConfig -->|chrome.storage.sync.set| WPUrl
-    UpdateConfig -->|chrome.storage.sync.set| APIKey
-    
-    %% Tab pairing flow  
-    LoadPairs -->|chrome.storage.local.get| TabPairs
-    LoadPairs -->|populates| TabMapCache
-    CreatePair -->|updates| TabMapCache
-    CreatePair -->|calls| SavePairs
-    SavePairs -->|chrome.storage.local.set| TabPairs
-    GetPaired -->|reads| TabMapCache
-    
-    %% Action logging flow
-    StoreLog -->|chrome.storage.local.get| ActionLogs
-    ActionLogs -->|current logs| StoreLog
-    StoreLog -->|appends & trims| ActionLogs
-    GetLogs -->|chrome.storage.local.get| ActionLogs
-    Logger -->|updates| TrackOp
-    TrackOp -->|maintains| TimingsCache
-    
-    %% Widget state flow
-    SaveWidget -->|chrome.storage.local.set| WidgetState
-    LoadWidget -->|chrome.storage.local.get| WidgetState
-    WidgetState -.->|onChange event| LoadWidget
-    
-    %% Operation status flow
-    ReportOp -->|chrome.storage.local.set| OpStatus
-    OpStatus -.->|onChange event| UpdateOp
+    Local -.->|onChange events| Widget[Widget UI]
 ```
 
-### 2.5 Tab Pairing System Detail (Function Level)
+### 2.5 Tab Pairing System
 
 ```mermaid
-sequenceDiagram
-    participant User
-    participant Widget as widget-tabs-actions.js
-    participant Handler as widget-data-handler.js
-    participant Router as widget-router.js
-    participant Chrome as Chrome APIs
-    
-    User->>Widget: Click "Go to Printify" button
-    activate Widget
-    Widget->>Widget: handleButtonClick(event)
-    Widget->>Widget: chrome.runtime.sendMessage({<br/>type: 'widget',<br/>action: 'navigate',<br/>data: {url, destination}})
-    deactivate Widget
-    
-    Note over Handler: handle(message, sender, sendResponse, router)
-    activate Handler
-    Handler->>Handler: Extract sender.tab.id as currentTabId
-    Handler->>Router: router.navigateTab(url, destination, currentTabId)
-    deactivate Handler
-    
-    activate Router
-    Note over Router: navigateTab(url, tabType, currentTabId)
-    Router->>Router: getPairedTab(currentTabId)
-    Router->>Router: tabPairs.get(123) // returns 456
-    
-    alt Paired tab exists (456)
-        Router->>Chrome: chrome.tabs.get(456)
-        Chrome-->>Router: pairedTab object
-        
-        alt Tab still exists
-            Router->>Router: isSameUrl(pairedTab.url, targetUrl)
-            
-            alt Already on target URL
-                Router->>Chrome: chrome.tabs.update(456, {active: true})
-                Router->>Chrome: chrome.windows.update(windowId, {focused: true})
-                Router-->>Handler: {success: true, action: 'switched-focus', tabId: 456}
-            else Different URL
-                Router->>Chrome: chrome.tabs.update(456, {url: url, active: true})
-                Router-->>Handler: {success: true, action: 'reused-pair', tabId: 456}
-            end
-        else Tab was closed
-            Router->>Router: removeTabPair(123)
-            Router->>Router: tabPairs.delete(123)
-            Router->>Router: tabPairs.delete(456)
-            Router->>Router: saveTabPairs()
-            Note over Router: Continue to create new tab
-        end
-    end
-    
-    opt No pair exists
-        Router->>Chrome: chrome.tabs.create({url: url, active: true})
-        Chrome-->>Router: newTab {id: 789}
-        Router->>Router: createTabPair(123, 789)
-        Router->>Router: tabPairs.set(123, 789)
-        Router->>Router: tabPairs.set(789, 123) // Bidirectional
-        Router->>Router: saveTabPairs()
-        Router->>Chrome: chrome.storage.local.set({sipTabPairs: {...}})
-        Router-->>Handler: {success: true, action: 'created-pair', tabId: 789}
-    end
-    deactivate Router
+flowchart TD
+    Navigate[Navigate request<br/>-navigateTab-<br/>widget-router.js] --> Check{Paired tab exists?}
+    Check -->|Yes| Reuse[Reuse existing tab]
+    Check -->|No| Create[Create new tab]
+    Create --> Pair[Create bidirectional pair]
+    Pair --> Store[Save to storage]
 ```
 
 ## 3. Architectural Rationale
@@ -920,69 +575,27 @@ setTimeout(() => {
 }
 ```
 
-### 5.1 Extension Detection & Installation Flow (Function Level)
+### 5.1 Extension Detection & Installation Flow
 
 ```mermaid
 sequenceDiagram
     participant User
-    participant Chrome
-    participant Router as widget-router.js
-    participant Detector as extension-detector.js
-    participant BEM as browser-extension-manager.js
+    participant Extension
+    participant WordPress
     
-    User->>Chrome: Install Extension from Chrome Store
-    Chrome->>Router: chrome.runtime.onInstalled event
+    User->>Extension: Install from Chrome Store
+    Extension->>Extension: Initialize config
+    Extension->>WordPress: Inject detection scripts
+    Note over WordPress: Scripts check page context
     
-    activate Router
-    Note over Router: onInstalled listener (line 941)
-    Router->>Router: initializeConfig()
-    Router->>Chrome: chrome.tabs.query({url: '*://*/wp-admin/*'})
-    Chrome-->>Router: Array of WordPress admin tabs
-    
-    loop For each WordPress tab
-        Router->>Chrome: chrome.scripting.executeScript({<br/>target: {tabId: tab.id},<br/>files: ['widget-error.js',<br/>'widget-relay.js',<br/>'extension-detector.js']})
-        
-        Chrome->>Detector: Script injected and executed
-        activate Detector
-        Note over Detector: Script runs immediately
-        
-        alt On SiP Printify Manager page
-            Detector->>Detector: checkPageContext()
-            Detector->>Detector: Returns true (is manager page)
-            Detector->>Detector: setTimeout(announceExtension, 100)
-            
-            Note over Detector: 100ms delay
-            
-            Detector->>Detector: announceExtension()
-            Detector->>BEM: window.postMessage({<br/>type: 'SIP_EXTENSION_READY',<br/>source: 'sip-printify-extension',<br/>version: manifest.version})
-        else On SiP Plugins Core page
-            Detector->>Detector: checkPageContext()
-            Detector->>Detector: Returns false (wait for request)
-            Note over Detector: Waits for SIP_REQUEST_EXTENSION_STATUS
-        end
-        deactivate Detector
+    alt On SiP Manager page
+        WordPress->>Extension: Announce presence
+        Extension->>WordPress: SIP_EXTENSION_READY
+        WordPress->>WordPress: Update UI
+    else On other pages
+        Note over WordPress: Wait for request
     end
-    deactivate Router
-    
-    activate BEM
-    Note over BEM: setupExtensionCommunication()
-    BEM->>BEM: window.addEventListener('message', handleMessage)
-    BEM->>BEM: handleMessage(event)
-    BEM->>BEM: validateOrigin(event.origin)
-    BEM->>BEM: updateExtensionState({<br/>isInstalled: true,<br/>version: data.version})
-    BEM->>BEM: $('#install-extension-section').hide()
-    BEM->>BEM: $(document).trigger('extensionReady')
-    deactivate BEM
-    
-    Note over BEM: State NOT persisted<br/>Must announce every page load
-    Note over BEM: WordPress handles mockup checking<br/>when blueprint rows draw
 ```
-
-**Programmatic Injection**: Content scripts don't auto-inject into already-open tabs after installation. Users expect immediate functionality without reload.
-
-**100ms Delay**: Ensures all scripts are fully loaded before announcing presence.
-
-**No State Persistence**: Fresh detection eliminates false positives from uninstalled extensions.
 
 ## 6. Message Type Reference
 
@@ -1002,65 +615,15 @@ sequenceDiagram
 | printify | fetchMockups, updateStatus | Printify operations |
 | wordpress | (routes SIP_* to handlers) | Message translation |
 
-### 6.1 Message Format Transformation (Function Level)
+### 6.1 Message Format Transformation
 
 ```mermaid
 flowchart LR
-    subgraph "WordPress Context"
-        WP[JS builds message<br/>-sendMessageToExtension-<br/>browser-extension-manager.js]
-        WPMsg["{
-            type: 'SIP_UPDATE_PRODUCT_MOCKUPS',
-            source: 'sip-printify-manager',
-            requestId: 'req_123',
-            data: { productId: 456 }
-        }"]
-    end
-    
-    subgraph "Relay Functions"
-        R1[JS receives event<br/>-handlePostMessage-<br/>widget-relay.js]
-        R2[JS validates origin<br/>-event.origin check-<br/>widget-relay.js]
-        R3[JS validates source<br/>-data.source check-<br/>widget-relay.js]
-        R4[JS forwards message<br/>-chrome.runtime.sendMessage-<br/>widget-relay.js]
-    end
-    
-    subgraph "Router Functions"
-        RO1[JS receives message<br/>-handleMessage-<br/>widget-router.js]
-        RO2[JS detects WordPress<br/>-checks SIP_ prefix-<br/>widget-router.js]
-        RO3[JS converts format<br/>-type: 'wordpress'-<br/>widget-router.js]
-        RO4[JS logs received<br/>-ActionLogger.log-<br/>action-logger.js]
-        RO5[JS gets handler<br/>-getHandlerByType-<br/>widget-router.js]
-        RO6[JS calls handler<br/>-handler.handle-<br/>widget-router.js]
-    end
-    
-    subgraph "Handler Processing"
-        H1[JS routes command<br/>-wordpress-handler.handle-<br/>wordpress-handler.js]
-        H2[JS converts to internal<br/>-mapWordPressAction-<br/>wordpress-handler.js]
-        H3[JS delegates to handler<br/>-PrintifyDataHandler.handle-<br/>printify-data-handler.js]
-        HandlerMsg["{
-            type: 'printify',
-            action: 'updateProductMockups',
-            data: { productId: 456 }
-        }"]
-    end
-    
-    WP -->|creates| WPMsg
-    WPMsg -->|window.postMessage| R1
-    R1 -->|validates| R2
-    R2 -->|checks| R3
-    R3 -->|forwards| R4
-    R4 -->|chrome.runtime| RO1
-    RO1 -->|checks| RO2
-    RO2 -->|converts| RO3
-    RO3 -->|logs| RO4
-    RO4 -->|routes| RO5
-    RO5 -->|calls| RO6
-    RO6 -->|invokes| H1
-    H1 -->|maps| H2
-    H2 -->|creates| HandlerMsg
-    H2 -->|delegates| H3
+    WordPress[WordPress<br/>SIP_* format] -->|postMessage| Relay[Message relay<br/>-handlePostMessage-<br/>widget-relay.js]
+    Relay -->|chrome.runtime| Router[Message router<br/>-handleMessage-<br/>widget-router.js]
+    Router -->|type: wordpress| Handler[Handler routing<br/>-handle-<br/>wordpress-handler.js]
+    Handler -->|internal format| Target[Target handler]
 ```
-
-**Transform Reason**: Router converts WordPress messages (SIP_* prefix) to internal format for handler routing. No relay wrapping needed - messages are forwarded directly.
 
 ## 7. Key Features
 
@@ -1101,152 +664,65 @@ The widget features a retro terminal-style display that shows real-time action m
 - Messages dim to 50% opacity after 5 seconds
 - Progress bar fills from 0% to 100%
 
-### 7.3 Pause/Resume Error Recovery (Function Level)
+### 7.3 Pause/Resume Error Recovery
 
 ```mermaid
 sequenceDiagram
-    participant Handler as mockup-update-handler.js
-    participant Router as widget-router.js
-    participant Actions as mockup-library-actions.js
-    participant Widget as widget-tabs-actions.js
+    participant Handler
+    participant Router
+    participant Widget
     participant User
     
-    activate Handler
-    Note over Handler: waitForPageReady(tabId, router)
-    Handler->>Chrome: chrome.tabs.sendMessage(tabId, {<br/>type: 'checkPageState'})
+    Handler->>Handler: Check page state
+    Handler->>Handler: Detect issue (login/404/permissions)
+    Handler->>Router: Pause operation
+    Router->>Widget: Update UI state
+    Widget->>User: Show "Please log in" + Resume
     
-    activate Actions
-    Actions->>Actions: detectPageIssue()
-    Actions->>Actions: Check window.location.href.includes('/login')
-    Actions->>Actions: Check document.querySelector('.error-404')
-    Actions->>Actions: Check document.querySelector('[type="password"]')
-    Actions-->>Handler: {issues: ['login_required']}
-    deactivate Actions
+    Note over User: User fixes issue
     
-    Handler->>Router: router.pauseOperation(tabId, 'login_required', 'Please log in')
-    
-    activate Router
-    Note over Router: pauseOperation(tabId, issue, instructions)
-    Router->>Router: operationState.paused = true
-    Router->>Router: operationState.pausedOperation = {<br/>tabId, issue, instructions,<br/>timestamp: Date.now()}
-    Router->>Chrome: chrome.tabs.update(tabId, {active: true})
-    Router->>Chrome: chrome.windows.update(tab.windowId, {focused: true})
-    Router->>Chrome: chrome.storage.local.set({<br/>sipOperationStatus: {<br/>state: 'paused',<br/>issue: issue,<br/>instructions: instructions,<br/>showResumeButton: true}})
-    
-    Router->>Router: return new Promise((resolve) => {<br/>operationState.pausedCallback = resolve})
-    deactivate Router
-    deactivate Handler
-    
-    Note over Widget: chrome.storage.onChanged listener
-    activate Widget
-    Widget->>Widget: handleStorageChange(changes)
-    Widget->>Widget: updateOperationStatus(changes.sipOperationStatus)
-    Widget->>Widget: showPauseUI(status)
-    Widget->>User: Display "Please log in" + Resume button
-    deactivate Widget
-    
-    Note over User: User logs in to Printify
-    
-    User->>Widget: Click Resume button
-    activate Widget
-    Widget->>Widget: handleResumeClick()
-    Widget->>Chrome: chrome.runtime.sendMessage({<br/>type: 'widget',<br/>action: 'resumeOperation'})
-    deactivate Widget
-    
-    activate Handler
-    Note over Handler: widget-data-handler receives message
-    Handler->>Router: router.resumeOperation()
-    
-    activate Router
-    Note over Router: resumeOperation()
-    Router->>Router: operationState.paused = false
-    Router->>Router: const callback = operationState.pausedCallback
-    Router->>Router: operationState.pausedOperation = null
-    Router->>Router: operationState.pausedCallback = null
-    Router->>Chrome: chrome.storage.local.set({<br/>sipOperationStatus: {<br/>state: 'resuming'}})
-    Router->>Router: callback() // Resolves the promise
-    deactivate Router
-    
-    Note over Handler: Promise resolves, operation continues
-    Handler->>Handler: Retry operation from saved context
-    Handler->>Actions: chrome.tabs.sendMessage(tabId, {<br/>action: 'updateMockupSelections'})
-    Actions-->>Handler: {success: true}
-    Handler->>Handler: sendResponse({success: true})
-    deactivate Handler
+    User->>Widget: Click Resume
+    Widget->>Router: Resume operation
+    Router->>Handler: Continue from saved state
+    Handler->>Handler: Complete operation
 ```
 
-**Pause/Resume Reason**: Operations fail on login pages, 404s, permission errors. Users can fix issues without losing progress.
-
-**Error Detection**:
-```javascript
-function detectPageIssue() {
-    if (window.location.href.includes('/login')) return ['login_required'];
-    if (document.querySelector('.error-404')) return ['page_not_found'];
-    if (document.querySelector('[type="password"]')) return ['login_required'];
-    return null;
-}
-```
-
-### 7.4 Response Logging Architecture (Function Level)
+### 7.4 Response Logging Architecture
 
 ```mermaid
 sequenceDiagram
-    participant R as widget-router.js
-    participant H as Handler  
-    participant L as ActionLogger
-    participant W as widget-tabs-actions.js
-    participant Relay as widget-relay.js
     participant WP as WordPress
+    participant Router as Router<br/>widget-router.js
+    participant Handler as Message Handler
+    participant Logger as ActionLogger
     
-    activate R
-    Note over R: handleMessage(message, sender, sendResponse)
-    R->>R: Store originalSendResponse = sendResponse
+    WP->>Router: Request message
+    activate Router
+    Note over Router: Wrap response callback<br/>with logging
+    Router->>Handler: Process request
+    deactivate Router
     
-    R->>R: Create wrappedSendResponse = (response) => {<br/>// Log the response<br/>const responseStatus = response?.success ? 'success' : 'error'<br/>const action = message.action || message.type<br/>const error = response?.error || ''<br/><br/>ActionLogger.log(<br/>CATEGORIES.WORDPRESS_ACTION,<br/>`${status}: ${action}${error ? ' - ' + error : ''}`,<br/>{status: responseStatus, error, requestId})<br/><br/>// Send original<br/>originalSendResponse(response)<br/>}
-    
-    R->>H: handler.handle(message, sender, wrappedSendResponse, routerContext)
-    deactivate R
-    
-    activate H
-    Note over H: Process the request
-    
-    alt Handler Success
-        H->>H: Complete operation successfully
-        H->>R: wrappedSendResponse({success: true, data: {...}})
-        activate R
-        R->>L: ActionLogger.log('WORDPRESS_ACTION',<br/>'SUCCESS: SIP_UPDATE_MOCKUPS',<br/>{status: 'success', requestId: 'req_123'})
-        
-        Note over L: In content script context
-        L->>L: updateWidgetDisplay() called
-        L->>W: Updates terminal with success message
-        
-        R->>Relay: originalSendResponse({success: true, data: {...}})
-        deactivate R
-        activate Relay
-        Relay->>WP: window.postMessage({<br/>type: 'SIP_EXTENSION_RESPONSE',<br/>success: true,<br/>requestId: 'req_123'})
-        deactivate Relay
-        
-    else Handler Error  
-        H->>H: Encounter error
-        H->>R: wrappedSendResponse({success: false, error: 'Page not found'})
-        activate R
-        R->>L: ActionLogger.log('WORDPRESS_ACTION',<br/>'ERROR: SIP_UPDATE_MOCKUPS - Page not found',<br/>{status: 'error', error: 'Page not found'})
-        R->>Relay: originalSendResponse({success: false, error: 'Page not found'})
-        deactivate R
-        
-    else Handler Timeout
-        Note over H: Handler crashes or never calls wrappedSendResponse
-        Note over L: Only "Received: SIP_UPDATE_MOCKUPS" log exists
-        Note over Relay: Chrome closes message port after ~5 minutes
-        Note over WP: WordPress sees request timeout
+    activate Handler
+    alt Success
+        Handler->>Router: Success response
+        Router->>Logger: Log success
+        Router->>WP: Success response
+    else Error
+        Handler->>Router: Error response
+        Router->>Logger: Log error
+        Router->>WP: Error response
+    else Timeout
+        Note over Handler: No response
+        Note over WP: Request timeout
     end
-    deactivate H
+    deactivate Handler
 ```
 
-**Infrastructure Level Reason**: 
-- DRY principle - implement once, not in every handler
-- Guaranteed coverage - can't forget to log
-- Evolution-friendly - change format in one place
+**Why Centralized Response Logging**: 
+The router wraps all handler responses to guarantee logging because:
+- **DRY principle**: Single implementation point for all handlers
+- **Guaranteed coverage**: Handlers cannot bypass logging
+- **Evolution support**: Response format changes happen in one place
 
 ### 7.5 Content Security Policy (CSP) Compliance
 
@@ -1290,340 +766,121 @@ SiPWidget.UI.resizeWidget();
 
 **Namespace Reason**: Prevents race conditions where function is called before module loads. Makes API discoverable and extensible.
 
-### 7.7 Scene-Based Mockup Selection Flow (Chrome.runtime Workaround)
+### 7.7 Scene-Based Mockup Selection Flow
 
 ```mermaid
 sequenceDiagram
     participant WP as WordPress
-    participant BG as Background (Router)
-    participant MUH as mockup-update-handler.js
-    participant Chrome as Chrome API
-    participant PT as Printify Tab
-    participant CS as mockup-library-actions.js
+    participant Ext as Extension
+    participant Printify as Printify Page
     
-    activate WP
-    WP->>BG: postMessage({<br/>type: 'SIP_UPDATE_PRODUCT_MOCKUPS',<br/>data: {selectedScenes, primaryScene, primaryColor, productInfo}})
-    deactivate WP
-    
-    activate BG
-    BG->>MUH: handle(message, sender, sendResponse)
-    deactivate BG
-    
-    activate MUH
-    Note over MUH: Extract scene data
-    MUH->>MUH: const {selectedScenes, primaryScene, primaryColor} = message.data<br/>// selectedScenes: ['Front', 'Back', 'Left']<br/>// primaryScene: 'Front'<br/>// primaryColor: '#FF0000'
-    
-    MUH->>MUH: const url = `https://printify.com/app/mockup-library/<br/>shops/${shopId}/products/${productId}<br/>?sip-action=update&scenes=${selectedScenes.join(',')}<br/>&primary-scene=${primaryScene}<br/>&primary-color=${encodeURIComponent(primaryColor)}`
-    
-    MUH->>Chrome: chrome.tabs.create({<br/>url: mockupUrl,<br/>active: true})
-    Chrome-->>MUH: {id: tabId}
-    
-    MUH->>MUH: setTimeout(() => {<br/>sendResponse({success: true})<br/>}, 10000) // 10 second timeout
-    deactivate MUH
-    
-    Chrome->>PT: Navigate to URL with parameters
-    
-    activate CS
-    Note over CS: Content script loads
-    CS->>CS: checkUrlParameters()
-    CS->>CS: const urlParams = new URLSearchParams(window.location.search)<br/>const action = urlParams.get('sip-action') // 'update'<br/>const scenes = urlParams.get('scenes') // 'Front,Back,Left'<br/>const primaryScene = urlParams.get('primary-scene') // 'Front'<br/>const primaryColor = urlParams.get('primary-color') // '#FF0000'
-    
-    CS->>CS: action.data('URL parameters detected', {<br/>scenes: ['Front', 'Back', 'Left'],<br/>primaryScene: 'Front',<br/>primaryColor: '#FF0000',<br/>url: window.location.href})
-    
-    CS->>CS: waitForPageReady()
-    Note over CS: Wait for mockup elements
-    
-    CS->>CS: synchronizeMockupsByScenes(selectedScenes, primaryScene, primaryColor)
-    
-    Note over CS: Get all available scene names from carousel
-    CS->>CS: const availableScenes = extractAvailableScenes()<br/>// ['Front', 'Back', 'Left', 'Right']
-    
-    loop For each available scene
-        CS->>CS: navigateToScene(sceneName)
-        CS->>PT: button.click() // Navigate to scene
-        CS->>CS: await delay(700ms)
-        
-        alt Scene should be selected
-            CS->>CS: selectAllMockupsInScene()
-            CS->>PT: checkbox.checked = true // Ensure selected
-        else Scene should NOT be selected
-            CS->>CS: deselectAllMockupsInScene()
-            CS->>PT: checkbox.checked = false // Ensure deselected
-        end
-        CS->>CS: await delay(500ms)
-    end
-    
-    CS->>CS: findSaveButton()
-    CS->>PT: saveButton.click()
-    CS->>CS: action.info('Scene-based mockup selection completed', {<br/>selectedScenes: selectedScenes,<br/>primaryScene: primaryScene,<br/>status: 'success'})
-    deactivate CS
+    WP->>Ext: Scene selection request
+    Note over Ext: Build URL with<br/>scene parameters
+    Ext->>Printify: Open URL with<br/>?sip-action=update<br/>&scenes=Front,Back
+    Note over Printify: Content script<br/>reads parameters
+    Printify->>Printify: Navigate scenes<br/>Toggle selections<br/>Save changes
 ```
 
-**Scene-Based Selection Logic**:
-- WordPress groups mockups by scene names (Front, Back, Left, Right)
-- User selects which scenes to include and picks a primary scene
-- Extension navigates to ALL scenes and selects/deselects appropriately
-- Ensures mockup selection exactly matches WordPress selection
+**Why URL Parameters**: 
+Printify blocks `chrome.runtime` API in content scripts, preventing traditional extension messaging. URL parameters provide the only reliable way to pass data from the extension to Printify pages.
 
-**URL Parameter Reason**: Printify blocks chrome.runtime in content scripts, preventing traditional message passing. URL parameters provide a one-way data channel that doesn't require chrome.runtime.
+**Scene Selection Process**:
+- **WordPress side**: Groups mockups by viewing angle (Front, Back, Left, Right)
+- **Extension side**: Converts scene selections to URL parameters
+- **Printify side**: Reads parameters and automates checkbox selection
+- **Result**: Exact synchronization between WordPress and Printify selections
 
-### 7.8 Scene-Based Selection Implementation Details
+### 7.8 Scene-Based Selection Implementation
 
-**Key Functions in mockup-library-actions.js**:
+**Core Operations**:
+- **Scene Detection**: Extract available scenes from carousel
+- **Scene Navigation**: Navigate to each scene sequentially
+- **Selection Sync**: Match selections to WordPress choices
+- **State Management**: Ensure correct checkbox states
 
-1. **extractAvailableScenes()** - Gets all scene names from carousel buttons
-```javascript
-function extractAvailableScenes() {
-    const carouselButtons = document.querySelectorAll('.carousel-button[data-scene]');
-    return Array.from(carouselButtons).map(btn => btn.getAttribute('data-scene'));
-}
-```
+**Why Scene-Based Approach**:
+Printify groups mockups by viewing angle (Front, Back, Left, Right). Users need to:
+- **Select by scene**: Choose which angles to include in their product
+- **Maintain consistency**: Ensure all products show same angles
+- **Save bandwidth**: Only download needed mockup images
 
-2. **synchronizeMockupsByScenes(selectedScenes, primaryScene, primaryColor)** - Main orchestration function
-   - Iterates through ALL available scenes
-   - Navigates to each scene using carousel
-   - Selects mockups if scene is in selectedScenes list
-   - Deselects mockups if scene is NOT in selectedScenes list
-   - Handles primary scene and color logic (future enhancement)
-
-3. **navigateToScene(sceneName)** - Clicks carousel button to navigate
-```javascript
-async function navigateToScene(sceneName) {
-    const button = document.querySelector(`.carousel-button[data-scene="${sceneName}"]`);
-    if (button) {
-        button.click();
-        await delay(700); // Wait for navigation
-    }
-}
-```
-
-4. **selectAllMockupsInScene() / deselectAllMockupsInScene()** - Ensures correct selection state
-   - Finds "Select All" checkbox in Grid 0
-   - Sets checked state appropriately
-   - Ensures visual update completes
-
-**WordPress Side (template-actions.js)**:
-
-1. **groupMockupsByScene(mockups)** - Groups mockups by scene label
-2. **extractColorOptions(sceneMockups)** - Extracts unique colors from scene
-3. **getSelectedScenes()** - Gets checked scene checkboxes
-4. **getDefaultScene()** - Gets selected default scene radio
-5. **getDefaultColorId()** - Gets selected color radio value
-
-### 7.9 Error Capture System Architecture
-
-```mermaid
-sequenceDiagram
-    participant Page as Web Page
-    participant EC as error-capture.js
-    participant AL as ActionLogger
-    participant WE as widget-error.js
-    participant BG as Background (Router)
-    
-    alt Window Error Event
-        Page->>EC: window.onerror(message, source, lineno, colno, error)
-        activate EC
-        EC->>EC: captureError('window.onerror', {<br/>message, source, lineno, colno,<br/>stack: error?.stack})
-        
-        EC->>AL: ActionLogger.log('ERROR',<br/>`Uncaught error: ${message}`,<br/>{source, line: lineno, column: colno, stack})
-        
-        alt Chrome.runtime available
-            EC->>WE: formatError(error || {message})
-            WE-->>EC: formattedError
-            EC->>BG: chrome.runtime.sendMessage({<br/>type: 'widget',<br/>action: 'logError',<br/>error: formattedError})
-        else Chrome.runtime blocked (Printify) [NEEDS FIX]
-            EC->>EC: console.error('[SiP Error Capture]', details)
-        end
-        deactivate EC
-    
-    else Unhandled Promise Rejection
-        Page->>EC: unhandledrejection event
-        activate EC
-        EC->>EC: event.preventDefault() // Prevent default console error
-        EC->>EC: captureError('unhandledrejection', {<br/>reason: event.reason,<br/>promise: event.promise})
-        
-        EC->>AL: ActionLogger.log('ERROR',<br/>'Unhandled promise rejection',<br/>{reason, stack})
-        deactivate EC
-    
-    else Caught Error in Code
-        Page->>WE: formatError(error)
-        activate WE
-        WE->>WE: Check if already formatted
-        WE->>WE: standardizeError(error)
-        WE-->>Page: {<br/>message: string,<br/>stack: string,<br/>details: {...},<br/>timestamp: ISO string,<br/>context: 'content_script'<br/>}
-        deactivate WE
-    end
-```
-
-**Global Error Handlers**:
-```javascript
-// Captures all uncaught errors
-window.onerror = function(message, source, lineno, colno, error) {
-    captureError('window.onerror', {...});
-    return true; // Prevent default browser error handling
-};
-
-// Captures unhandled promise rejections
-window.addEventListener('unhandledrejection', function(event) {
-    event.preventDefault();
-    captureError('unhandledrejection', {...});
-});
-```
-
-### 7.9 Action Logging Helper Architecture
-
-```mermaid
-sequenceDiagram
-    participant Code as Extension Code
-    participant Helper as action-log-helper.js
-    participant AL as ActionLogger
-    participant WD as updateWidgetDisplay()
-    participant Widget as Terminal Display
-    participant Storage as Chrome Storage
-    
-    Note over Helper: Global shortcuts created on load
-    Helper->>Helper: window.action = {<br/>log(), info(), error(),<br/>warn(), data(), api(), navigation()<br/>}
-    
-    alt Direct Log Call
-        Code->>Helper: action.log('CUSTOM_CATEGORY', 'Message', {details})
-        Helper->>AL: SiPWidget.ActionLogger.log('CUSTOM_CATEGORY', 'Message', {details})
-    
-    else Info Log
-        Code->>Helper: action.info('User clicked button', {buttonId: 'save'})
-        activate Helper
-        Helper->>Helper: const category = SiPWidget?.ActionLogger?.CATEGORIES?.USER_ACTION || 'USER_ACTION'
-        Helper->>AL: SiPWidget.ActionLogger.log('USER_ACTION', 'User clicked button', {buttonId: 'save'})
-        deactivate Helper
-    
-    else Error Log
-        Code->>Helper: action.error('Failed to save', {error: 'Network error'})
-        Helper->>AL: SiPWidget.ActionLogger.log('ERROR', 'Failed to save', {error: 'Network error'})
-    
-    else Data Fetch Log
-        Code->>Helper: action.data('Fetched mockups', {count: 10})
-        Helper->>AL: SiPWidget.ActionLogger.log('DATA_FETCH', 'Fetched mockups', {count: 10})
-    end
-    
-    activate AL
-    AL->>AL: const log = {<br/>timestamp: new Date().toISOString(),<br/>category,<br/>message,<br/>details,<br/>url: window.location.href<br/>}
-    
-    AL->>AL: logs.push(log)<br/>if (logs.length > 1000) logs.shift()
-    
-    Note over AL: In content script context only
-    AL->>WD: updateWidgetDisplay(category, action, details, siteType)
-    activate WD
-    WD->>WD: Apply color coding based on site/context
-    WD->>Widget: Update terminal display with message
-    deactivate WD
-    
-    AL->>Storage: chrome.storage.local.set({<br/>sipActionLogs: logs<br/>})
-    deactivate AL
-```
-
-**Helper Method Mapping**:
-```javascript
-window.action = {
-    info: (msg, details) => log('USER_ACTION', msg, details),
-    error: (msg, details) => log('ERROR', msg, details),
-    warn: (msg, details) => log('WARNING', msg, details),
-    data: (msg, details) => log('DATA_FETCH', msg, details),
-    api: (msg, details) => log('API_CALL', msg, details),
-    navigation: (msg, details) => log('NAVIGATION', msg, details)
-};
-```
-
-**Helper Benefit**: Reduces verbosity, ensures consistent categorization, and provides fallback when ActionLogger isn't available.
-
-### 7.10 Diagnostic and Monitoring Tools
-
-These features were added to help users understand and debug Printify page interactions. The diagnostic tool analyzes DOM structure and the monitor tracks user interactions with API calls.
-
-**Tool Purpose**: Users were repeatedly encountering issues with DOM structure changes on Printify pages. Rather than manually running console scripts each time, these tools are now integrated into the widget interface for easy access.
+### 7.9 Error Capture System
 
 ```mermaid
 graph LR
-    subgraph "Widget Interface"
-        DiagButton[Diagnostic Button<br/>id='sip-diagnostic-btn']
-        MonButton[Monitor Button<br/>id='sip-monitor-btn']
-    end
+    Errors[JavaScript Errors]
+    Capture[Error Capture<br/>-window.onerror-<br/>-unhandledrejection-<br/>error-capture.js]
+    Format[Error Formatter<br/>-formatError-<br/>widget-error.js]
+    Logger[ActionLogger<br/>-log-<br/>action-logger.js]
     
-    subgraph "Diagnostic Flow"
-        HandleDiag[JS handle click<br/>-handleDiagnostic-<br/>widget-tabs-actions.js]
-        RunDiag[JS analyze page<br/>-runPrintifyDiagnostic-<br/>widget-tabs-actions.js]
-        DiagResult[Diagnostic Result<br/>{pageType, data, interactive}]
-    end
-    
-    subgraph "Monitor Flow"
-        HandleMon[JS handle toggle<br/>-handleMonitor-<br/>widget-tabs-actions.js]
-        StartMon[JS start tracking<br/>-startInteractionMonitor-<br/>widget-tabs-actions.js]
-        StopMon[JS stop tracking<br/>-stopInteractionMonitor-<br/>widget-tabs-actions.js]
-        MonitorData[Monitor Data<br/>{clicks, apiCalls, stateChanges}]
-    end
-    
-    subgraph "Output"
-        Logger[ActionLogger<br/>-log-<br/>action-logger.js]
-        Toast[Toast Messages<br/>-showToast-<br/>widget-tabs-actions.js]
-        Terminal[Terminal Display<br/>Shows diagnostic status]
-    end
-    
-    DiagButton -->|click| HandleDiag
-    HandleDiag -->|calls| RunDiag
-    RunDiag -->|returns| DiagResult
-    DiagResult -->|logged to| Logger
-    HandleDiag -->|updates| Terminal
-    HandleDiag -->|shows| Toast
-    
-    MonButton -->|click| HandleMon
-    HandleMon -->|starts/stops| StartMon
-    HandleMon -->|starts/stops| StopMon
-    StartMon -->|captures| MonitorData
-    MonitorData -->|logged to| Logger
-    HandleMon -->|shows| Toast
+    Errors -->|caught by| Capture
+    Capture -->|formats| Format
+    Format -->|logs| Logger
 ```
 
-**Diagnostic Tool Features**:
-- Detects page type (mockup-library, product-editor, etc.)
-- Counts interactive elements (buttons, forms, images)
-- Identifies data-testid attributes
-- Page-specific analysis (e.g., mockup grids on library pages)
+**Why Global Error Capture**:
+Extension errors often occur in injected scripts where debugging is difficult. Global handlers ensure:
+- **Complete coverage**: No errors go unnoticed
+- **Context preservation**: Stack traces and source locations captured
+- **Printify limitation**: Falls back to console when chrome.runtime blocked
 
-**Monitor Tool Features**:
-- Tracks all click events with element details
-- Intercepts fetch() calls to capture API requests/responses
-- Monitors checkbox state changes
-- Logs mockup selection changes with IDs
+### 7.10 Action Logging Helper
 
-**Integration Benefits**:
-1. No need to open console and paste scripts
-2. Results automatically logged to action logger
-3. Visual feedback in widget interface
-4. Toggle monitoring on/off as needed
-5. Captures data that manual inspection might miss
-
-### 7.11 Enhanced Action Log Message Examples
-
-The ActionLogger now provides visual hierarchy for operations:
-
-**Operation Start Detection**:
-```javascript
-// These patterns trigger operation start markers (🔻)
-"Starting mockup update for Product ABC"
-"Received: SIP_UPDATE_PRODUCT_MOCKUPS"
-"Mockup automation started for Winter Hoodie (4 mockups to sync)"
+```mermaid
+graph LR
+    Code[Extension Code]
+    Helper[action helpers<br/>-action.info-<br/>-action.error-<br/>action-log-helper.js]
+    Logger[ActionLogger<br/>-log-<br/>action-logger.js]
+    Display[Widget Display<br/>-updateWidgetDisplay-<br/>widget-tabs-actions.js]
+    
+    Code -->|uses| Helper
+    Helper -->|calls| Logger
+    Logger -->|updates| Display
 ```
 
-**Operation End Detection**:
-```javascript
-// These patterns trigger operation end markers (🔺)
-"Mockup update completed successfully"
-"Connection verified with https://example.com"
-"Fetch Complete"
+**Why Helper Functions**:
+The ActionLogger API is verbose for frequent logging. Helper shortcuts provide:
+- **Consistent categorization**: Each helper maps to specific category
+- **Reduced boilerplate**: `action.info()` vs full ActionLogger call
+- **Graceful fallback**: Works even when ActionLogger not yet loaded
+
+### 7.11 Diagnostic and Monitoring Tools
+
+```mermaid
+graph TD
+    Widget[Widget UI<br/>-handleDiagnostic-<br/>-handleMonitor-<br/>widget-tabs-actions.js]
+    Diag[DOM Analyzer<br/>-runPrintifyDiagnostic-<br/>widget-tabs-actions.js]
+    Mon[Interaction Tracker<br/>-InteractionMonitor-<br/>widget-tabs-actions.js]
+    Logger[ActionLogger<br/>-log-<br/>action-logger.js]
+    
+    Widget -->|analyze| Diag
+    Widget -->|track| Mon
+    Diag -->|results| Logger
+    Mon -->|activity| Logger
 ```
 
-**Example Terminal Display with Hierarchy**:
+**Why Integrated Diagnostic Tools**:
+Printify frequently changes DOM structure without notice, breaking extension functionality. These tools provide:
+- **Real-time analysis**: Immediate DOM structure inspection without console access
+- **API monitoring**: Capture undocumented API endpoints and payloads
+- **Change detection**: Track when Printify updates break expected patterns
+
+### 7.12 Action Log Visual Hierarchy
+
+**Operation Markers**:
+- `🔻` Start of operation (e.g., "Starting mockup update...")
+- `│` Sub-operation within main operation
+- `🔺` End of operation (e.g., "...completed successfully")
+
+**Why Visual Hierarchy**: 
+The extension performs multi-step operations that can fail at any point. Visual markers help users:
+- **Track progress**: See where in a sequence an operation failed
+- **Understand scope**: Distinguish main operations from sub-tasks
+- **Debug efficiently**: Quickly identify incomplete operations
+
+**Example Terminal Output**:
 ```
 🔻 Starting mockup update for Winter Hoodie
-│  Navigating to mockup library page
 │  Created new printify tab: printify.com/app/products/123
 │  Mockup automation started for Winter Hoodie (4 mockups to sync)
 │  Synchronizing mockups: Adding 2, removing 1
@@ -1654,74 +911,36 @@ The ActionLogger now provides visual hierarchy for operations:
 
 ## 8. Development Quick Reference
 
-### File Structure with Key Functions
+### File Structure
 
 ```mermaid
-graph TB
-    subgraph "Extension Root"
-        Manifest[manifest.json<br/>Extension configuration]
-        Background[background.js<br/>-importScripts-<br/>Loads all modules]
-    end
+graph TD
+    Background[Service Worker<br/>background.js]
+    Core[Core Modules<br/>router, relay, error, logger]
+    Actions[Content Scripts<br/>detector, widget, printify, mockup]
+    Handlers[Message Handlers<br/>widget, printify, wordpress,<br/>mockup-fetch, mockup-update]
     
-    subgraph "Core Scripts"
-        Router[widget-router.js<br/>-handleMessage-<br/>-navigateTab-<br/>-pauseOperation-]
-        Relay[widget-relay.js<br/>-handlePostMessage-<br/>-window.addEventListener-]
-        Error[widget-error.js<br/>-formatError-<br/>-standardizeError-]
-        Logger[action-logger.js<br/>-ActionLogger.log-<br/>-updateWidgetDisplay-<br/>-storeLog-<br/>-getActionLogs-]
-        LogHelper[action-log-helper.js<br/>-action.info-<br/>-action.error-<br/>-action.warn-]
-        ErrorCap[error-capture.js<br/>-window.onerror-<br/>-unhandledrejection handlers-]
-    end
-    
-    subgraph "Action Scripts"
-        Detector[extension-detector.js<br/>-announceExtension-<br/>-checkPageContext-]
-        WidgetActions[widget-tabs-actions.js<br/>-createWidget-<br/>-updateOperationStatus-<br/>-handleButtonClick-<br/>-handleDiagnostic-<br/>-runPrintifyDiagnostic-<br/>-handleMonitor-<br/>-startInteractionMonitor-<br/>-stopInteractionMonitor-]
-        PrintifyActions[printify-tab-actions.js<br/>-observeDOM-<br/>-detectPageChanges-]
-        MockupActions[mockup-library-actions.js<br/>-checkUrlParameters-<br/>-executeSceneSelection-]
-    end
-    
-    subgraph "Handler Scripts"
-        WidgetHandler[widget-data-handler.js<br/>-handle-<br/>navigate/showWidget/updateState]
-        PrintifyHandler[printify-data-handler.js<br/>-handle-<br/>fetchMockups/updateStatus]
-        WordPressHandler[wordpress-handler.js<br/>-handle-<br/>routes SIP_* to internal]
-        MockupFetch[mockup-fetch-handler.js<br/>-handle-<br/>-reportStatus-<br/>navigates and captures]
-        MockupUpdate[mockup-update-handler.js<br/>-handle-<br/>-reportStatus-<br/>opens URL with params]
-    end
-    
-    Background -->|loads| Router
-    Background -->|loads| Error
-    Background -->|loads| Logger
-    Background -->|loads| WidgetHandler
-    Background -->|loads| PrintifyHandler
-    Background -->|loads| WordPressHandler
-    Background -->|loads| MockupFetch
-    Background -->|loads| MockupUpdate
+    Background -->|imports| Core
+    Background -->|imports| Handlers
+    Core -->|used by| Actions
+    Handlers -->|process| Actions
 ```
 
-### Testing Checklist with Function Verification
-- [ ] Run `node validate-manifest.js` to check manifest integrity
-- [ ] Check chrome://extensions for ANY errors or warnings  
-- [ ] Click "service worker" link and verify all importScripts() loaded
-- [ ] Verify no BOM characters: `file manifest.json` shows "ASCII text"
-- [ ] Check handleMessage() receives all messages in service worker console
-- [ ] Verify handlePostMessage() security checks in content script console
-- [ ] Look for paired "Received"/"SUCCESS" logs from wrapSendResponse()
-- [ ] Test pauseOperation()/resumeOperation() with login pages
-- [ ] Verify createWidget() positions widget in viewport
-- [ ] Test createTabPair() creates bidirectional entries in storage
-- [ ] Confirm announceExtension() runs on page load
+### Testing Checklist
+- [ ] Manifest validation: `node validate-manifest.js`
+- [ ] Extension health: chrome://extensions shows no errors
+- [ ] Service worker: All scripts loaded successfully
+- [ ] Message routing: Messages reach correct handlers
+- [ ] Security: Origin validation works correctly
+- [ ] Widget display: Appears in viewport on all sites
+- [ ] Tab pairing: WordPress and Printify tabs linked
+- [ ] Extension detection: WordPress recognizes extension
 
 ### Terminal Display Testing
-- [ ] READY state shows green "..." dots
-- [ ] One-off messages appear without hiding READY status
-- [ ] PROCESSING state shows progress bar and hides dots
-- [ ] Progress updates from 0% to 100%
-- [ ] Messages dim to 50% opacity after 5 seconds
-- [ ] New messages reset opacity to 100%
-- [ ] WordPress messages are blue (context-aware brightness)
-- [ ] Printify messages are green (context-aware brightness)
-- [ ] Status headers use correct colors (INFO=grey, SUCCESS=green, ERROR=red, WARNING=orange)
-- [ ] Completion shows detailed message at 100%
-- [ ] Terminal returns to READY after operation completes
+- [ ] States: READY (dots) → PROCESSING (progress) → READY
+- [ ] Message persistence: Visible until replaced, dims after 5s
+- [ ] Color coding: WordPress (blue), Printify (green), Status-based headers
+- [ ] Progress tracking: 0% to 100% with operation details
 
 ## 9. Key Implementation Notes
 
