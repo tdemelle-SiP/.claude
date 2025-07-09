@@ -250,10 +250,11 @@ Templates use Printify's images array for mockup selection:
 Template thumbnails are clickable with instant CSS tooltips:
 - **Thumbnail click**: Opens modal dialog showing available blueprint mockups
 - **Modal features**: Draggable, resizable with state persistence using SiP.Core.modal
-- **Selection UI**: 
-  - Checkboxes for selecting/deselecting mockups
-  - Radio buttons for designating default mockup (one per product)
-  - Only selected mockups are saved to images array
+- **Scene-based selection**: 
+  - Mockups grouped by scene (Front, Back, Left, Right, etc.)
+  - Scene-level checkboxes select/deselect all color variants for that scene
+  - Default scene radio button for primary image selection
+  - Color swatches below default scene for primary color selection
 - **Instant tooltips**: CSS-based tooltips appear immediately on hover
 - **Data persistence**: Selected mockups saved in Printify's native format with variant_ids populated
 - **PhotoSwipe integration**: Click thumbnails in modal to view full-size images
@@ -264,8 +265,11 @@ Template thumbnails are clickable with instant CSS tooltips:
 - Button classes: `.sip-pm-mockup-icon-button` with `.has-selection` modifier
 - Modal Dialog: Uses `SiP.Core.modal.create()` with draggable/resizable features
 - Backend: `sip_get_template_mockup_data()` - retrieves mockup data and `sip_save_template_mockup_selection()` - saves to template JSON
-- CSS: Modal base styles from SiP Core, mockup grid styles in plugin's `modals.css`
-- Thumbnails: Mockups display at 100px height in modal gallery
+- CSS: Modal base styles from SiP Core, mockup grid styles and color swatches in plugin's `modals.css`
+- Thumbnails: Mockups display at 80px height in compact grid layout
+- Scene grouping: `groupMockupsByScene()` organizes mockups by camera label
+- Color extraction: `extractColorOptions()` gets unique colors from mockups
+- Extension sync: Uses scene names via URL parameters for mockup updates (see [Scene-Based Selection Implementation](./sip-printify-manager-extension-widget-v3.md#78-scene-based-selection-implementation-details))
 
 #### Dynamic Row Highlighting
 When a template is loaded:
@@ -474,9 +478,13 @@ The browser extension enables mockup management capabilities that aren't availab
 - **Consistency**: Ensures all products from a template have identical mockup selections
 
 #### Communication Flow
-1. **WordPress initiates**: Sends `SIP_UPDATE_PRODUCT_MOCKUPS` message with product details
-2. **Extension navigates**: Opens product's mockup library page in Printify
-3. **Page manipulation**: Updates mockup selections via DOM interaction or API interception
+1. **WordPress initiates**: Sends `SIP_UPDATE_PRODUCT_MOCKUPS` message with selected scenes and primary image settings
+2. **Extension navigates**: Opens product's mockup library page in Printify with scene parameters in URL
+3. **Scene-based selection**: Content script reads URL parameters and:
+   - Navigates carousel to ALL available scenes
+   - Selects mockups for scenes in the selection list
+   - Deselects mockups for scenes NOT in the selection list
+   - Ensures exact synchronization with WordPress selection
 4. **Internal API calls**: Uses Printify's internal endpoints to save changes
 5. **Status reporting**: Reports success/failure back to WordPress
 
@@ -484,6 +492,7 @@ The browser extension enables mockup management capabilities that aren't availab
 
 #### WordPress Side
 - **Trigger Function**: `showMockupUpdateProgress()` in `template-actions.js`
+- **Mockup Selection UI**: `showMockupSelectionModal()` presents scene-based selection
 - **Message Format**:
   ```javascript
   {
@@ -493,14 +502,13 @@ The browser extension enables mockup management capabilities that aren't availab
           productId: '68534afa6ad639c0cd011c55',
           shopId: '17823150',
           blueprintId: '6',
-          selectedMockups: [
-              {
-                  id: '68534afa6ad639c0cd011c55_12100_102005_front-2',
-                  variant_ids: [12100, 12101, 12102],
-                  is_default: true
-              }
-              // ... more mockup selections
-          ],
+          selectedScenes: ['Front', 'Back', 'Left'],  // Scenes to select
+          primaryScene: 'Front',                       // Default image scene
+          primaryColor: '#FF0000',                     // Default image color
+          productInfo: {
+              productName: 'Product Name',
+              productId: '68534afa6ad639c0cd011c55'
+          },
           requestId: 'update_mockups_123_1704067200000'
       }
   }
@@ -509,21 +517,29 @@ The browser extension enables mockup management capabilities that aren't availab
 #### Extension Handler
 - **Location**: `handler-scripts/mockup-update-handler.js`
 - **Responsibilities**:
-  - Navigate to mockup library URL
-  - Wait for page load and data
-  - Update selections via DOM manipulation
-  - Monitor save operation completion
+  - Receive scene-based selection data from WordPress
+  - Construct URL with parameters:
+    - `sip-action=update`
+    - `scenes=Front,Back,Left` (selected scenes)
+    - `primary-scene=Front` (default image scene)
+    - `primary-color=%23FF0000` (URL-encoded color)
+  - Navigate to mockup library URL with parameters
+  - Monitor operation completion
   - Report detailed progress to WordPress
   - Handle errors with specific messaging
 
 #### Content Script
 - **Location**: `action-scripts/mockup-library-actions.js`
 - **Responsibilities**:
-  - Detect when mockup library page is ready
-  - Find mockup elements using multiple selector strategies
-  - Update checkbox states based on template selections
-  - Monitor save operations via fetch interception
-  - Report completion status back to handler
+  - Detect URL parameters (`sip-action=update&scenes=...`)
+  - Extract all available scenes from carousel: `extractAvailableScenes()`
+  - Execute scene synchronization: `synchronizeMockupsByScenes()`
+    - Navigate to EVERY scene using carousel buttons
+    - Select all mockups if scene is in selection list
+    - Deselect all mockups if scene is NOT in selection list
+  - Click save button after all scenes processed
+  - Use action logger for operation tracking
+  - Note: chrome.runtime is blocked on Printify, uses URL parameters instead
 
 #### Mockup Library Page Structure
 - **URL Pattern**: `https://printify.com/app/mockup-library/shops/{shopId}/products/{productId}`

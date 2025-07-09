@@ -1290,7 +1290,7 @@ SiPWidget.UI.resizeWidget();
 
 **Namespace Reason**: Prevents race conditions where function is called before module loads. Makes API discoverable and extensible.
 
-### 7.7 URL Parameter Mockup Update Flow (Chrome.runtime Workaround) [NEEDS FIX]
+### 7.7 Scene-Based Mockup Selection Flow (Chrome.runtime Workaround)
 
 ```mermaid
 sequenceDiagram
@@ -1302,7 +1302,7 @@ sequenceDiagram
     participant CS as mockup-library-actions.js
     
     activate WP
-    WP->>BG: postMessage({<br/>type: 'SIP_UPDATE_PRODUCT_MOCKUPS',<br/>data: {mockupIds, productId, shopId}})
+    WP->>BG: postMessage({<br/>type: 'SIP_UPDATE_PRODUCT_MOCKUPS',<br/>data: {selectedScenes, primaryScene, primaryColor, productInfo}})
     deactivate WP
     
     activate BG
@@ -1310,13 +1310,10 @@ sequenceDiagram
     deactivate BG
     
     activate MUH
-    Note over MUH: Extract mockup data
-    MUH->>MUH: const mockupIds = message.data.mockupIds<br/>// [{id: 'mockup_123_102752_1', is_default: true}]
+    Note over MUH: Extract scene data
+    MUH->>MUH: const {selectedScenes, primaryScene, primaryColor} = message.data<br/>// selectedScenes: ['Front', 'Back', 'Left']<br/>// primaryScene: 'Front'<br/>// primaryColor: '#FF0000'
     
-    MUH->>MUH: extractSceneNames(mockupIds)
-    Note over MUH: Map scene IDs to names<br/>102752 → 'Front'<br/>102753 → 'Right'<br/>102754 → 'Back'<br/>102755 → 'Left'
-    
-    MUH->>MUH: const sceneNames = ['Front', 'Back']<br/>const url = `https://printify.com/app/mockup-library/<br/>shops/${shopId}/products/${productId}<br/>?sip-action=update&scenes=${sceneNames.join(',')}`
+    MUH->>MUH: const url = `https://printify.com/app/mockup-library/<br/>shops/${shopId}/products/${productId}<br/>?sip-action=update&scenes=${selectedScenes.join(',')}<br/>&primary-scene=${primaryScene}<br/>&primary-color=${encodeURIComponent(primaryColor)}`
     
     MUH->>Chrome: chrome.tabs.create({<br/>url: mockupUrl,<br/>active: true})
     Chrome-->>MUH: {id: tabId}
@@ -1329,43 +1326,91 @@ sequenceDiagram
     activate CS
     Note over CS: Content script loads
     CS->>CS: checkUrlParameters()
-    CS->>CS: const urlParams = new URLSearchParams(window.location.search)<br/>const action = urlParams.get('sip-action') // 'update'<br/>const scenes = urlParams.get('scenes') // 'Front,Back'
+    CS->>CS: const urlParams = new URLSearchParams(window.location.search)<br/>const action = urlParams.get('sip-action') // 'update'<br/>const scenes = urlParams.get('scenes') // 'Front,Back,Left'<br/>const primaryScene = urlParams.get('primary-scene') // 'Front'<br/>const primaryColor = urlParams.get('primary-color') // '#FF0000'
     
-    CS->>CS: action.data('URL parameters detected', {<br/>scenes: ['Front', 'Back'],<br/>url: window.location.href})
+    CS->>CS: action.data('URL parameters detected', {<br/>scenes: ['Front', 'Back', 'Left'],<br/>primaryScene: 'Front',<br/>primaryColor: '#FF0000',<br/>url: window.location.href})
     
     CS->>CS: waitForPageReady()
     Note over CS: Wait for mockup elements
     
-    CS->>CS: executeSceneSelection(['Front', 'Back'])
+    CS->>CS: synchronizeMockupsByScenes(selectedScenes, primaryScene, primaryColor)
     
-    loop For each scene
-        CS->>CS: findSceneButton(sceneLabel)
-        CS->>PT: button.click() // Select scene
+    Note over CS: Get all available scene names from carousel
+    CS->>CS: const availableScenes = extractAvailableScenes()<br/>// ['Front', 'Back', 'Left', 'Right']
+    
+    loop For each available scene
+        CS->>CS: navigateToScene(sceneName)
+        CS->>PT: button.click() // Navigate to scene
         CS->>CS: await delay(700ms)
-        CS->>CS: getSelectAllCheckbox()
-        CS->>PT: checkbox.click() // Select all in scene
+        
+        alt Scene should be selected
+            CS->>CS: selectAllMockupsInScene()
+            CS->>PT: checkbox.checked = true // Ensure selected
+        else Scene should NOT be selected
+            CS->>CS: deselectAllMockupsInScene()
+            CS->>PT: checkbox.checked = false // Ensure deselected
+        end
         CS->>CS: await delay(500ms)
     end
     
     CS->>CS: findSaveButton()
     CS->>PT: saveButton.click()
-    CS->>CS: action.info('Automated mockup selection completed', {<br/>scenes: sceneLabels,<br/>status: 'success'})
+    CS->>CS: action.info('Scene-based mockup selection completed', {<br/>selectedScenes: selectedScenes,<br/>primaryScene: primaryScene,<br/>status: 'success'})
     deactivate CS
 ```
 
-**Scene ID Mapping** (hardcoded in mockup-update-handler.js):
+**Scene-Based Selection Logic**:
+- WordPress groups mockups by scene names (Front, Back, Left, Right)
+- User selects which scenes to include and picks a primary scene
+- Extension navigates to ALL scenes and selects/deselects appropriately
+- Ensures mockup selection exactly matches WordPress selection
+
+**URL Parameter Reason**: Printify blocks chrome.runtime in content scripts, preventing traditional message passing. URL parameters provide a one-way data channel that doesn't require chrome.runtime.
+
+### 7.8 Scene-Based Selection Implementation Details
+
+**Key Functions in mockup-library-actions.js**:
+
+1. **extractAvailableScenes()** - Gets all scene names from carousel buttons
 ```javascript
-const sceneIdToName = {
-    '102752': 'Front',
-    '102753': 'Right', 
-    '102754': 'Back',
-    '102755': 'Left'
-};
+function extractAvailableScenes() {
+    const carouselButtons = document.querySelectorAll('.carousel-button[data-scene]');
+    return Array.from(carouselButtons).map(btn => btn.getAttribute('data-scene'));
+}
 ```
 
-**URL Parameter Reason**: Printify blocks chrome.runtime in content scripts, preventing traditional message passing. URL parameters provide a one-way data channel that doesn't require chrome.runtime. [NEEDS FIX]
+2. **synchronizeMockupsByScenes(selectedScenes, primaryScene, primaryColor)** - Main orchestration function
+   - Iterates through ALL available scenes
+   - Navigates to each scene using carousel
+   - Selects mockups if scene is in selectedScenes list
+   - Deselects mockups if scene is NOT in selectedScenes list
+   - Handles primary scene and color logic (future enhancement)
 
-### 7.8 Error Capture System Architecture
+3. **navigateToScene(sceneName)** - Clicks carousel button to navigate
+```javascript
+async function navigateToScene(sceneName) {
+    const button = document.querySelector(`.carousel-button[data-scene="${sceneName}"]`);
+    if (button) {
+        button.click();
+        await delay(700); // Wait for navigation
+    }
+}
+```
+
+4. **selectAllMockupsInScene() / deselectAllMockupsInScene()** - Ensures correct selection state
+   - Finds "Select All" checkbox in Grid 0
+   - Sets checked state appropriately
+   - Ensures visual update completes
+
+**WordPress Side (template-actions.js)**:
+
+1. **groupMockupsByScene(mockups)** - Groups mockups by scene label
+2. **extractColorOptions(sceneMockups)** - Extracts unique colors from scene
+3. **getSelectedScenes()** - Gets checked scene checkboxes
+4. **getDefaultScene()** - Gets selected default scene radio
+5. **getDefaultColorId()** - Gets selected color radio value
+
+### 7.9 Error Capture System Architecture
 
 ```mermaid
 sequenceDiagram
