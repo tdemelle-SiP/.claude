@@ -22,7 +22,7 @@ These principles drive both code creation AND documentation creation:
 
 ### 5. COMPLETE REPRESENTATION
 **Code**: Handle all execution paths explicitly  
-**Documentation**: Show all significant elements in the flow or structure
+**Documentation**: Show all logical operations in the flow or structure
 
 ### 6. CURRENT STATE ONLY
 **Code**: No backward compatibility that preserves broken patterns  
@@ -31,6 +31,10 @@ These principles drive both code creation AND documentation creation:
 ### 7. POSITIVE SPECIFICATION
 **Code**: Define what the system does, not what it doesn't do
 **Documentation**: Specify what IS, not what ISN'T (no defensive clarifications)
+
+### 8. LOGICAL CLARITY OVER IMPLEMENTATION DETAIL
+**Code**: Group related operations into logical units  
+**Documentation**: Show logical operations, not every function call; show patterns once, not every instance
 
 ## Documentation Philosophy
 
@@ -49,8 +53,8 @@ This separation ensures clarity and prevents redundancy.
 **Implementation**:
 ```mermaid
 graph LR
-    A[User clicks save<br/>-handleSave-<br/>form.js:42] 
-    -->|click event| B[Validate input<br/>-validateForm-<br/>validation.js:15]
+    A[User clicks save] 
+    -->|submit| B[Process form<br/>-handleFormSubmit-<br/>form-handler.js]
 ```
 
 **Text**:
@@ -63,9 +67,9 @@ The form validation occurs client-side before submission because:
 **Rule**: Every element must be verifiable against actual code.
 
 **For Diagrams**:
-- Include file:line references for every function
+- Include file references for every logical operation
 - Verify all connections by tracing actual code
-- Use exact function/method names from implementation
+- Use main function name that represents the operation
 
 **For Text**:
 - Reference specific constraints that drove decisions
@@ -132,10 +136,32 @@ Show structure, flow, and relationships WITHOUT explaining why.
 
 #### 1. Complete Representation
 Every significant element must be shown:
-- All functions in the execution path
+- All logical operations in the execution path
 - All data stores and state
 - All external interfaces
 - All decision points
+
+**Logical Operation Grouping**:
+When multiple functions perform a single logical operation, group them:
+```
+// Instead of showing every validation function:
+R1[receives] -> R2[validates origin] -> R3[validates source] -> R4[forwards]
+
+// Show the logical operation:
+Relay[JS validates & forwards message<br/>-handlePostMessage-<br/>widget-relay.js]
+```
+
+**Pattern Representatives**:
+When multiple components follow identical patterns, show one representative example:
+```
+// Instead of showing all 5 handlers doing the same thing:
+WHHandle -> ReportStatus
+PHHandle -> ReportStatus
+MFHandle -> ReportStatus
+
+// Show pattern once with annotation:
+Handlers[All handlers<br/>(widget, printify, mockup)] -> ReportStatus
+```
 
 #### 2. Verifiable References
 Every code element must include:
@@ -143,6 +169,27 @@ Every code element must include:
 [Language does action<br/>-functionName-<br/>file.ext]
 ```
 Function name and file location enable verification without line-number maintenance burden.
+
+**Grouping Related Functions**:
+When functions are tightly coupled in a single file:
+```
+// Instead of:
+ValidateOrigin -> CheckSource -> ValidateData -> ForwardMessage
+
+// Use:
+Relay[Validates & forwards<br/>-handlePostMessage-<br/>widget-relay.js]
+// Lists internal steps in text if needed
+```
+
+**API Call Patterns**:
+Group similar API calls:
+```
+// Instead of:
+chrome.tabs.create -> chrome.tabs.update -> chrome.tabs.get -> chrome.tabs.query
+
+// Use:
+TabOps[Tab operations<br/>-navigateTab-<br/>widget-router.js]
+```
 
 #### 3. Exact Naming
 - Use actual function/method names from code
@@ -206,6 +253,8 @@ Every arrow must represent an actual code connection:
 3. **Defensive patterns or workarounds** (violates STRUCTURAL CORRECTNESS)
 4. **Assumptions or probabilities** (violates ZERO ASSUMPTIONS)
 5. **Troubleshooting flows** (violates FIX ROOT CAUSES)
+6. **Implementation details within logical operations** (violates clarity)
+7. **Repetitive patterns** (show once with clear annotation)
 
 ### Mermaid Technical Constraints
 - No parentheses `()` in labels (breaks parsing)
@@ -286,14 +335,17 @@ sequenceDiagram
     participant S as Server<br/>handler.php
     participant D as Database
     
-    C->>S: POST /ajax :12
-    S->>S: verify_nonce() :34
-    S->>S: validate_action() :45
-    S->>D: get_option() :67
+    C->>S: POST /ajax
+    activate S
+    Note over S: Security validation<br/>-verify_nonce-<br/>-validate_action-
+    S->>D: get_option('settings')
     D-->>S: settings
-    S->>S: process_action() :89
-    S-->>C: JSON response :112
+    S->>S: process_action()
+    S-->>C: JSON response
+    deactivate S
 ```
+
+**Grouping Rationale**: Security validation steps (nonce, action) are implementation details of a single logical operation. The diagram shows WHAT happens (security validation), while text can explain the specific checks if needed.
 
 ## Architecture Rationale
 
@@ -344,10 +396,12 @@ add_action('init', function() {
 - [ ] Understand root causes, not symptoms
 
 ### For Diagrams
-- [ ] Every function has file reference
+- [ ] Every logical operation has file reference
 - [ ] All connections verified in code
 - [ ] No WHY explanations included
 - [ ] Shows actual structure, including existing workarounds marked as such
+- [ ] Groups related functions into logical operations
+- [ ] Shows patterns once, not every instance
 
 ### For Text
 - [ ] Explains WHY for each design decision
@@ -360,8 +414,10 @@ add_action('init', function() {
 - [ ] **SINGLE SOURCE OF TRUTH**: No duplication within or between documents
 - [ ] **CURRENT STATE ONLY**: No history, future plans, or deprecated content
 - [ ] **STRUCTURAL CORRECTNESS**: Shows proper implementation, not defensive patterns
-- [ ] **COMPLETE REPRESENTATION**: All significant elements shown
+- [ ] **COMPLETE REPRESENTATION**: All logical operations shown
 - [ ] **FIX ROOT CAUSES**: Documents constraints and principles, not symptoms
+- [ ] **POSITIVE SPECIFICATION**: Documents what IS, not what ISN'T
+- [ ] **LOGICAL CLARITY**: Shows logical operations not implementation details, patterns not repetition
 
 ## Documentation Templates
 
