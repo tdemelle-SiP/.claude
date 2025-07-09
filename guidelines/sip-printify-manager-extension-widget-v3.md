@@ -95,14 +95,6 @@ graph TB
     style ActionLogger fill:#9f9,stroke:#333,stroke-width:2px
 ```
 
-**Key Architecture Points**:
-- **Router is the hub**: ALL runtime messages flow through the central router
-- **Content scripts are limited**: Can only use chrome.runtime.sendMessage and chrome.storage
-- **Background has full access**: Service worker context with all Chrome APIs
-- **One-way message flow**: WordPress → Relay → Router → Handler → Response
-- **Printify limitation**: chrome.runtime blocked, mockup updates use URL parameters instead
-- **Two display update paths**: Storage-driven for stateful operations, direct updates for instant feedback
-
 ### 2.2 Message Flow
 
 ```mermaid
@@ -222,20 +214,6 @@ The widget terminal display receives updates through two distinct paths because:
    - Parent operations group related child actions
    - Visual markers (🔻/🔺) clarify operation boundaries
 
-### 3.3 Component Purposes
-
-| Component | Purpose | Constraint/Requirement |
-|-----------|---------|------------------------|
-| **widget-relay.js** | Bridge between postMessage and chrome.runtime | WordPress can only use postMessage |
-| **widget-router.js** | Central message hub and Chrome API executor | Chrome sends all messages to background |
-| **background.js** | Module loader for service worker | Manifest V3 requires importScripts |
-| **Handlers** | Separate business logic from infrastructure | Easier testing, single responsibility |
-| **Action Scripts** | Detect page events and user interactions | Content scripts have limited API access |
-| **widget-error.js** | Standardize error responses | Consistent error format for WordPress |
-| **action-logger.js** | Structured action history + widget display updates | Log extension actions and update terminal for one-off messages |
-| **widget-tabs-actions.js** | Widget UI and terminal display management | Shows operation progress and transient messages |
-| **Tab Pairing** | Reuse existing tabs | Users expect "Go to Printify" to reuse tabs |
-| **Response Logging** | Visible operation outcomes | Timeout/failures need to be traceable |
 
 ## 4. Implementation Guide
 
@@ -289,7 +267,7 @@ The widget terminal display receives updates through two distinct paths because:
     task: 'Opening mockup library',    // Current task shown in message area
     progress: 25,                      // Progress percentage (0-100)
     details: 'Multi-line\ndetails',    // Detailed info for completion
-    cancellable: false,                // Future: show cancel button
+    cancellable: false,
     state: 'active' | 'idle' | 'paused' | 'resuming',
     message: 'Operation in progress',  // Alternative message field
     timestamp: Date.now()
@@ -318,86 +296,31 @@ if (window.SiPWidget && window.SiPWidget.ActionLogger) {
 }
 ```
 
-**Important**: Use action logging instead of console.log() to keep all log messages together in the action history. Console.log should only be used for critical environment issues (like chrome.runtime availability).
+**Why Action Logging Over console.log**:
+The extension's action logger provides centralized, persistent logging that:
+- **Survives page refreshes**: Chrome storage preserves action history
+- **Visible in widget**: Users can see what's happening without opening console
+- **Structured data**: Categories and timestamps enable filtering and analysis
 
 **Service Worker Usage**: In handlers and background scripts, use `SiPWidget.ActionLogger.log()` directly as `window.action` is not available.
 
 ### 4.4 Terminal Display Implementation
 
 **Display States**:
-1. **READY**: Default state showing dots, one-off messages appear here
-2. **PROCESSING**: Active operation with progress bar
-3. **Transient Messages**: Brief messages that don't change state
+1. **READY**: Default state showing activity indicator
+2. **PROCESSING**: Active operation with progress tracking
+3. **Transient Messages**: Status updates that preserve current state
 
-**Color Coding Implementation**:
-```javascript
-// Status header colors (in updateOperationStatus)
-let statusColor = '#cccccc'; // Default light grey for info
-if (status === 'success') {
-    statusColor = '#00ff00'; // Green for success
-} else if (status === 'error' || status === 'failure') {
-    statusColor = '#ff3333'; // Red for error
-} else if (status === 'warning') {
-    statusColor = '#ffaa00'; // Orange for warning
-}
-
-// Action message colors (in updateWidgetDisplay)
-const isOnWordPress = window.location.href.includes('/wp-admin/');
-const isOnPrintify = window.location.href.includes('printify.com');
-
-let actionColor = '#00ff00'; // Default green
-if (siteType === 'WordPress Site') {
-    actionColor = isOnWordPress ? '#00ccff' : '#0088cc';
-} else if (siteType === 'Printify Site') {
-    actionColor = isOnPrintify ? '#00ff00' : '#00cc00';
-}
-```
-
-**Message Dimming**:
-```javascript
-// Set timer to dim message after 5 seconds
-messageDimTimer = setTimeout(() => {
-    if (messageDiv && messageDiv.parentNode) {
-        messageDiv.style.opacity = '0.5';
-    }
-}, 5000);
-```
+**Why Multiple Display States**:
+The terminal needs to show both persistent operations (like batch processing) and quick status updates (like "connection verified") without disrupting the user's understanding of what's happening. The dual-path update system allows handlers to control stateful operations while the action logger provides instant feedback.
 
 ### 4.5 Mockup Scene Mapping
 
-**Scene ID to Name Mapping** (mockup-update-handler.js):
-```javascript
-function extractSceneNames(selectedMockups) {
-    const sceneIdToName = {
-        '102752': 'Front',
-        '102753': 'Right', 
-        '102754': 'Back',
-        '102755': 'Left'
-    };
-    
-    const sceneNames = new Set();
-    selectedMockups.forEach(mockup => {
-        const parts = mockup.id.split('_');
-        if (parts.length >= 3) {
-            const sceneId = parts[2];
-            const sceneName = sceneIdToName[sceneId];
-            if (sceneName) {
-                sceneNames.add(sceneName);
-            }
-        }
-    });
-    
-    return Array.from(sceneNames);
-}
-```
-
-**Mockup ID Format**: `mockup_{variant}_{scene}_{position}`
-- Example: `mockup_19773102_102752_1`
-- variant: 19773102 (product variant ID)
-- scene: 102752 (maps to 'Front')
-- position: 1 (position in scene)
-
-**Hard-coded Mapping**: Printify's internal scene IDs are stable but not exposed in their UI. The mapping was determined by inspecting the mockup library page.
+**Why Scene Mapping Exists**:
+Printify uses internal numeric IDs for mockup scenes in their API and DOM, but users think in terms of viewing angles (Front, Back, Left, Right). The extension maintains a mapping between these representations to:
+- **Enable user-friendly selection**: Users select "Front" not "102752"
+- **Ensure consistency**: Same mapping works across all products
+- **Support automation**: URL parameters use human-readable scene names
 
 ### 4.6 Chrome Architecture Constraints
 
@@ -426,11 +349,11 @@ chrome.runtime.sendMessage({
     data: { url: 'https://...' }
 });
 
-// CRITICAL: On Printify.com, chrome.runtime is BLOCKED:
-chrome.runtime.sendMessage()  ❌  // Blocked by Printify [NEEDS FIX]
-chrome.runtime.onMessage  ❌  // Blocked by Printify [NEEDS FIX]
-chrome.runtime.getURL()  ❌  // Blocked by Printify [NEEDS FIX]
-chrome.runtime.getManifest()  ❌  // Blocked by Printify [NEEDS FIX]
+// On Printify.com, chrome.runtime is BLOCKED:
+chrome.runtime.sendMessage()  ❌  // Blocked by Printify
+chrome.runtime.onMessage  ❌  // Blocked by Printify
+chrome.runtime.getURL()  ❌  // Blocked by Printify
+chrome.runtime.getManifest()  ❌  // Blocked by Printify
 ```
 
 **Message Channel Constraints**:
@@ -544,7 +467,6 @@ setTimeout(() => {
         instructions: string,
         showResumeButton: boolean
     },
-    pendingResearch: {...},
     fetchStatus_*: {...}       // Dynamic keys for fetch operations
 }
 
@@ -556,18 +478,18 @@ setTimeout(() => {
 
 // Runtime State (not persisted)
 {
-    tabPairs: Map,            // In-memory cache loaded by loadTabPairs()
-    operationState: {         // Managed by pauseOperation()/resumeOperation()
+    tabPairs: Map,            // In-memory cache loaded by loadTabPairs() in widget-router.js
+    operationState: {         // Managed by pauseOperation()/resumeOperation() in widget-router.js
         paused: boolean,
         pausedOperation: {...},
         pausedCallback: Function
     },
     handlers: Map,            // Message type to handler mapping
-    config: {                 // Loaded from storage or config.json
+    config: {                 // Loaded from storage or config.json by initializeConfig() in widget-router.js
         wordpressUrl: string,
         apiKey: string
     },
-    messageDimTimer: number,  // Timer ID for dimming messages
+    messageDimTimer: number,  // Timer ID for dimming messages in widget-tabs-actions.js
     // ActionLogger state (in action-logger.js)
     operationStack: [],       // Tracks nested operations for hierarchy
     activeOperations: Map,    // Maps operation IDs to operation data
@@ -657,12 +579,11 @@ The widget features a retro terminal-style display that shows real-time action m
 - **Operation Progress**: Handlers → reportStatus() → storage → updateOperationStatus() → terminal
 - **One-off Messages**: Actions → ActionLogger.log() → updateWidgetDisplay() → terminal
 
-**Visual Design**:
-- Black background (#000000)
-- Green text (#00ff00) as default
-- Monospace font (Consolas, Monaco, Courier New)
-- Messages dim to 50% opacity after 5 seconds
-- Progress bar fills from 0% to 100%
+**Why Terminal-Style Display**:
+The widget mimics a terminal interface to:
+- **Convey technical operation**: Users understand this is a developer tool
+- **Show continuous activity**: Terminal-style output indicates ongoing processes
+- **Provide detailed feedback**: Technical users want to see every step
 
 ### 7.3 Pause/Resume Error Recovery
 
