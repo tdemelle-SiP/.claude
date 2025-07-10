@@ -1,10 +1,59 @@
 # SiP Printify Manager Browser Extension - Three-Layer Documentation
 
+This document provides complete technical documentation for the SiP Printify Manager browser extension, which bridges WordPress and Printify.com for automated workflows. The extension overcomes Printify's API limitations by acting as a privileged intermediary with full access to internal APIs and page data.
+
+**Document outline:**
+- 1. Overview
+- 2. Architecture
+  - 2.1 Master System Architecture
+  - 2.2 Message Flow
+  - 2.3 Widget Terminal Display
+  - 2.4 Storage Architecture
+  - 2.5 Tab Pairing System
+- 3. Implementation Guide
+  - 3.1 Architectural Constraints
+  - 3.2 Message Channel Design
+  - 3.3 Action Logging System
+  - 3.4 Terminal Display Implementation
+  - 3.5 Mockup Scene Mapping
+  - 3.6 Chrome Architecture Constraints
+  - 3.7 Critical Patterns
+  - 3.8 Adding New Features
+- 4. Storage Schema
+- 5. Message Type Reference
+  - 5.1 WordPress Commands
+  - 5.2 Internal Actions
+- 6. Key Features
+  - 6.1 Tab Pairing System
+  - 6.2 Widget Terminal Display
+  - 6.3 Pause/Resume Error Recovery
+  - 6.4 Response Logging Architecture
+  - 6.5 Content Security Policy Compliance
+  - 6.6 Public API Naming Standards
+  - 6.7 Scene-Based Mockup Selection Flow
+  - 6.8 Scene-Based Selection Implementation
+  - 6.9 Error Capture System
+  - 6.10 Action Logging Helper
+  - 6.11 Diagnostic and Monitoring Tools
+  - 6.12 Action Log Visual Hierarchy
+- 7. Development Quick Reference
+  - 7.1 File Structure
+  - 7.2 Testing Checklist
+  - 7.3 Terminal Display Testing
+- 8. Key Implementation Notes
+  - 8.1 Separate Progress Systems
+  - 8.2 Message Persistence
+  - 8.3 State Management
+  - 8.4 Service Worker Safe Logging
+- 9. Conclusion
+
 **Repository**: https://github.com/tdemelle-SiP/sip-printify-manager-extension
 
 ## 1. Overview
 
-### WHAT: System Purpose
+This section explains the extension's purpose, access levels, and why it bridges a critical gap between WordPress and Printify.
+
+### I. System Purpose
 
 ```mermaid
 graph LR
@@ -19,7 +68,7 @@ graph LR
     style Bridge fill:#f9f,stroke:#333,stroke-width:4px
 ```
 
-### HOW: Access Levels
+### II. Access Levels
 
 | Component | Printify Public API | Printify Internal APIs | Page DOM Access |
 |-----------|-------------------|---------------------|-----------------|
@@ -27,7 +76,7 @@ graph LR
 | Browser Extension | ✓ All endpoints | ✓ Full access | ✓ Full access |
 | Content Scripts | ❌ CORS blocked | ✓ Via page context | ✓ Direct manipulation |
 
-### WHY: Extension Bridges Critical Gap
+### III. Extension Bridges Critical Gap
 
 Printify intentionally limits their public API to protect their business model - they want users on their platform, not managing everything through third-party tools. However, SiP's customers need bulk operations and automated workflows that Printify's interface doesn't support.
 
@@ -35,9 +84,13 @@ The browser extension solves this by acting as a privileged intermediary. When i
 
 ## 2. Architecture
 
+The extension's architecture comprises content scripts, background service worker, and storage systems working together to enable cross-domain communication.
+
 ### 2.1 Master System Architecture
 
-#### WHAT: Component Overview
+This diagram shows all extension components and their interactions, from user actions in WordPress to automated operations on Printify.
+
+#### I. Component Overview
 
 ```mermaid
 graph TB
@@ -94,7 +147,7 @@ graph TB
     style ActionLogger fill:#9f9,stroke:#333,stroke-width:2px
 ```
 
-#### HOW: Component Mapping
+#### II. Component Mapping
 
 | Component | Key Functions | Communication Method |
 |-----------|--------------|---------------------|
@@ -105,7 +158,7 @@ graph TB
 | **widget-tabs-actions.js** | `createWidget()`, `updateOperationStatus()` | DOM manipulation, storage events |
 | **action-logger.js** | `log()`, `updateWidgetDisplay()` | Direct DOM updates + storage |
 
-#### WHY: Central Router Architecture
+#### III. Central Router Architecture
 
 Chrome's security model forces all extension messaging through the background service worker - content scripts cannot communicate directly with each other. This constraint, intended to prevent malicious scripts from intercepting data, shapes the entire architecture.
 
@@ -115,7 +168,9 @@ The dual update paths (storage-driven and direct) solve different timing needs. 
 
 ### 2.2 Message Flow
 
-#### WHAT: Communication Sequence
+This section demonstrates how messages travel between WordPress, the extension, and Printify through a secure relay system. Understanding this flow is critical for debugging communication issues and implementing new commands.
+
+#### I. Communication Sequence
 
 ```mermaid
 sequenceDiagram
@@ -130,7 +185,7 @@ sequenceDiagram
     Ext-->>Widget: Storage change event
 ```
 
-#### HOW: Message Format
+#### II. Message Format
 
 ```javascript
 // WordPress → Extension (via postMessage)
@@ -163,7 +218,7 @@ sequenceDiagram
 }
 ```
 
-#### WHY: Message Transformation Enables Security
+#### III. Message Transformation Enables Security
 
 The extension transforms messages between WordPress's `SIP_*` format and internal routing formats to create a security boundary. WordPress commands are clearly marked and validated before entering the extension's internal systems, preventing malicious websites from impersonating WordPress.
 
@@ -171,7 +226,9 @@ This transformation also enables request-response matching. WordPress includes a
 
 ### 2.3 Widget Terminal Display
 
-#### WHAT: Display State Machine
+This section explains how the widget terminal provides real-time feedback for extension operations using a state-driven display system. The terminal metaphor sets user expectations for technical processes while maintaining clear visual states.
+
+#### I. Display State Machine
 
 ```mermaid
 graph TD
@@ -186,7 +243,7 @@ graph TD
     end
 ```
 
-#### HOW: State Transitions
+#### II. State Transitions
 
 ```javascript
 // Display states
@@ -220,7 +277,7 @@ const MESSAGE_BEHAVIOR = {
 };
 ```
 
-#### WHY: Terminal Metaphor Conveys Technical Process
+#### III. Terminal Metaphor Conveys Technical Process
 
 The widget deliberately mimics a terminal interface to set user expectations. Terminal interfaces signal "technical process happening" in a way that spinners or progress bars don't. Users understand they're watching a developer tool work, not waiting for a page to load.
 
@@ -230,7 +287,9 @@ Message dimming creates a visual history without clutter. Recent messages stay b
 
 ### 2.4 Storage Architecture
 
-#### WHAT: Data Persistence Layers
+This section details how the extension persists configuration, state, and operational data across Chrome's storage APIs. The split between sync and local storage enables cross-device configuration while preventing sync conflicts.
+
+#### I. Data Persistence Layers
 
 ```mermaid
 graph LR
@@ -252,7 +311,7 @@ graph LR
     Status -->|sipOperationStatus| Local
 ```
 
-#### HOW: Storage Schema
+#### II. Storage Schema
 
 ```javascript
 // Chrome Storage Local - accessed via chrome.storage.local.get/set
@@ -296,7 +355,7 @@ graph LR
 }
 ```
 
-#### WHY: Storage Split Enables Sync Without Bloat
+#### III. Storage Split Enables Sync Without Bloat
 
 Chrome sync storage has a 100KB limit and syncs across all user devices. By storing only configuration (API key and WordPress URL) in sync storage, users can install the extension on multiple computers without reconfiguring. Their actual work data stays local, preventing sync conflicts and quota issues.
 
@@ -306,7 +365,9 @@ Dynamic fetch status keys (`fetchStatus_${productId}`) solve a specific problem:
 
 ### 2.5 Tab Pairing System
 
-#### WHAT: Bidirectional Tab Relationships
+This section describes how the extension maintains intelligent relationships between WordPress and Printify tabs to enable seamless navigation. Tab pairing prevents tab proliferation while maintaining user context across operations.
+
+#### I. Bidirectional Tab Relationships
 
 ```mermaid
 graph LR
@@ -322,7 +383,7 @@ graph LR
     Storage -->|"456 → 123"| Storage
 ```
 
-#### HOW: Pairing Implementation
+#### II. Pairing Implementation
 
 ```javascript
 // Creating pairs (widget-router.js)
@@ -360,7 +421,7 @@ chrome.tabs.onRemoved.addListener(async (tabId) => {
 });
 ```
 
-#### WHY: Tab Reuse Matches User Mental Model
+#### III. Tab Reuse Matches User Mental Model
 
 Users think of WordPress and Printify as connected workspaces, not isolated tabs. When they click "Go to Printify" repeatedly, they expect to return to the same Printify tab, not spawn dozens of new ones. Tab pairing makes the extension behave like users expect.
 
@@ -370,9 +431,13 @@ Automatic cleanup prevents memory leaks and confusion. When either tab closes, t
 
 ## 3. Implementation Guide
 
+This guide provides essential patterns, constraints, and best practices for extending or maintaining the extension. Understanding these implementation details ensures new features integrate properly with existing architecture.
+
 ### 3.1 Architectural Constraints
 
-#### WHAT: Chrome Extension Security Model
+This section explains Chrome's security model and how it shapes the extension's architecture through context isolation and API restrictions. These constraints aren't limitations but security features that prevent extensions from becoming attack vectors.
+
+#### I. Chrome Extension Security Model
 
 ```mermaid
 graph TD
@@ -396,7 +461,7 @@ graph TD
     CS <-->|chrome.runtime| BG
 ```
 
-#### HOW: Context Limitations
+#### II. Context Limitations
 
 ```javascript
 // Background (Service Worker) - widget-router.js
@@ -423,7 +488,7 @@ fetch('/api/internal')                     // ✓ Allowed - same origin
 chrome.runtime                             // ❌ undefined - no access
 ```
 
-#### WHY: Security Model Shapes Architecture
+#### III. Security Model Shapes Architecture
 
 Chrome's security model prevents extensions from becoming malware by limiting what each context can do. The background script can't see page content (preventing password theft), while content scripts can't access all Chrome APIs (preventing tab hijacking). These restrictions force the hub-and-spoke architecture where all powerful operations go through the background script.
 
@@ -433,7 +498,9 @@ Understanding these constraints prevents developers from attempting impossible o
 
 ### 3.2 Message Channel Design
 
-#### WHAT: Communication Pathways
+This section details the secure message relay system that enables cross-origin communication between WordPress and the extension. The multi-step validation chain prevents security breaches while maintaining reliable async operations.
+
+#### I. Communication Pathways
 
 ```mermaid
 graph LR
@@ -455,7 +522,7 @@ graph LR
     Relay -->|postMessage| WP
 ```
 
-#### HOW: Message Validation Chain
+#### II. Message Validation Chain
 
 ```javascript
 // Step 1: WordPress sends (browser-extension-manager.js)
@@ -506,7 +573,7 @@ async function handleMessage(message, sender, sendResponse) {
 }
 ```
 
-#### WHY: Validation Prevents Security Breaches
+#### III. Validation Prevents Security Breaches
 
 The multi-step validation chain prevents malicious websites from controlling the extension. Any website can send postMessages, so the relay carefully validates that messages come from the same origin and follow the expected format. The `SIP_` prefix creates a namespace that prevents accidents and makes malicious messages obvious.
 
@@ -516,7 +583,9 @@ The request ID system enables async operations in a stateless protocol. PostMess
 
 ### 3.3 Action Logging System
 
-#### WHAT: Distributed Logging Architecture
+This section describes the comprehensive logging system that captures actions across all extension contexts for debugging and monitoring. The distributed architecture ensures no critical information is lost while maintaining performance.
+
+#### I. Distributed Logging Architecture
 
 ```mermaid
 graph TD
@@ -539,7 +608,7 @@ graph TD
     Logger --> Display
 ```
 
-#### HOW: Logging Implementation
+#### II. Logging Implementation
 
 ```javascript
 // Global helper (action-log-helper.js)
@@ -594,7 +663,7 @@ window.onerror = function(message, source, lineno, colno, error) {
 };
 ```
 
-#### WHY: Centralized Logging Enables Debugging
+#### III. Centralized Logging Enables Debugging
 
 Browser extensions are notoriously hard to debug because they run in multiple contexts across multiple pages. Centralized logging solves this by capturing everything in one place. When users report issues, developers can see the complete sequence of events leading to the problem.
 
@@ -604,7 +673,9 @@ Storing logs in Chrome storage rather than memory provides persistence across pa
 
 ### 3.4 Terminal Display Implementation
 
-#### WHAT: Display State System
+This section explains how the terminal display manages both transient messages and persistent operation status through a dual-track system. This design provides immediate feedback while maintaining clear operation context.
+
+#### I. Display State System
 
 ```mermaid
 stateDiagram-v2
@@ -615,7 +686,7 @@ stateDiagram-v2
     PROCESSING --> PROCESSING: Progress update
 ```
 
-#### HOW: Visual Implementation
+#### II. Visual Implementation
 
 ```javascript
 // Terminal states and colors
@@ -659,7 +730,7 @@ const MESSAGE_DIMMING = {
 };
 ```
 
-#### WHY: Terminal Metaphor Conveys Technical Process
+#### III. Terminal Metaphor Conveys Technical Process
 
 The terminal aesthetic immediately communicates "technical tool" to users. Unlike consumer-friendly progress bars or spinners, the terminal style sets expectations that this is a developer tool doing complex operations. Users grant more patience to terminal-style interfaces because they associate them with powerful but slower operations.
 
@@ -669,7 +740,9 @@ Message persistence with dimming solves the "did I miss something?" problem. Unl
 
 ### 3.5 Mockup Scene Mapping
 
-#### WHAT: Scene Translation System
+This section details how the extension automatically maps Printify's mockup library scenes to product requirements through URL parameter detection. This automation eliminates manual scene selection for bulk operations.
+
+#### I. Scene Translation System
 
 ```mermaid
 graph LR
@@ -693,7 +766,7 @@ graph LR
     ID4 <-->|maps to| Left
 ```
 
-#### HOW: Mapping Implementation
+#### II. Mapping Implementation
 
 ```javascript
 // Scene ID mapping (mockup-update-handler.js)
@@ -739,7 +812,7 @@ function buildMockupUrl(shopId, productId, scenes, primaryScene, primaryColor) {
 }
 ```
 
-#### WHY: Scene Mapping Bridges Technical and Human
+#### III. Scene Mapping Bridges Technical and Human
 
 Printify uses numeric IDs internally because databases prefer integers and APIs need stable identifiers. But humans think in terms of viewing angles - "I want the front and back views." The scene mapping bridges this gap, allowing the interface to speak human while the system speaks computer.
 
@@ -749,7 +822,9 @@ URL parameters became the communication method out of necessity. When Printify b
 
 ### 3.6 Chrome Architecture Constraints
 
-#### WHAT: API Availability Matrix
+This section provides a comprehensive reference for Chrome's execution contexts and their capabilities. Understanding these environments prevents architectural mistakes and guides proper feature placement.
+
+#### I. API Availability Matrix
 
 ```mermaid
 graph TD
@@ -770,7 +845,7 @@ graph TD
     CS_No -.->|"*except on Printify"| P_Block
 ```
 
-#### HOW: Working Within Constraints
+#### II. Working Within Constraints
 
 ```javascript
 // Service Worker context detection (widget-router.js)
@@ -820,7 +895,7 @@ if (isServiceWorker) {
 }
 ```
 
-#### WHY: Constraints Drive Creative Solutions
+#### III. Constraints Drive Creative Solutions
 
 Chrome's API restrictions exist for security - you don't want any website being able to close your tabs or read your browsing history. But these same restrictions complicate extension development, forcing creative architectures like the central router pattern.
 
@@ -830,7 +905,9 @@ Understanding these constraints prevents wasted effort. Developers won't spend h
 
 ### 3.7 Critical Patterns
 
-#### WHAT: Essential Implementation Patterns
+This section highlights essential patterns that ensure reliable operation across Chrome's service worker lifecycle and storage events. These patterns prevent common pitfalls that cause intermittent failures.
+
+#### I. Essential Implementation Patterns
 
 ```mermaid
 graph TD
@@ -852,7 +929,7 @@ graph TD
     end
 ```
 
-#### HOW: Pattern Implementations
+#### II. Pattern Implementations
 
 ```javascript
 // Async message handling pattern
@@ -907,7 +984,7 @@ async function performOperation() {
 }
 ```
 
-#### WHY: Patterns Prevent Common Failures
+#### III. Patterns Prevent Common Failures
 
 The async message pattern solves Chrome's most confusing behavior. Without `return true`, Chrome closes the message channel immediately, and `sendResponse` silently fails. This single line causes more extension bugs than any other issue. Making it a pattern ensures developers don't forget.
 
@@ -917,7 +994,9 @@ The progress reporting pattern creates consistent user experience across all ope
 
 ### 3.8 Adding New Features
 
-#### WHAT: Feature Addition Flow
+This section provides a systematic approach for adding new features to the extension while maintaining architectural integrity. Following this checklist ensures new features integrate properly with existing systems.
+
+#### I. Feature Addition Flow
 
 ```mermaid
 graph LR
@@ -931,7 +1010,7 @@ graph LR
     Handler --> Response
 ```
 
-#### HOW: Implementation Steps
+#### II. Implementation Steps
 
 ```javascript
 // Step 1: Define trigger (e.g., in WordPress JS)
@@ -991,7 +1070,7 @@ importScripts('handlers/new-feature-handler.js');
 handlers.set('wordpress', new NewFeatureHandler());
 ```
 
-#### WHY: Consistent Pattern Speeds Development
+#### III. Consistent Pattern Speeds Development
 
 Following the same pattern for every feature reduces cognitive load. Developers don't need to invent new architectures or debate implementation approaches. The pattern is proven to work and handles edge cases like async operations and error handling.
 
@@ -1001,7 +1080,9 @@ Most importantly, the pattern maintains system integrity. New features automatic
 
 ## 4. Storage Schema
 
-### WHAT: Data Persistence Architecture
+This section documents the complete storage schema used by the extension for configuration, state management, and operation tracking. Understanding this schema is essential for debugging state issues and implementing new features.
+
+### I. Data Persistence Architecture
 
 ```mermaid
 graph TD
@@ -1030,7 +1111,7 @@ graph TD
     Pairs --> Memory
 ```
 
-#### HOW: Complete Storage Schema
+#### II. Complete Storage Schema
 
 ```javascript
 // Chrome Storage Local - accessed via chrome.storage.local.get/set
@@ -1102,7 +1183,7 @@ graph TD
 }
 ```
 
-#### WHY: Storage Strategy Enables Features
+#### III. Storage Strategy Enables Features
 
 The split between Chrome Local and Sync storage is deliberate. Configuration that users need everywhere (API key, WordPress URL) syncs across devices. Work data that could conflict or exceed quotas (logs, operation status) stays local. This split enables multi-device use without sync conflicts.
 
@@ -1112,9 +1193,13 @@ The runtime state reveals the extension's true complexity. Tab pairs cache in me
 
 ## 5. Message Type Reference
 
+This reference catalogs all message types that flow through the extension, including WordPress commands and internal actions. Each message type includes its purpose, data structure, and response format.
+
 ### 5.1 WordPress Commands
 
-#### WHAT: Command Flow
+This section lists all commands that WordPress can send to the extension for automation and data retrieval. These commands form the public API between WordPress and the extension.
+
+#### I. Command Flow
 
 ```mermaid
 sequenceDiagram
@@ -1136,7 +1221,7 @@ sequenceDiagram
     Ext->>WP: Connection status
 ```
 
-#### HOW: Command Specifications
+#### II. Command Specifications
 
 ```javascript
 // SIP_UPDATE_PRODUCT_MOCKUPS
@@ -1183,7 +1268,7 @@ sequenceDiagram
 }
 ```
 
-#### WHY: Commands Map to User Intent
+#### III. Commands Map to User Intent
 
 Each command represents a specific user intent, not a technical operation. `SIP_UPDATE_PRODUCT_MOCKUPS` means "make Printify's selection match what I chose in WordPress." This intent-based design keeps the API stable even as implementation details change.
 
@@ -1193,7 +1278,9 @@ Response standardization enables generic error handling. WordPress doesn't need 
 
 ### 5.2 Internal Actions
 
-#### WHAT: Internal Message Types
+This section documents internal messages used for communication between extension components. These messages handle state updates, logging, and inter-component coordination.
+
+#### I. Internal Message Types
 
 ```mermaid
 graph LR
@@ -1214,7 +1301,7 @@ graph LR
     Widget --> Log
 ```
 
-#### HOW: Internal Message Format
+#### II. Internal Message Format
 
 ```javascript
 // Widget messages (internal operations)
@@ -1263,7 +1350,7 @@ graph LR
 }
 ```
 
-#### WHY: Internal Types Enable Routing
+#### III. Internal Types Enable Routing
 
 The three-type system (`widget`, `printify`, `wordpress`) creates clear routing boundaries. Each type maps to a specific handler that understands that domain. This separation prevents handlers from growing too complex and makes testing easier.
 
@@ -1273,9 +1360,13 @@ The metadata (`_sipMeta`) preserves context through transformations. When debugg
 
 ## 6. Key Features
 
+This section provides detailed documentation for the extension's core features, including implementation details and usage patterns. Each feature section includes architecture, implementation, and troubleshooting information.
+
 ### 6.1 Tab Pairing System
 
-#### WHAT: Bidirectional Tab Relationship
+This feature maintains intelligent relationships between WordPress and Printify tabs to prevent tab proliferation and maintain user context. The bidirectional pairing system ensures operations always use the correct tabs.
+
+#### I. Bidirectional Tab Relationship
 
 ```mermaid
 stateDiagram-v2
@@ -1286,7 +1377,7 @@ stateDiagram-v2
     Cleanup --> [*]: Pairs removed
 ```
 
-#### HOW: Implementation Details
+#### II. Implementation Details
 
 ```javascript
 // Tab pair structure in storage
@@ -1338,7 +1429,7 @@ chrome.tabs.onRemoved.addListener(async (tabId) => {
 });
 ```
 
-#### WHY: Tab Reuse Matches Mental Model
+#### III. Tab Reuse Matches Mental Model
 
 Users think of WordPress and Printify as connected workspaces. When they click "Go to Printify" multiple times, they expect to return to the same tab, not create dozens of new ones. Tab pairing makes the extension behave like users expect, reducing confusion and browser clutter.
 
@@ -1348,7 +1439,9 @@ Automatic cleanup prevents accumulation of stale pairs. When tabs close, their p
 
 ### 6.2 Widget Terminal Display
 
-#### WHAT: Terminal State Machine
+This feature provides real-time operation feedback through a terminal-style interface that conveys technical processes clearly. The dual-state system handles both quick messages and long-running operations.
+
+#### I. Terminal State Machine
 
 ```mermaid
 stateDiagram-v2
@@ -1367,7 +1460,7 @@ stateDiagram-v2
     PROCESSING --> [*]: Widget hidden
 ```
 
-#### HOW: State Implementation
+#### II. State Implementation
 
 ```javascript
 // Terminal states
@@ -1420,7 +1513,7 @@ function showTransientMessage(message, category) {
 }
 ```
 
-#### WHY: Dual States Handle Different Needs
+#### III. Dual States Handle Different Needs
 
 The terminal needs to handle two different types of information: persistent operations (like bulk updates) and quick status messages (like "connection verified"). Two states prevent these from interfering with each other while keeping the interface simple.
 
@@ -1430,7 +1523,9 @@ The PROCESSING state takes over the display because operations need full attenti
 
 ### 6.3 Pause/Resume Error Recovery
 
-#### WHAT: Operation State Flow
+This feature enables graceful recovery from errors during bulk operations by allowing users to pause, fix issues, and resume. The system maintains operation state across page refreshes and tab switches.
+
+#### I. Operation State Flow
 
 ```mermaid
 sequenceDiagram
@@ -1452,7 +1547,7 @@ sequenceDiagram
     Handler->>Handler: Complete operation
 ```
 
-#### HOW: Pause/Resume Implementation
+#### II. Pause/Resume Implementation
 
 ```javascript
 // Pausing operation (widget-router.js)
@@ -1525,7 +1620,7 @@ function resumeOperation() {
 }
 ```
 
-#### WHY: Pause/Resume Handles Real-World Interruptions
+#### III. Pause/Resume Handles Real-World Interruptions
 
 Web operations fail for predictable reasons: users aren't logged in, sessions expire, permissions change. Rather than failing completely, pause/resume lets users fix the issue and continue. This is especially valuable for long operations where starting over would waste time.
 
@@ -1535,7 +1630,9 @@ Clear instructions during pause reduce support burden. Instead of cryptic error 
 
 ### 6.4 Response Logging Architecture
 
-#### WHAT: Centralized Response Logging
+This feature implements comprehensive logging across all extension layers to aid debugging and monitoring. The architecture captures both successful operations and errors with full context.
+
+#### I. Centralized Response Logging
 
 ```mermaid
 sequenceDiagram
@@ -1566,7 +1663,7 @@ sequenceDiagram
     deactivate Handler
 ```
 
-#### HOW: Response Wrapper Implementation
+#### II. Response Wrapper Implementation
 
 ```javascript
 // Response wrapping in router (widget-router.js)
@@ -1623,7 +1720,7 @@ async function handleMessage(message, sender, sendResponse) {
 // "ERROR: SIP_UPDATE_MOCKUPS - Not logged in" { error: "Not logged in", requestId: "req_123" }
 ```
 
-#### WHY: Centralized Logging Ensures Complete Coverage
+#### III. Centralized Logging Ensures Complete Coverage
 
 Response logging at the router level guarantees that every message gets logged, regardless of whether handlers remember to log. This infrastructure-level solution is more reliable than depending on developer discipline in every handler.
 
@@ -1633,7 +1730,9 @@ Duration tracking reveals performance problems. By logging how long each operati
 
 ### 6.5 Content Security Policy Compliance
 
-#### WHAT: CSP-Safe Patterns
+This section explains how the extension maintains security compliance with Chrome's Content Security Policy restrictions. Understanding these constraints is crucial for avoiding security violations.
+
+#### I. CSP-Safe Patterns
 
 ```mermaid
 graph TD
@@ -1658,7 +1757,7 @@ graph TD
     style InlineScript fill:#f99
 ```
 
-#### HOW: Implementation Patterns
+#### II. Implementation Patterns
 
 ```javascript
 // CSP Violation - Inline event handler
@@ -1718,7 +1817,7 @@ function setSafeHTML(element, html) {
 }
 ```
 
-#### WHY: CSP Protects Users From Malicious Scripts
+#### III. CSP Protects Users From Malicious Scripts
 
 Content Security Policy prevents cross-site scripting (XSS) attacks by blocking inline scripts and styles. If an attacker manages to inject content into a page, CSP ensures that content can't execute code. This protection is especially important for extensions that have elevated privileges.
 
@@ -1728,7 +1827,9 @@ Extensions must be especially careful because they run on all websites. A CSP vi
 
 ### 6.6 Public API Naming Standards
 
-#### WHAT: Namespace Organization
+This section defines naming conventions for the extension's public API to ensure consistency and clarity. Following these standards makes the API intuitive and maintainable.
+
+#### I. Namespace Organization
 
 ```mermaid
 graph TD
@@ -1754,7 +1855,7 @@ graph TD
     Window --> Action
 ```
 
-#### HOW: Namespace Implementation
+#### II. Namespace Implementation
 
 ```javascript
 // Main namespace (widget-tabs-actions.js)
@@ -1800,7 +1901,7 @@ SiPWidget.ActionLogger.log('ERROR', 'Failed to connect', {reason: 'timeout'});
 action.error('Failed to connect', {reason: 'timeout'}); // Shortcut
 ```
 
-#### WHY: Namespace Prevents Global Pollution
+#### III. Namespace Prevents Global Pollution
 
 Browser extensions run in shared environments where multiple scripts coexist. Without namespacing, extensions risk overwriting each other's functions or conflicting with page scripts. The `SiPWidget` namespace creates a safe container for all extension APIs.
 
@@ -1810,7 +1911,9 @@ Namespace structure reveals API organization. Developers exploring the extension
 
 ### 6.7 Scene-Based Mockup Selection Flow
 
-#### WHAT: URL Parameter Communication
+This feature automates mockup scene selection based on product attributes, eliminating manual selection in bulk operations. The system maps product requirements to appropriate Printify scenes automatically.
+
+#### I. URL Parameter Communication
 
 ```mermaid
 sequenceDiagram
@@ -1825,7 +1928,7 @@ sequenceDiagram
     Printify->>Printify: Navigate scenes<br/>Toggle selections<br/>Save changes
 ```
 
-#### HOW: URL Parameter Implementation
+#### II. URL Parameter Implementation
 
 ```javascript
 // Building URL with parameters (mockup-update-handler.js)
@@ -1881,7 +1984,7 @@ async function synchronizeMockupsByScenes(selectedScenes, primaryScene, primaryC
 }
 ```
 
-#### WHY: URL Parameters Work Despite Blocking
+#### III. URL Parameters Work Despite Blocking
 
 Printify blocks `chrome.runtime` API to prevent extensions from functioning normally, likely to stop automation tools. URL parameters provide an alternative communication channel that Printify cannot block without breaking normal web navigation.
 
@@ -1891,7 +1994,9 @@ The scene-based approach matches how users think. Instead of dealing with indivi
 
 ### 6.8 Scene-Based Selection Implementation
 
-#### WHAT: Scene Navigation Flow
+This section details the technical implementation of automated scene selection using URL parameters and DOM observation. The system works around Printify's lack of scene selection APIs.
+
+#### I. Scene Navigation Flow
 
 ```mermaid
 graph TD
@@ -1913,7 +2018,7 @@ graph TD
     Next -->|No| Save
 ```
 
-#### HOW: Scene Operations
+#### II. Scene Operations
 
 ```javascript
 // Scene detection (mockup-library-actions.js)
@@ -1964,7 +2069,7 @@ async function saveSelection() {
 }
 ```
 
-#### WHY: Scene-Based Selection Matches User Intent
+#### III. Scene-Based Selection Matches User Intent
 
 Users think in terms of product views (front, back, side) not individual mockup files. By organizing selection around scenes, the interface matches user mental models. This alignment reduces cognitive load and prevents errors.
 
@@ -1974,7 +2079,9 @@ Delays between operations prevent race conditions. Printify's React-based UI doe
 
 ### 6.9 Error Capture System
 
-#### WHAT: Global Error Handling
+This feature implements comprehensive error capture across all extension contexts to ensure no errors go unnoticed. The system provides detailed error context for effective debugging.
+
+#### I. Global Error Handling
 
 ```mermaid
 graph LR
@@ -1988,7 +2095,7 @@ graph LR
     Format -->|logs| Logger
 ```
 
-#### HOW: Error Capture Implementation
+#### II. Error Capture Implementation
 
 ```javascript
 // Global error handlers (error-capture.js)
@@ -2055,7 +2162,7 @@ function formatError(error) {
 }
 ```
 
-#### WHY: Global Capture Catches Hidden Errors
+#### III. Global Capture Catches Hidden Errors
 
 Extensions run in multiple contexts where errors can hide. A promise rejection in a content script might not appear in the console. An error in an event handler might silently fail. Global error capture ensures nothing escapes unnoticed.
 
@@ -2065,7 +2172,9 @@ Fallback strategies handle hostile environments. On Printify where chrome.runtim
 
 ### 6.10 Action Logging Helper
 
-#### WHAT: Simplified Logging API
+This feature provides a consistent logging interface across all extension contexts through a global helper. The categorized logging system makes debugging and monitoring more effective.
+
+#### I. Simplified Logging API
 
 ```mermaid
 graph LR
@@ -2079,7 +2188,7 @@ graph LR
     Logger -->|updates| Display
 ```
 
-#### HOW: Helper Implementation
+#### II. Helper Implementation
 
 ```javascript
 // Helper creation (action-log-helper.js)
@@ -2141,7 +2250,7 @@ action.error('Failed to fetch data', { status: 404, url: '/api/data' });
 action.data('Received mockup list', { count: 25 });
 ```
 
-#### WHY: Helpers Reduce Friction
+#### III. Helpers Reduce Friction
 
 The verbose ActionLogger API discourages logging. When logging requires checking for existence and passing categories, developers skip it. The helper shortcuts make logging so easy that developers actually use it.
 
@@ -2151,7 +2260,9 @@ Category shortcuts encode best practices. By providing `action.info()` and `acti
 
 ### 6.11 Diagnostic and Monitoring Tools
 
-#### WHAT: Debug Tool Integration
+This section describes built-in diagnostic tools that verify extension health and monitor performance. These tools help identify issues before they impact users.
+
+#### I. Debug Tool Integration
 
 ```mermaid
 graph TD
@@ -2166,7 +2277,7 @@ graph TD
     Mon -->|activity| Logger
 ```
 
-#### HOW: Diagnostic Implementation
+#### II. Diagnostic Implementation
 
 ```javascript
 // Diagnostic tool (widget-tabs-actions.js)
@@ -2252,7 +2363,7 @@ class InteractionMonitor {
 }
 ```
 
-#### WHY: Integrated Debugging Saves Time
+#### III. Integrated Debugging Saves Time
 
 Printify frequently changes their DOM structure without notice. Having diagnostic tools built into the extension means users can quickly gather debugging information without opening the console or running scripts. This self-service debugging reduces support burden.
 
@@ -2262,7 +2373,9 @@ Logging integration means diagnostic data persists. Unlike console logs that dis
 
 ### 6.12 Action Log Visual Hierarchy
 
-#### WHAT: Visual Operation Tracking
+This feature implements visual categorization in the action log display to improve readability and pattern recognition. Color coding and formatting make different log types instantly recognizable.
+
+#### I. Visual Operation Tracking
 
 ```mermaid
 graph TD
@@ -2286,7 +2399,7 @@ graph TD
     Op4 --> Op5
 ```
 
-#### HOW: Hierarchy Implementation
+#### II. Hierarchy Implementation
 
 ```javascript
 // Operation detection patterns (action-logger.js)
@@ -2357,7 +2470,7 @@ function formatLogMessage(category, message, details) {
 */
 ```
 
-#### WHY: Visual Hierarchy Aids Comprehension
+#### III. Visual Hierarchy Aids Comprehension
 
 Terminal output can be overwhelming when operations involve many steps. Visual markers create structure that helps users understand what's happening at a glance. The start/end markers clearly delineate operations, while indentation shows relationships.
 
@@ -2367,9 +2480,13 @@ The collapsible mental model helps users focus. When scanning logs, users can me
 
 ## 7. Development Quick Reference
 
+This reference provides quick access to essential development information including file structure, testing procedures, and common patterns. Use this section for rapid onboarding and daily development tasks.
+
 ### 7.1 File Structure
 
-#### WHAT: Extension Organization
+This section maps the extension's file organization to help developers quickly locate functionality. Understanding this structure accelerates development and debugging.
+
+#### I. Extension Organization
 
 ```mermaid
 graph TD
@@ -2384,7 +2501,7 @@ graph TD
     Handlers -->|process| Actions
 ```
 
-#### HOW: File Mapping
+#### II. File Mapping
 
 ```
 sip-printify-manager-extension/
@@ -2414,7 +2531,7 @@ sip-printify-manager-extension/
     └── widget.css                    # Widget styling
 ```
 
-#### WHY: Organization Reflects Architecture
+#### III. Organization Reflects Architecture
 
 The file structure mirrors the conceptual architecture. Core modules that everything depends on live in `/core`. Action scripts that run in specific contexts group in `/actions`. Handlers that process specific message types cluster in `/handlers`. This alignment makes navigation intuitive.
 
@@ -2424,7 +2541,9 @@ The flat structure within each directory keeps imports simple. No deep nesting m
 
 ### 7.2 Testing Checklist
 
-#### WHAT: Verification Points
+This comprehensive checklist ensures all extension features function correctly before deployment. Regular testing prevents regressions and maintains reliability.
+
+#### I. Verification Points
 
 ```mermaid
 graph TD
@@ -2447,7 +2566,7 @@ graph TD
     end
 ```
 
-#### HOW: Testing Protocol
+#### II. Testing Protocol
 
 ```markdown
 ### Extension Health
@@ -2485,7 +2604,7 @@ graph TD
   - Close tab → next click creates new
 ```
 
-#### WHY: Systematic Testing Prevents Regressions
+#### III. Systematic Testing Prevents Regressions
 
 Browser extensions are hard to test automatically because they span multiple contexts and require browser APIs. This checklist provides manual but systematic verification that catches common issues before users encounter them.
 
@@ -2495,7 +2614,9 @@ Specific verification steps make testing repeatable. Rather than "test messaging
 
 ### 7.3 Terminal Display Testing
 
-#### WHAT: Display State Verification
+This section provides specific testing procedures for the terminal display feature to ensure proper visual feedback. These tests verify both state transitions and message handling.
+
+#### I. Display State Verification
 
 ```mermaid
 stateDiagram-v2
@@ -2508,7 +2629,7 @@ stateDiagram-v2
     CheckComplete --> [*]: Return to ready
 ```
 
-#### HOW: Display Test Cases
+#### II. Display Test Cases
 
 ```javascript
 // Test state transitions
@@ -2587,7 +2708,7 @@ const colorTests = {
 };
 ```
 
-#### WHY: Terminal Behavior Communicates State
+#### III. Terminal Behavior Communicates State
 
 The terminal's visual behavior is its primary communication channel. Users learn to interpret states through consistent visual patterns. Testing ensures these patterns remain reliable across updates.
 
@@ -2597,9 +2718,13 @@ Context-aware coloring provides subtle wayfinding. Users unconsciously learn tha
 
 ## 8. Key Implementation Notes
 
+This section highlights critical implementation details that affect extension reliability and performance. Understanding these notes prevents common mistakes and guides architectural decisions.
+
 ### 8.1 Separate Progress Systems
 
-#### WHAT: Two Independent Progress Trackers
+This section explains why the extension maintains two separate progress tracking systems and how they serve different purposes. Understanding this separation prevents confusion when implementing progress features.
+
+#### I. Two Independent Progress Trackers
 
 ```mermaid
 graph TD
@@ -2617,7 +2742,7 @@ graph TD
     WPProgress -.->|independent of| ExtProgress
 ```
 
-#### HOW: Progress Isolation
+#### II. Progress Isolation
 
 ```javascript
 // WordPress batch progress (PHP/JS)
@@ -2643,7 +2768,7 @@ await reportStatus(
 // - Both can show different percentages simultaneously
 ```
 
-#### WHY: Progress Isolation Prevents Confusion
+#### III. Progress Isolation Prevents Confusion
 
 Batch operations and individual operations have different scopes. WordPress tracks "processing product 10 of 50" while the extension tracks "45% through updating this product's mockups." Mixing these would create meaningless percentages.
 
@@ -2653,7 +2778,9 @@ This separation also simplifies error handling. If one product fails, WordPress 
 
 ### 8.2 Message Persistence
 
-#### WHAT: Message Lifecycle
+This section details how terminal messages persist and fade to create an effective visual history without clutter. The persistence system balances information retention with visual clarity.
+
+#### I. Message Lifecycle
 
 ```mermaid
 stateDiagram-v2
@@ -2665,7 +2792,7 @@ stateDiagram-v2
     Dimmed --> Dimmed: Stays until replaced
 ```
 
-#### HOW: Persistence Implementation
+#### II. Persistence Implementation
 
 ```javascript
 // Message creation and persistence
@@ -2706,7 +2833,7 @@ function showMessage(text, category) {
 // User can always see last action
 ```
 
-#### WHY: Persistence Provides History
+#### III. Persistence Provides History
 
 Unlike toast notifications that disappear, persistent messages give users context. They can see what just happened without watching constantly. This is especially valuable when operations take time and users task-switch.
 
@@ -2716,7 +2843,9 @@ The replacement-only removal ensures users never miss the latest action. Traditi
 
 ### 8.3 State Management
 
-#### WHAT: State Ownership Rules
+This section explains the extension's storage-driven state management approach and its benefits for reliability. The architecture ensures state consistency across page refreshes and extension updates.
+
+#### I. State Ownership Rules
 
 ```mermaid
 graph TD
@@ -2740,7 +2869,7 @@ graph TD
     Widget -->|reads| Logs
 ```
 
-#### HOW: State Boundaries
+#### II. State Boundaries
 
 ```javascript
 // CORRECT: Handler owns operation status
@@ -2788,7 +2917,7 @@ chrome.storage.onChanged.addListener((changes) => {
 });
 ```
 
-#### WHY: Clear Ownership Prevents Conflicts
+#### III. Clear Ownership Prevents Conflicts
 
 When multiple components can write the same state, race conditions and conflicts are inevitable. By establishing clear ownership, the system prevents these conflicts at an architectural level.
 
@@ -2798,7 +2927,9 @@ Read-only access for non-owners enables reactive updates. The widget watches for
 
 ### 8.4 Service Worker Safe Logging
 
-#### WHAT: Context-Aware Logging
+This section addresses logging challenges in Chrome's service worker environment where DOM access is unavailable. The solutions ensure reliable logging without breaking service worker constraints.
+
+#### I. Context-Aware Logging
 
 ```mermaid
 graph TD
@@ -2819,7 +2950,7 @@ graph TD
     Direct -->|falls back to| Console
 ```
 
-#### HOW: Safe Logging Patterns
+#### II. Safe Logging Patterns
 
 ```javascript
 // Context detection
@@ -2866,7 +2997,7 @@ function safeLog(category, message, details) {
 }
 ```
 
-#### WHY: Context Awareness Prevents Errors
+#### III. Context Awareness Prevents Errors
 
 Service workers run in a different JavaScript environment without DOM access. Attempting to use `window.action` in a service worker throws errors. Context-aware logging prevents these errors while maintaining consistent logging across all environments.
 
@@ -2875,6 +3006,8 @@ Graceful degradation ensures logging always works. Even if ActionLogger fails to
 The helper shortcuts in content scripts reduce friction. Developers are more likely to add helpful logs when it's easy. The direct API in service workers provides the same functionality without relying on unavailable globals. This dual approach maximizes logging coverage.
 
 ## 9. Conclusion
+
+This document has covered the complete architecture, implementation, and operational details of the SiP Printify Manager browser extension. The extension's success demonstrates how creative architecture can overcome API limitations while maintaining security and reliability.
 
 The SiP Printify Manager Extension demonstrates how thoughtful architecture can overcome significant technical constraints. By embracing Chrome's security model and working around Printify's blocking, the extension provides seamless integration that feels magical to users while remaining maintainable for developers.
 

@@ -3,12 +3,16 @@
 This document defines the three-layer documentation framework for all SiP technical documentation. The framework separates architectural diagrams (WHAT), implementation details (HOW), and design rationale (WHY) to create documentation that is both complete and comprehensible.
 
 **Document outline:**
-- Overview and framework structure
-- Core principles and their implementation
-- Requirements for sections and layers
-- Guidelines for each layer (WHAT, HOW, WHY)
-- Verification and maintenance procedures
-- Quick reference templates
+- 1. Overview
+- 2. Foundational Principles
+- 3. Section Structure Requirements
+- 4. WHAT Layer Guidelines
+- 5. HOW Layer Guidelines
+- 6. WHY Layer Guidelines
+- 7. Verification Framework
+- 8. Common Patterns and Anti-Patterns
+- 9. Maintenance Guidelines
+- 10. Quick Reference
 
 ## 1. Overview
 
