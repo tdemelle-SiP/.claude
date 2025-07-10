@@ -455,6 +455,22 @@ graph TD
 
 ### II. Verification Protocol
 
+#### What Must Be Documented
+
+**Mandatory Documentation**:
+1. **All public APIs and exported functions** that other modules use
+2. **All message types and handlers** that process external requests
+3. **All storage schemas** and what each key contains
+4. **All configuration systems** including initialization and management
+5. **All major architectural components** (routers, handlers, services)
+6. **All external integrations** (APIs, third-party services)
+7. **All security boundaries** and validation points
+
+**Optional Documentation**:
+1. Internal helper functions (unless they implement complex logic)
+2. Standard utility functions (formatters, simple validators)
+3. Deprecated code marked for removal
+
 #### Coverage Verification
 ```bash
 # 1. List all exported functions
@@ -619,9 +635,31 @@ graph TD
    - [ ] No orphaned documentation
    ```
 
-4. **Verify updates**
+4. **Update integrated documentation elements**
+   When adding new features or components:
+   ```markdown
+   ### Integration Checklist:
+   - [ ] Table of Contents updated with new sections
+   - [ ] Master architecture diagram includes new components
+   - [ ] Component mapping table lists new functions
+   - [ ] Router context documentation shows new methods
+   - [ ] Storage schema reflects new keys
+   - [ ] Message type reference includes new commands
+   - [ ] Related sections cross-reference the new feature
+   ```
+   
+   Example: Adding Configuration Management requires:
+   - Add to ToC under Architecture section
+   - Add ConfigMgmt box to master architecture diagram
+   - Add config functions to component mapping table
+   - Update router context to show config methods
+   - Document config storage keys in storage schema
+   - Update any sections that use configuration
+
+5. **Verify updates**
    - Run verification protocol on changed sections
    - Trace one operation through all changes
+   - Check all integrated elements updated
    - Review with someone unfamiliar with changes
 
 ### III. Maintenance Keeps Documentation Alive

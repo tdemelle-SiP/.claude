@@ -9,7 +9,8 @@ This document provides complete technical documentation for the SiP Printify Man
   - 2.2 Message Flow
   - 2.3 Widget Terminal Display
   - 2.4 Storage Architecture
-  - 2.5 Tab Pairing System
+  - 2.5 Configuration Management
+  - 2.6 Tab Pairing System
 - 3. Implementation Guide
   - 3.1 Architectural Constraints
   - 3.2 Message Channel Design
@@ -119,7 +120,8 @@ graph TB
     
     subgraph "Extension - Background"
         Router[Message router<br/>-handleMessage-<br/>widget-router.js]
-        MessageHandlers[All handlers<br/>widget, printify, wordpress,<br/>mockup-fetch, mockup-update]
+        ConfigMgmt[Config management<br/>-initializeConfig-<br/>widget-router.js]
+        MessageHandlers[Message handlers<br/>widget, printify, wordpress,<br/>mockup-update<br/>handler-scripts/]
         TabOps[Tab operations<br/>-navigateTab-<br/>widget-router.js]
         StorageOps[Storage operations<br/>-chrome.storage API-]
     end
@@ -133,6 +135,8 @@ graph TB
     WordPress -->|postMessage| Relay
     Relay -->|chrome.runtime| Router
     Router -->|routes to| MessageHandlers
+    Router -->|initializes| ConfigMgmt
+    ConfigMgmt -->|manages| ConfigStore
     MessageHandlers -->|use| TabOps
     MessageHandlers -->|save state| StorageOps
     StorageOps -->|persist| StateStore
@@ -151,6 +155,18 @@ graph TB
 
 | Component | Key Functions | Communication Method |
 |-----------|--------------|---------------------|
+| Message relay | handleWordPressMessage() | window.postMessage |
+| Extension detector | announceReady() | window.postMessage |
+| Widget UI | createWidget(), updateOperationStatus() | DOM manipulation |
+| Scene automation | checkUrlParameters() | URL params |
+| Page monitor | observeDOM() | MutationObserver |
+| Action logger | log() | chrome.storage |
+| Error handler | formatError() | Returns formatted object |
+| Message router | handleMessage() | chrome.runtime |
+| Config management | initializeConfig(), updateConfig() | chrome.storage.sync |
+| All handlers | handle() | Via router context |
+| Tab operations | navigateTab() | chrome.tabs API |
+| Storage operations | Distributed across components | chrome.storage API |
 | **widget-relay.js** | `handlePostMessage()`, `validateAndRelay()` | window.postMessage → chrome.runtime |
 | **widget-router.js** | `handleMessage()`, `navigateTab()`, `pauseOperation()` | chrome.runtime messaging |
 | **background.js** | `importScripts()` | Service worker module loading |
@@ -363,7 +379,72 @@ The storage schema reveals the extension's state machine. Operation status drive
 
 Dynamic fetch status keys (`fetchStatus_${productId}`) solve a specific problem: tracking multiple simultaneous operations. When fetching mockups for several products, each gets its own status key. This prevents race conditions where one product's completion overwrites another's progress.
 
-### 2.5 Tab Pairing System
+### 2.5 Configuration Management
+
+The extension manages configuration through a centralized system that handles initialization, updates, and auto-configuration for WordPress sites.
+
+#### I. Configuration Flow
+
+```mermaid
+graph TD
+    subgraph "Configuration Sources"
+        PreConfig[Pre-configured<br/>config.json]
+        AutoConfig[Auto-detected<br/>from WordPress]
+        UserConfig[User-provided<br/>via UI]
+    end
+    
+    subgraph "Configuration System"
+        Init[Initialize Config<br/>-initializeConfig-<br/>widget-router.js]
+        Load[Load Config<br/>-loadConfiguration-<br/>widget-router.js]
+        Update[Update Config<br/>-updateConfig-<br/>widget-router.js]
+    end
+    
+    subgraph "Storage"
+        Sync[(Chrome Sync<br/>wordpressUrl<br/>apiKey)]
+    end
+    
+    PreConfig -->|First priority| Load
+    AutoConfig -->|If on WordPress| Load
+    UserConfig -->|Manual setup| Update
+    
+    Init -->|Triggers| Load
+    Load -->|Reads from| Sync
+    Update -->|Writes to| Sync
+```
+
+#### II. Configuration Implementation
+
+```javascript
+// Configuration structure
+const config = {
+    wordpressUrl: '',  // Base URL of WordPress site
+    apiKey: ''         // 32-character API key
+};
+
+// Initialization state management
+let configInitialized = false;
+let configInitPromise = null;
+
+// Configuration functions
+- initializeConfig(): Loads config and updates badge
+- loadConfiguration(): Tries pre-config, then storage
+- updateConfig(newConfig): Updates and reinitializes
+
+// Auto-configuration on WordPress pages
+if (window.sipPrintifyManager?.apiKey) {
+    // Use embedded configuration
+    config.wordpressUrl = window.location.origin;
+    config.apiKey = window.sipPrintifyManager.apiKey;
+}
+```
+
+#### III. Configuration Enables Seamless Integration
+
+The configuration system solves the chicken-and-egg problem of extension setup. Users need the extension configured to use it, but configuring requires knowing technical details like API keys. Auto-configuration on WordPress pages eliminates this friction - when users install the extension while on their WordPress site, it automatically detects and saves the configuration.
+
+The initialization promise pattern (`configInitPromise`) prevents race conditions during startup. Multiple components might request configuration simultaneously, but the promise ensures configuration loads only once. The badge indicator provides instant visual feedback about configuration status - green checkmark for configured, orange exclamation for needs setup.
+
+### 2.6 Tab Pairing System
 
 This section describes how the extension maintains intelligent relationships between WordPress and Printify tabs to enable seamless navigation. Tab pairing prevents tab proliferation while maintaining user context across operations.
 
@@ -438,6 +519,26 @@ This guide provides essential patterns, constraints, and best practices for exte
 This section explains Chrome's security model and how it shapes the extension's architecture through context isolation and API restrictions. These constraints aren't limitations but security features that prevent extensions from becoming attack vectors.
 
 #### I. Chrome Extension Security Model
+
+```mermaid
+graph TD
+    subgraph "Chrome Security Model"
+        CS[Content Scripts<br/>DOM access only]
+        BG[Background Script<br/>Chrome APIs only]
+        MSG[Message Passing<br/>Required for communication]
+    end
+    
+    subgraph "Printify Restrictions"
+        BLOCK[chrome.runtime blocked<br/>on printify.com]
+        URL[URL Parameters<br/>Only communication method]
+        DOM[DOM Manipulation<br/>Still allowed]
+    end
+    
+    CS -->|chrome.runtime.sendMessage| BG
+    BG -->|chrome.tabs.sendMessage| CS
+    BLOCK -->|Forces| URL
+    URL -->|Enables| DOM
+```
 
 ```mermaid
 graph TD
@@ -950,16 +1051,27 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 // Router context pattern (widget-router.js)
 const routerContext = {
-    navigateTab: async (url, senderTabId) => {
-        // Router provides Chrome API access to handlers
-        return await navigateTab(url, senderTabId);
-    },
-    queryTabs: async (query) => {
-        return await chrome.tabs.query(query);
-    },
-    updateStatus: async (status) => {
-        await chrome.storage.local.set({ sipOperationStatus: status });
-    }
+    // Navigation and tab management
+    navigateTab: async (url, tabType, currentTabId) => { },
+    queryTabs: async (query) => { },
+    createTab: async (params) => { },
+    updateTab: async (tabId, props) => { },
+    removeTab: async (tabId) => { },
+    getCurrentTab: async () => { },
+    
+    // Configuration management
+    config: { wordpressUrl, apiKey },
+    getConfig: () => { },
+    updateConfig: (newConfig) => { },
+    testConnection: async () => { },
+    checkPluginStatus: async () => { },
+    
+    // Operation control
+    pauseOperation: async (tabId, issue, instructions) => { },
+    resumeOperation: () => { },
+    
+    // WordPress API
+    callWordPressAPI: async (endpoint, method, data) => { }
 };
 
 // Progress reporting pattern (handlers)
