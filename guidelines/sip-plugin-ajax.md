@@ -113,7 +113,7 @@ SiP.Core.ajax.registerSuccessHandler(
 );
 
 // 4. Manual spinner control (when needed for multi-step operations)
-// See [Spinner Documentation](sip-feature-ui-components.md#spinner-and-overlay) for complete details
+// See [Spinner Documentation](sip-core-feature-ui-components.md#spinner-and-overlay) for complete details
 
 // Show spinner manually
 SiP.Core.utilities.spinner.show();
@@ -554,7 +554,7 @@ Use the [Testing, Debugging & Logging Guide](./sip-development-testing-debug.md)
 
 ## DataTables Integration
 
-For comprehensive DataTables configuration options, see the [DataTables Guide](./sip-feature-datatables.md).
+For comprehensive DataTables configuration options, see the [DataTables Guide](./sip-core-feature-datatables.md).
 
 ```javascript
 $('#products-table').DataTable({
@@ -707,4 +707,4 @@ async function batchOperation() {
 - Always hide spinner in `finally` or both success/error handlers
 - Use `{ showSpinner: false }` to disable automatic spinner
 - Show spinner before heavy operations for immediate feedback
-- See [Spinner Documentation](sip-feature-ui-components.md#spinner-and-overlay) for complete API reference
+- See [Spinner Documentation](sip-core-feature-ui-components.md#spinner-and-overlay) for complete API reference

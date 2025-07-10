@@ -135,7 +135,7 @@ The platform uses a central loader function `sip_core_load_platform()` that:
 
 ## Available Core Features
 
-The following core features are always available to child plugins. For details on specific core features, see the guides for [AJAX handling](./sip-plugin-ajax.md), [DataTables integration](./sip-feature-datatables.md), and [Progress Dialog](./sip-feature-progress-dialog.md):
+The following core features are always available to child plugins. For details on specific core features, see the guides for [AJAX handling](./sip-plugin-ajax.md), [DataTables integration](./sip-core-feature-datatables.md), and [Progress Dialog](./sip-core-feature-progress-dialog.md):
 
 ### Core Utilities
 
@@ -512,7 +512,7 @@ The platform is designed to be extended. To add new core features:
 ## Related Documentation
 
 - [AJAX Implementation Guide](./sip-plugin-ajax.md)
-- [DataTables Integration](./sip-feature-datatables.md)
-- [Progress Dialog Usage](./sip-feature-progress-dialog.md)
+- [DataTables Integration](./sip-core-feature-datatables.md)
+- [Progress Dialog Usage](./sip-core-feature-progress-dialog.md)
 - [Debug System](./sip-development-testing-debug.md)
 - [Storage Management](./sip-plugin-data-storage.md)

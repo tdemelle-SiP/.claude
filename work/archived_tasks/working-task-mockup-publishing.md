@@ -20,8 +20,8 @@
 - [x] sip-printify-manager-architecture.md
 - [x] sip-printify-manager-extension-widget.md
 - [ ] sip-plugin-ajax.md
-- [ ] sip-feature-ui-components.md
-- [ ] sip-feature-progress-dialog.md
+- [ ] sip-core-feature-ui-components.md
+- [ ] sip-core-feature-progress-dialog.md
 - [ ] sip-plugin-data-storage.md
 
 ### Files to Modify

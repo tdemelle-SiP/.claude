@@ -148,7 +148,7 @@ Before creating a SiP plugin:
 - SiP Plugins Core must be installed and activated
 - WordPress development environment setup
 - Understanding of PHP and JavaScript
-- Familiarity with the [SiP Plugins Platform](./sip-plugin-platform.md)
+- Familiarity with the [SiP Plugins Platform](./sip-core-platform.md)
 
 ## Plugin Integration Flow
 
@@ -1219,8 +1219,8 @@ if (version_compare($current_core_version, $required_core_version, '<')) {
 
 ## Related Documentation
 
-- [SiP Plugin Platform](./sip-plugin-platform.md) - Platform architecture
+- [SiP Plugin Platform](./sip-core-platform.md) - Platform architecture
 - [AJAX Implementation](./sip-plugin-ajax.md) - AJAX patterns and implementation
-- [DataTables Guide](./sip-feature-datatables.md) - Table implementation
+- [DataTables Guide](./sip-core-feature-datatables.md) - Table implementation
 - [Debug Logging](./sip-development-testing-debug.md) - Debug system
 - [Data Storage](./sip-plugin-data-storage.md) - Storage patterns

@@ -466,7 +466,7 @@ The SiP platform provides two primary dialog systems:
 1. **SiP Modal System** - For general purpose modals with state persistence
 2. **Progress Dialog System** - For batch operations with progress tracking
 
-For progress dialog implementation, see the [Progress Dialog Guide](./sip-feature-progress-dialog.md).
+For progress dialog implementation, see the [Progress Dialog Guide](./sip-core-feature-progress-dialog.md).
 
 ### SiP Modal System
 
@@ -701,7 +701,7 @@ This pattern ensures smooth dragging and resizing without the offset issues caus
 ## Progress Indicators
 
 ### Progress Dialog
-See [Progress Dialog Guide](sip-feature-progress-dialog.md) for batch processing with progress tracking.
+See [Progress Dialog Guide](sip-core-feature-progress-dialog.md) for batch processing with progress tracking.
 
 ### Simple Progress Bar
 ```javascript
@@ -1203,7 +1203,7 @@ function updateGroupCheckboxState(groupId) {
 
 ### Non-DataTables Table Refresh
 
-For simple tables that don't use DataTables (see [DataTables Integration](sip-feature-datatables.md) for complex data tables), use server-side rendering for clean updates:
+For simple tables that don't use DataTables (see [DataTables Integration](sip-core-feature-datatables.md) for complex data tables), use server-side rendering for clean updates:
 
 #### Why This Pattern Exists
 - **Avoids duplication**: HTML structure exists only in PHP

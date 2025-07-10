@@ -165,6 +165,7 @@ graph TB
 | Message router | handleMessage() | chrome.runtime |
 | Config management | initializeConfig(), updateConfig() | chrome.storage.sync |
 | All handlers | handle() | Via router context |
+| Mockup fetch handler | handle(), waitForMockupData() | Script injection + postMessage |
 | Tab operations | navigateTab() | chrome.tabs API |
 | Storage operations | Distributed across components | chrome.storage API |
 | **widget-relay.js** | `handlePostMessage()`, `validateAndRelay()` | window.postMessage → chrome.runtime |
@@ -595,6 +596,8 @@ Chrome's security model prevents extensions from becoming malware by limiting wh
 
 Printify's blocking of `chrome.runtime` adds another layer of constraint. They prevent extensions from functioning normally on their site, likely to stop automation tools. This forces the extension to use creative workarounds like URL parameters for communication, turning a security measure into an architectural driver.
 
+However, for mockup fetching (SIP_FETCH_MOCKUPS), the extension found a clever workaround. Chrome allows scripts to be injected in two different "worlds" - MAIN (which can intercept API calls but has no chrome.runtime) and ISOLATED (which has chrome.runtime but can't touch page APIs). By injecting code in both worlds and using postMessage to communicate between them, the extension can capture Printify's API responses and relay them back to WordPress despite the chrome.runtime block. This two-world approach only works for capturing data, not for triggering actions, which is why mockup updates still use URL parameters.
+
 Understanding these constraints prevents developers from attempting impossible operations. You cannot "just access the DOM" from the background script or "just create a tab" from a content script. The architecture isn't arbitrary - it's shaped by the security sandbox.
 
 ### 3.2 Message Channel Design
@@ -787,31 +790,86 @@ stateDiagram-v2
     PROCESSING --> PROCESSING: Progress update
 ```
 
-#### II. Visual Implementation
+```mermaid
+graph TD
+    Handler[Handler Operation] -->|reportStatus| Storage[sipOperationStatus Storage]
+    Storage -->|onChanged| UpdateOp[updateOperationStatus<br/>-widget-tabs-actions.js]
+    
+    Actions[One-off Actions] -->|ActionLogger.log| UpdateDisp[updateWidgetDisplay<br/>-action-logger.js]
+    
+    UpdateOp --> Terminal[Terminal Display]
+    UpdateDisp --> Terminal
+```
+
+#### II. Terminal Structure and States
+
+```html
+<!-- HTML Structure (widget-tabs-actions.js) -->
+<div class="sip-terminal-display">
+    <div class="sip-terminal-screen" id="sip-terminal-screen">
+        <!-- Status Header -->
+        <div class="sip-terminal-header" id="sip-terminal-header">
+            <span class="sip-terminal-header-text" id="sip-terminal-header-text"></span>
+        </div>
+        
+        <!-- Terminal Content Container -->
+        <div class="sip-terminal-content" id="sip-terminal-content">
+            <!-- Progress Bar (shown during processing) -->
+            <div class="sip-terminal-progress-wrapper hidden" id="sip-terminal-progress-wrapper">
+                <div class="sip-terminal-progress-bar">
+                    <div class="sip-terminal-progress-fill" id="sip-terminal-progress-fill"></div>
+                </div>
+                <span class="sip-terminal-progress-text" id="sip-terminal-progress-text">0%</span>
+            </div>
+            
+            <!-- Message Display -->
+            <div class="sip-terminal-message" id="sip-terminal-message">
+                <div class="sip-terminal-dots" id="sip-terminal-dots">...</div>
+            </div>
+        </div>
+        
+        <!-- Terminal Status Line -->
+        <div class="sip-terminal-status" id="sip-terminal-status">
+            <span class="sip-terminal-status-text" id="sip-terminal-status-text">READY</span>
+        </div>
+    </div>
+</div>
+```
 
 ```javascript
-// Terminal states and colors
-const TERMINAL_CONFIG = {
+// Display states (visual references in C:\Users\tdeme\Documents\VSCode_Images_Repo\)
+const DISPLAY_STATES = {
     READY: {
-        animation: ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'],
-        animationSpeed: 100,
-        defaultMessage: '...',
-        baseColor: '#00ff00'
+        bottomText: 'READY',
+        centerContent: '...',  // OR transient messages
+        headerText: '',        // Empty or dimmed previous
+        progressBar: 'hidden'
     },
     PROCESSING: {
-        progressChar: '█',
-        emptyChar: '░',
-        barLength: 20,
-        headerColors: {
-            'info': '#cccccc',
-            'success': '#00ff00',
-            'error': '#ff3333',
-            'warning': '#ffaa00'
-        }
+        bottomText: 'PROCESSING...',
+        centerContent: 'progress bar + task message',
+        headerText: 'Operation name',
+        progressBar: 'visible',
+        trigger: "sipOperationStatus.state === 'active'"
+    },
+    TRANSIENT: {
+        // One-off messages in READY state
+        replaceDots: true,
+        keepBottomStatus: true,
+        noProgressBar: true,
+        persistUntilReplaced: true
     }
 };
 
-// Message coloring by context
+// Color system
+const STATUS_HEADER_COLORS = {
+    'info': '#cccccc',     // Light grey
+    'success': '#00ff00',  // Green
+    'error': '#ff3333',    // Red  
+    'warning': '#ffaa00'   // Orange
+};
+
+// Message colors by source AND context
 const MESSAGE_COLORS = {
     'WordPress Site': {
         onPage: '#00ccff',      // Bright blue when on WP
@@ -827,8 +885,46 @@ const MESSAGE_COLORS = {
 const MESSAGE_DIMMING = {
     delay: 5000,                // Wait 5 seconds
     dimmedOpacity: 0.5,         // Dim to 50%
-    transition: 'opacity 0.5s ease-in-out'
+    resetOnNew: true            // New messages reset opacity
 };
+
+// Progress reporting structure (used by handlers)
+async function reportStatus(operation, task, progress, details = '', cancellable = false) {
+    const status = {
+        operation: operation,    // Shows in header
+        task: task,             // Shows with progress bar
+        progress: progress,     // 0-100
+        details: details,       // Multi-line for completion
+        cancellable: cancellable,
+        state: 'active',        // Triggers PROCESSING state
+        message: `${operation} in progress`,
+        timestamp: Date.now()
+    };
+    
+    await chrome.storage.local.set({ sipOperationStatus: status });
+}
+
+// Completion sequence
+// 1. Handler: reportStatus('Update Complete', 'Success', 100, details)
+// 2. Terminal shows completion at 100% (still PROCESSING state)
+// 3. After 2s: chrome.storage.local.set({ sipOperationStatus: { state: 'idle' } })
+// 4. Terminal returns to READY state
+
+// Key implementation files
+// - widget-tabs-actions.js: updateOperationStatus() - listens for storage changes
+// - action-logger.js: updateWidgetDisplay() - handles transient messages
+// - All handlers: Use reportStatus() for progress, SiPWidget.ActionLogger for logging
+
+// Common implementation issues
+// 1. Service workers have no window object - use SiPWidget.ActionLogger not window.action
+// 2. Remove references to progressDetails/cancelWrapper - old UI elements
+// 3. SUCCESS is a header text, not a state - stay in PROCESSING until idle
+// 4. Messages persist dimmed, never hide - only dim after 5 seconds
+
+// Critical architecture notes
+// - Two separate progress systems: WordPress tracks batch, extension tracks individual
+// - Message persistence: Dim but don't hide - messages stay until replaced
+// - State changes only through storage updates, not direct manipulation
 ```
 
 #### III. Terminal Metaphor Conveys Technical Process
@@ -1378,6 +1474,61 @@ sequenceDiagram
     error?: string,             // Error message
     requestId: string           // Matches request
 }
+```
+
+#### II.b API Interception Implementation for Mockup Fetching
+
+```javascript
+// SIP_FETCH_MOCKUPS uses a special workaround (mockup-fetch-handler.js)
+// Because Printify blocks chrome.runtime, we inject scripts in two worlds:
+
+// 1. MAIN world script - can intercept fetch but no chrome.runtime
+function interceptMockupAPI() {
+    const originalFetch = window.fetch;
+    window.fetch = async function(...args) {
+        const response = await originalFetch.apply(this, args);
+        const url = args[0].toString();
+        
+        // Intercept mockup API calls
+        if (url.includes('generated-mockup-maps')) {
+            const clonedResponse = response.clone();
+            const data = await clonedResponse.json();
+            
+            // Can't use chrome.runtime here, use postMessage
+            window.postMessage({
+                type: 'MOCKUP_API_RESPONSE',
+                source: 'sip-mockup-intercept',
+                data: data,
+                url: url
+            }, window.location.origin);
+        }
+        return response;
+    };
+}
+
+// 2. ISOLATED world script - has chrome.runtime access
+function setupMessageRelay() {
+    window.addEventListener('message', function(event) {
+        if (event.data?.type === 'MOCKUP_API_RESPONSE' && 
+            event.data?.source === 'sip-mockup-intercept') {
+            // Now we can use chrome.runtime
+            chrome.runtime.sendMessage(event.data);
+        }
+    });
+}
+
+// Injection sequence
+chrome.scripting.executeScript({
+    target: { tabId: tabId },
+    func: setupMessageRelay,
+    world: 'ISOLATED'  // Has chrome.runtime
+}).then(() => {
+    return chrome.scripting.executeScript({
+        target: { tabId: tabId },
+        func: interceptMockupAPI,
+        world: 'MAIN'  // Can intercept fetch
+    });
+});
 ```
 
 #### III. Commands Map to User Intent

@@ -51,7 +51,7 @@ DataTables implementation in SiP plugins uses **client-side processing only** fo
 4. **Simplicity**: No server-side pagination/sorting logic needed
 5. **State Management**: Easy to maintain selection state across operations
 
-For simple tables that don't require DataTables functionality, see [Non-DataTables Table Refresh](./sip-feature-ui-components.md#non-datatables-table-refresh).
+For simple tables that don't require DataTables functionality, see [Non-DataTables Table Refresh](./sip-core-feature-ui-components.md#non-datatables-table-refresh).
 
 For complex hierarchical data relationships (like parent-child product relationships), see the [SiP Printify Manager Architecture Guide](./sip-printify-manager-architecture.md).
 
@@ -1009,7 +1009,7 @@ stateSaveCallback: function(settings, data) {
 
 ### Thumbnail Integration
 
-Tables use the standardized thumbnail utility. For complete PhotoSwipe implementation, refer to the [PhotoSwipe Guide](./sip-feature-photoswipe.md):
+Tables use the standardized thumbnail utility. For complete PhotoSwipe implementation, refer to the [PhotoSwipe Guide](./sip-core-feature-photoswipe.md):
 
 ```javascript
 const thumbnail = SiP.PrintifyManager.utilities.createThumbnail({

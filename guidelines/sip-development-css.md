@@ -36,7 +36,7 @@ Start with a solid base that works everywhere, then enhance for modern browsers.
 
 **Important**: Before creating CSS files, understand the division between Core-provided styles and plugin-specific styles. See:
 - [Plugin Architecture - CSS Architecture](./sip-plugin-architecture.md#css-architecture) - What CSS is provided by Core
-- [UI Components](./sip-feature-ui-components.md) - Which UI patterns have Core CSS support
+- [UI Components](./sip-core-feature-ui-components.md) - Which UI patterns have Core CSS support
 
 ### Directory Structure
 ```
@@ -521,7 +521,7 @@ input[type="checkbox"],
 }
 
 /* States and pseudo-elements */
-/* See sip-feature-ui-components.md#checkbox-selection-patterns for complete implementation */
+/* See sip-core-feature-ui-components.md#checkbox-selection-patterns for complete implementation */
 ```
 
 ## Core-Provided Styles vs Plugin Styles
@@ -1358,14 +1358,14 @@ Following SiP CSS Standards
 
 ## jQuery UI Compatibility
 
-For CSS requirements when using jQuery UI draggable/resizable components, see [UI Components - jQuery UI Positioning Requirements](sip-feature-ui-components.md#jquery-ui-positioning-requirements).
+For CSS requirements when using jQuery UI draggable/resizable components, see [UI Components - jQuery UI Positioning Requirements](sip-core-feature-ui-components.md#jquery-ui-positioning-requirements).
 
 **Key Rule**: Never use CSS `transform` on jQuery UI draggable/resizable elements.
 
 ## Related Documentation
 
-- [UI Components](sip-feature-ui-components.md) - Component library including checkbox patterns and jQuery UI positioning
-- [DataTables](sip-feature-datatables.md) - DataTables implementation guide
-- [Plugin Architecture](sip-plugin-platform.md) - Overall plugin structure
+- [UI Components](sip-core-feature-ui-components.md) - Component library including checkbox patterns and jQuery UI positioning
+- [DataTables](sip-core-feature-datatables.md) - DataTables implementation guide
+- [Plugin Architecture](sip-core-platform.md) - Overall plugin structure
 
 This standards document should be reviewed and updated as the codebase evolves and new patterns emerge. Last updated: 2024

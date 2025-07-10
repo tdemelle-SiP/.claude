@@ -519,7 +519,7 @@ SiP.Core.storage.session.set('batchProgress', {
 });
 ```
 
-**Note**: Dashboard installer data now uses module-level variables for simplicity. See [SiP Plugins Core Dashboard](./sip-plugins-core-dashboard.md) for details.
+**Note**: Dashboard installer data now uses module-level variables for simplicity. See [SiP Plugins Core Dashboard](./sip-core-dashboard.md) for details.
 
 ## Centralized Storage Management
 
@@ -1891,5 +1891,5 @@ Keep these patterns unchanged during migration:
 Only migrate paths that point to the WordPress uploads directory structure.
 
 ## Related Guides
-- For handling batch operations with progress feedback, see the [Progress Dialog Guide](./sip-feature-progress-dialog.md)
+- For handling batch operations with progress feedback, see the [Progress Dialog Guide](./sip-core-feature-progress-dialog.md)
 - For creating new plugins with storage support, see the [Plugin Creation Guide](./sip-plugin-creation.md)

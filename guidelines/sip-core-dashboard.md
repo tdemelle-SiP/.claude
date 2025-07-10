@@ -8,7 +8,7 @@ Before implementing changes to the dashboard, you should understand:
 
 1. **[AJAX Implementation](./sip-plugin-ajax.md)** - For `SiP.Core.ajax` patterns and error handling
 2. **[Data Storage](./sip-plugin-data-storage.md)** - For `SiP.Core.storage` API and storage types
-3. **[UI Components](./sip-feature-ui-components.md)** - For spinner, toast notifications, and modal patterns
+3. **[UI Components](./sip-core-feature-ui-components.md)** - For spinner, toast notifications, and modal patterns
 4. **[Plugin Architecture](./sip-plugin-architecture.md)** - For overall plugin structure and conventions
 
 ## Overview
@@ -80,7 +80,7 @@ Fetches and processes all installer data on page load:
 
 ```javascript
 function loadInstallersTables() {
-    // Show spinner (see [UI Components](./sip-feature-ui-components.md#spinner-and-overlay))
+    // Show spinner (see [UI Components](./sip-core-feature-ui-components.md#spinner-and-overlay))
     SiP.Core.utilities.spinner.show();
     
     // Clear module-level data
@@ -221,7 +221,7 @@ function handlePluginActivation(pluginSlug) {
     // Refresh tables
     refreshInstallersTables();
     
-    // Show success message (see [Toast Notifications](./sip-feature-ui-components.md#toast-notifications))
+    // Show success message (see [Toast Notifications](./sip-core-feature-ui-components.md#toast-notifications))
     SiP.Core.utilities.toast.show('Plugin activated successfully', 'success');
 }
 ```
@@ -376,7 +376,7 @@ Both plugins and extensions use the same table structure:
 
 ### JavaScript
 - **Location**: `/assets/js/modules/plugin-dashboard.js`
-- **Module**: Part of the SiP Core platform loader (see [Platform Guide](./sip-plugin-platform.md))
+- **Module**: Part of the SiP Core platform loader (see [Platform Guide](./sip-core-platform.md))
 
 ### PHP
 - **AJAX Handler**: `/includes/core-ajax-shell.php`

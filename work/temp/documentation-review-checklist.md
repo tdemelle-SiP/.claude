@@ -12,7 +12,7 @@
 ☑ **Reviewed all documentation files affected by changes**
 - Updated sip-printify-manager-extension-widget.md (already up to date)
 - Updated sip-master-extension-architecture.md vision document
-- Updated sip-feature-ui-components.md with Extension Installer section
+- Updated sip-core-feature-ui-components.md with Extension Installer section
 
 ☑ **Updated documentation reflects current code functionality**
 - Extension installer is now in SiP Plugins Core
@@ -62,7 +62,7 @@
 
 1. **index.md**: Added Extension Installer to Core Components, added Extension Architecture Vision section
 2. **sip-master-extension-architecture.md**: Updated to clarify it's a future vision, added current state section
-3. **sip-feature-ui-components.md**: Added Extension Installer section with usage examples
+3. **sip-core-feature-ui-components.md**: Added Extension Installer section with usage examples
 4. **No deprecated code found** in documentation that needs removal
 
 ## Next Steps:

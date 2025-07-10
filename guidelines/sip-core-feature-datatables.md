@@ -548,6 +548,6 @@ if ($.fn.DataTable.isDataTable('#table-id')) {
 ## Related Documentation
 
 - [AJAX Integration](./sip-plugin-ajax.md#datatables-integration)
-- [PhotoSwipe Guide](./sip-feature-photoswipe.md)
-- [UI Components](./sip-feature-ui-components.md)
+- [PhotoSwipe Guide](./sip-core-feature-photoswipe.md)
+- [UI Components](./sip-core-feature-ui-components.md)
 - [SiP Printify Manager Architecture](./sip-printify-manager-architecture.md)

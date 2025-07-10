@@ -106,12 +106,12 @@ If you are working on a task that you suspect may involve any of the above syste
 - Check that response routing follows documented three-level structure
 
 **DATATABLES IMPLEMENTATION:**
-- Read sip-feature-datatables.md for table patterns
+- Read sip-core-feature-datatables.md for table patterns
 - Follow client-side processing standards
 - Implement proper cleanup before destroy()
 
 **UI COMPONENTS:**
-- Read sip-feature-ui-components.md for UI patterns
+- Read sip-core-feature-ui-components.md for UI patterns
 - Use SiP.Core utilities for all UI operations
 - Follow the three-layer visibility structure for tables
 
@@ -119,7 +119,7 @@ If you are working on a task that you suspect may involve any of the above syste
 
 New to SiP Plugin development? Much of the documentation is structured specifically to serve as an intuitive and accessible reference to use as you are executing common development tasks.  Follow this path to get up to speed quickly:
 
-1. **Understand the Platform** → Start with [SiP Plugins Platform](./guidelines/sip-plugin-platform.md)
+1. **Understand the Platform** → Start with [SiP Plugins Platform](./guidelines/sip-core-platform.md)
    - Learn the key principles and architecture
    - Understand how plugins interact with the core platform
 
@@ -135,9 +135,9 @@ New to SiP Plugin development? Much of the documentation is structured specifica
    - Follow request-response patterns
 
 4. **Implement Advanced Features** → Choose from available features
-   - [DataTables](./guidelines/sip-feature-datatables.md) for data display
-   - [UI Components](./guidelines/sip-feature-ui-components.md) for interface elements
-   - [Progress Dialog](./guidelines/sip-feature-progress-dialog.md) for batch operations
+   - [DataTables](./guidelines/sip-core-feature-datatables.md) for data display
+   - [UI Components](./guidelines/sip-core-feature-ui-components.md) for interface elements
+   - [Progress Dialog](./guidelines/sip-core-feature-progress-dialog.md) for batch operations
 
 5. **Document Your Code** → Follow [Documentation Standards](./guidelines/sip-development-documentation.md)
    - Add JSDoc/PHPDoc to all functions
@@ -184,7 +184,7 @@ The documentation is organized into four main categories:
 
 1. **Core Documentation** - Development standards and best practices
 2. **Plugin Development (sip-plugin-*)** - Guides for creating new plugins using SiP Core patterns
-3. **Feature Implementation (sip-feature-*)** - Guides for implementing specific SiP Core features
+3. **Feature Implementation (sip-core-feature-*)** - Guides for implementing specific SiP Core features
 4. **Development Tools (sip-development-*)** - Using the SiP Development Tools plugin for workflow automation
 
 Each guide presents standards and conventions in the context where they're used.
@@ -195,25 +195,25 @@ Each guide presents standards and conventions in the context where they're used.
 | Category | Document | Description |
 |----------|----------|-------------|
 | **🏗️ Platform & Architecture** | | |
-| Core Platform | [sip-plugin-platform.md](./guidelines/sip-plugin-platform.md) | Core architecture, components, and key principles |
+| Core Platform | [sip-core-platform.md](./guidelines/sip-core-platform.md) | Core architecture, components, and key principles |
 | Plugin Creation | [sip-plugin-architecture.md](./guidelines/sip-plugin-architecture.md) | Complete guide for plugin creation including file structure, naming conventions, storage management, AJAX implementation, dashboard creation |
-| Core Dashboard | [sip-plugins-core-dashboard.md](./guidelines/sip-plugins-core-dashboard.md) | Unified installer management for plugins and extensions |
+| Core Dashboard | [sip-core-dashboard.md](./guidelines/sip-core-dashboard.md) | Unified installer management for plugins and extensions |
 | Complex Example | [sip-printify-manager-architecture.md](./guidelines/sip-printify-manager-architecture.md) | Complete architecture example showing parent-child relationships, table management, and advanced features |
 | Browser Extension | [sip-printify-manager-extension-widget.md](./guidelines/sip-printify-manager-extension-widget.md) | Browser extension architecture and WordPress integration |
 | **🔧 Core Features** | | |
 | AJAX System | [sip-plugin-ajax.md](./guidelines/sip-plugin-ajax.md) | AJAX patterns, three-level action structure, standardized responses, error handling |
 | Data Storage | [sip-plugin-data-storage.md](./guidelines/sip-plugin-data-storage.md) | Eight storage types, client-server sync patterns, centralized storage manager |
-| DataTables | [sip-feature-datatables.md](./guidelines/sip-feature-datatables.md) | DataTables integration, server-side processing, column rendering |
-| Code Editor | [sip-feature-codemirror.md](./guidelines/sip-feature-codemirror.md) | CodeMirror integration and configuration |
-| Image Lightbox | [sip-feature-photoswipe.md](./guidelines/sip-feature-photoswipe.md) | PhotoSwipe gallery implementation |
-| Third-Party Libraries | [sip-feature-third-party-libraries.md](./guidelines/sip-feature-third-party-libraries.md) | Standards for integrating external JavaScript and CSS libraries |
+| DataTables | [sip-core-feature-datatables.md](./guidelines/sip-core-feature-datatables.md) | DataTables integration, server-side processing, column rendering |
+| Code Editor | [sip-core-feature-codemirror.md](./guidelines/sip-core-feature-codemirror.md) | CodeMirror integration and configuration |
+| Image Lightbox | [sip-core-feature-photoswipe.md](./guidelines/sip-core-feature-photoswipe.md) | PhotoSwipe gallery implementation |
+| Third-Party Libraries | [sip-core-feature-third-party-libraries.md](./guidelines/sip-core-feature-third-party-libraries.md) | Standards for integrating external JavaScript and CSS libraries |
 | **🎨 UI Components** | | |
-| UI System | [sip-feature-ui-components.md](./guidelines/sip-feature-ui-components.md) | UI hierarchy, modals, toast notifications, spinners, form elements, checkbox patterns, responsive tables, localStorage for UI state |
-| Progress Dialog | [sip-feature-progress-dialog.md](./guidelines/sip-feature-progress-dialog.md) | Batch operation UI with progress tracking and cancellation |
+| UI System | [sip-core-feature-ui-components.md](./guidelines/sip-core-feature-ui-components.md) | UI hierarchy, modals, toast notifications, spinners, form elements, checkbox patterns, responsive tables, localStorage for UI state |
+| Progress Dialog | [sip-core-feature-progress-dialog.md](./guidelines/sip-core-feature-progress-dialog.md) | Batch operation UI with progress tracking and cancellation |
 | **💻 Development Standards** | | |
 | CSS Architecture | [sip-development-css.md](./guidelines/sip-development-css.md) | CSS architecture, BEM methodology, organization patterns |
 | Testing & Debug | [sip-development-testing-debug.md](./guidelines/sip-development-testing-debug.md) | Testing strategies, debugging workflows, three-level debug logging system |
-| Documentation Guidelines | [sip-documentation-guidelines-unified.md](./guidelines/sip-documentation-guidelines-unified.md) | Complete documentation approach: diagrams show WHAT, text explains WHY |
+| Documentation Guidelines | [sip-development-documentation-guidelines.md](./guidelines/sip-development-documentation-guidelines.md) | Complete documentation approach: diagrams show WHAT, text explains WHY |
 | Code Documentation | [sip-development-documentation.md](./guidelines/sip-development-documentation.md) | JSDoc/PHPDoc standards, interface documentation requirements |
 | Release Process | [sip-development-release-mgmt.md](./guidelines/sip-development-release-mgmt.md) | Git workflow, versioning standards, 16-step automated release process |
 | **📊 Data Analysis** | | |
@@ -237,9 +237,9 @@ The SiP Plugins Core provides these key components (detailed in implementation g
 - Error handling patterns included
 
 ### UI Utilities
-- **Spinner/Overlay**: `SiP.Core.utilities.spinner` - [Full Documentation](./guidelines/sip-feature-ui-components.md#spinner-and-overlay)
-- **Toast Notifications**: `SiP.Core.utilities.toast` - [Documentation](./guidelines/sip-feature-ui-components.md#toast-notifications)
-- **Progress Dialog**: `SiP.Core.progressDialog` - [Full Guide](./guidelines/sip-feature-progress-dialog.md)
+- **Spinner/Overlay**: `SiP.Core.utilities.spinner` - [Full Documentation](./guidelines/sip-core-feature-ui-components.md#spinner-and-overlay)
+- **Toast Notifications**: `SiP.Core.utilities.toast` - [Documentation](./guidelines/sip-core-feature-ui-components.md#toast-notifications)
+- **Progress Dialog**: `SiP.Core.progressDialog` - [Full Guide](./guidelines/sip-core-feature-progress-dialog.md)
 - **Extension Installer**: `SiP.Core.extensionInstaller` - Centralized browser extension installation wizard
 
 ### Plugin Framework
@@ -278,13 +278,13 @@ The SiP Plugin Suite documentation is organized to guide you through the complet
    - Implement [AJAX handlers](./guidelines/sip-plugin-ajax.md) for server communication
    - Set up [data storage](./guidelines/sip-plugin-data-storage.md) patterns
 
-3. **Add SiP Core Features** (sip-feature-* guides)
+3. **Add SiP Core Features** (sip-core-feature-* guides)
    Choose from available features as needed:
-   - [Progress Dialog](./guidelines/sip-feature-progress-dialog.md) for batch operations
-   - [DataTables](./guidelines/sip-feature-datatables.md) for data display
-   - [UI Components](./guidelines/sip-feature-ui-components.md) for consistent interfaces and modals
-   - [CodeMirror](./guidelines/sip-feature-codemirror.md) for code editing
-   - [PhotoSwipe](./guidelines/sip-feature-photoswipe.md) for image galleries
+   - [Progress Dialog](./guidelines/sip-core-feature-progress-dialog.md) for batch operations
+   - [DataTables](./guidelines/sip-core-feature-datatables.md) for data display
+   - [UI Components](./guidelines/sip-core-feature-ui-components.md) for consistent interfaces and modals
+   - [CodeMirror](./guidelines/sip-core-feature-codemirror.md) for code editing
+   - [PhotoSwipe](./guidelines/sip-core-feature-photoswipe.md) for image galleries
 
 4. **Test and Deploy** (sip-development-* guides)
    - Use [Testing, Debugging & Logging](./guidelines/sip-development-testing-debug.md) during development
@@ -301,10 +301,10 @@ Start New Plugin?
     └─> NO: Adding to Existing Plugin?
          └─> Review current structure
          └─> Choose needed features:
-              ├─> Batch Operations? -> sip-feature-progress-dialog.md
-              ├─> Data Tables? -> sip-feature-datatables.md
-              ├─> Modal Dialogs? -> sip-feature-ui-components.md
-              └─> Other UI? -> sip-feature-ui-components.md
+              ├─> Batch Operations? -> sip-core-feature-progress-dialog.md
+              ├─> Data Tables? -> sip-core-feature-datatables.md
+              ├─> Modal Dialogs? -> sip-core-feature-ui-components.md
+              └─> Other UI? -> sip-core-feature-ui-components.md
 ```
 
 ### Example: Building a Complete Plugin
@@ -315,9 +315,9 @@ Here's how you might use the documentation to build a plugin that manages produc
 2. **AJAX**: Implement product CRUD operations with [AJAX Implementation](./guidelines/sip-plugin-ajax.md)
 3. **Storage**: Set up database tables with [Data Storage & File Handling](./guidelines/sip-plugin-data-storage.md)
 4. **Features**: Add:
-   - [DataTables](./guidelines/sip-feature-datatables.md) for product listings
-   - [Progress Dialog](./guidelines/sip-feature-progress-dialog.md) for bulk imports
-   - [UI Components](./guidelines/sip-feature-ui-components.md) for modals and interface elements
+   - [DataTables](./guidelines/sip-core-feature-datatables.md) for product listings
+   - [Progress Dialog](./guidelines/sip-core-feature-progress-dialog.md) for bulk imports
+   - [UI Components](./guidelines/sip-core-feature-ui-components.md) for modals and interface elements
 6. **Deployment**: Use [Release Management](./guidelines/sip-development-release-mgmt.md) to deploy
 
 ## Quick Reference
@@ -325,9 +325,9 @@ Here's how you might use the documentation to build a plugin that manages produc
 ### Common Tasks
 1. **Need to create a new plugin?** → [Plugin Architecture](./guidelines/sip-plugin-architecture.md)
 2. **Adding AJAX to your plugin?** → [AJAX Implementation](./guidelines/sip-plugin-ajax.md)
-3. **Need progress feedback?** → [Progress Dialog](./guidelines/sip-feature-progress-dialog.md)
+3. **Need progress feedback?** → [Progress Dialog](./guidelines/sip-core-feature-progress-dialog.md)
 4. **Working with data storage?** → [Data Storage & File Handling](./guidelines/sip-plugin-data-storage.md)
-5. **Need UI components?** → [UI Components](./guidelines/sip-feature-ui-components.md)
+5. **Need UI components?** → [UI Components](./guidelines/sip-core-feature-ui-components.md)
 
 ### Essential Patterns
 1. **AJAX Requests**: Always use `SiP.Core.utilities.createFormData()` and `SiP.Core.ajax.handleAjaxAction()`
