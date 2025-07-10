@@ -198,7 +198,7 @@ Each guide presents standards and conventions in the context where they're used.
 | Core Platform | [sip-core-platform.md](./guidelines/sip-core-platform.md) | Core architecture, components, and key principles |
 | Plugin Creation | [sip-plugin-architecture.md](./guidelines/sip-plugin-architecture.md) | Complete guide for plugin creation including file structure, naming conventions, storage management, AJAX implementation, dashboard creation |
 | Core Dashboard | [sip-core-dashboard.md](./guidelines/sip-core-dashboard.md) | Unified installer management for plugins and extensions |
-| Complex Example | [sip-printify-manager-architecture.md](./guidelines/sip-printify-manager-architecture.md) | Complete architecture example showing parent-child relationships, table management, and advanced features |
+| Complex Example | [sip-printify-manager-guidelines.md](./guidelines/sip-printify-manager-guidelines.md) | Complete architecture example showing parent-child relationships, table management, and advanced features |
 | Browser Extension | [sip-printify-manager-extension-widget.md](./guidelines/sip-printify-manager-extension-widget.md) | Browser extension architecture and WordPress integration |
 | **🔧 Core Features** | | |
 | AJAX System | [sip-plugin-ajax.md](./guidelines/sip-plugin-ajax.md) | AJAX patterns, three-level action structure, standardized responses, error handling |
@@ -221,7 +221,7 @@ Each guide presents standards and conventions in the context where they're used.
 | **🧪 Testing** | | |
 | API Testing | [sip-printify-manager-testing.md](./guidelines/sip-printify-manager-testing.md) | API testing procedures and experimental feature testing |
 
-**Important Note**: All SiP Printify Manager specific documentation (including implementation details, status management, table behaviors, etc.) should be maintained in the [SiP Printify Manager Architecture](./guidelines/sip-printify-manager-architecture.md) file, not in the general plugin development guides.
+**Important Note**: All SiP Printify Manager specific documentation (including implementation details, status management, table behaviors, etc.) should be maintained in the [SiP Printify Manager Architecture](./guidelines/sip-printify-manager-guidelines.md) file, not in the general plugin development guides.
 
 
 ## Core Components and Utilities

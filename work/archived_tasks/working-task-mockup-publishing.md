@@ -17,7 +17,7 @@
 - [x] Coding_Guidelines_Snapshot.txt
 - [x] index.md 
 - [x] working-task-planning-template.md
-- [x] sip-printify-manager-architecture.md
+- [x] sip-printify-manager-guidelines.md
 - [x] sip-printify-manager-extension-widget.md
 - [ ] sip-plugin-ajax.md
 - [ ] sip-core-feature-ui-components.md

@@ -53,7 +53,7 @@ DataTables implementation in SiP plugins uses **client-side processing only** fo
 
 For simple tables that don't require DataTables functionality, see [Non-DataTables Table Refresh](./sip-core-feature-ui-components.md#non-datatables-table-refresh).
 
-For complex hierarchical data relationships (like parent-child product relationships), see the [SiP Printify Manager Architecture Guide](./sip-printify-manager-architecture.md).
+For complex hierarchical data relationships (like parent-child product relationships), see the [SiP Printify Manager Architecture Guide](./sip-printify-manager-guidelines.md).
 
 ## DataTable Initialization Patterns
 
@@ -703,7 +703,7 @@ The creation table implements a **hybrid architecture** that combines:
 2. **Custom Row Injection**: For summary rows that aggregate variant data
 3. **Dynamic Grouping**: Based on template or child product relationships
 
-**Note**: The creation table underwent a column reorganization to improve alignment across different row types. For detailed architecture information, see the [Creation Table System section](./sip-printify-manager-architecture.md#creation-table-system) in the SiP Printify Manager Architecture guide.
+**Note**: The creation table underwent a column reorganization to improve alignment across different row types. For detailed architecture information, see the [Creation Table System section](./sip-printify-manager-guidelines.md#creation-table-system) in the SiP Printify Manager Architecture guide.
 
 ### Base Configuration
 
