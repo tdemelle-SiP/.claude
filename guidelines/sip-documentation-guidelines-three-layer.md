@@ -1,8 +1,20 @@
 # SiP Documentation Guidelines - Three-Layer Framework
 
+This document defines the three-layer documentation framework for all SiP technical documentation. The framework separates architectural diagrams (WHAT), implementation details (HOW), and design rationale (WHY) to create documentation that is both complete and comprehensible.
+
+**Document outline:**
+- Overview and framework structure
+- Core principles and their implementation
+- Requirements for sections and layers
+- Guidelines for each layer (WHAT, HOW, WHY)
+- Verification and maintenance procedures
+- Quick reference templates
+
 ## 1. Overview
 
-### WHAT: Documentation Structure
+This section explains the three-layer framework structure and why it solves common documentation problems.
+
+### I. Documentation Structure
 
 ```mermaid
 graph TD
@@ -24,15 +36,15 @@ graph TD
     HOW -->|explained by| WHY
 ```
 
-### HOW: Layer Responsibilities
+### II. Layer Responsibilities
 
 | Layer | Content Type | Audience | Format |
 |-------|-------------|----------|---------|
-| **WHAT** | Logical architecture, component relationships, data flows | Developers understanding system structure | Mermaid diagrams with file:function references |
+| **WHAT** | Logical architecture, component relationships, data flows | Developers understanding system structure | Mermaid diagrams with function/file references |
 | **HOW** | Implementation details, code mappings, specific values | Developers implementing/debugging features | Code examples, detailed diagrams, mapping tables |
 | **WHY** | Design rationale, constraints, business value | Everyone needing to understand decisions | Accessible prose, 2-4 paragraphs per section |
 
-### WHY: Three Layers Solve Documentation Problems
+### III. Three Layers Solve Documentation Problems
 
 Traditional documentation fails in predictable ways: either it's too abstract (missing critical implementation details) or too detailed (obscuring the architecture in implementation minutiae). The three-layer framework solves this by explicitly separating concerns:
 
@@ -44,22 +56,24 @@ Traditional documentation fails in predictable ways: either it's too abstract (m
 
 ## 2. Foundational Principles
 
-### WHAT: Eight Core Principles
+These eight principles drive both code and documentation creation, ensuring consistency between implementation and its documentation.
+
+### I. Eight Core Principles
 
 ```mermaid
 graph LR
     subgraph "Code Principles"
-        P1[1. Fix Root Causes]
-        P2[2. Single Truth]
-        P3[3. Zero Assumptions]
-        P4[4. Structural Correctness]
+        P1[Fix Root Causes<br/>-principle-<br/>guidelines.md]
+        P2[Single Truth<br/>-principle-<br/>guidelines.md]
+        P3[Zero Assumptions<br/>-principle-<br/>guidelines.md]
+        P4[Structural Correctness<br/>-principle-<br/>guidelines.md]
     end
     
     subgraph "Documentation Principles"
-        P5[5. Complete Representation]
-        P6[6. Current State Only]
-        P7[7. Positive Specification]
-        P8[8. Logical Clarity]
+        P5[Complete Representation<br/>-principle-<br/>guidelines.md]
+        P6[Current State Only<br/>-principle-<br/>guidelines.md]
+        P7[Positive Specification<br/>-principle-<br/>guidelines.md]
+        P8[Logical Clarity<br/>-principle-<br/>guidelines.md]
     end
     
     P1 -->|drives| P5
@@ -68,7 +82,7 @@ graph LR
     P4 -->|drives| P8
 ```
 
-### HOW: Principle Implementation
+### II. Principle Implementation
 
 #### 1. FIX ROOT CAUSES, NOT SYMPTOMS
 - **Code**: Structure systems so errors are impossible, not defended against
@@ -83,7 +97,7 @@ graph LR
 #### 3. ZERO ASSUMPTIONS
 - **Code**: Verify all data structures, timing, and dependencies
 - **Documentation**: Verify all elements against actual implementation with file references
-- **Requirement**: Every diagram node must have file:function reference
+- **Requirement**: Every diagram node must have function and file reference
 
 #### 4. STRUCTURAL CORRECTNESS
 - **Code**: Build systems that work by design, not by defensive programming
@@ -110,7 +124,7 @@ graph LR
 - **Documentation**: Show logical operations, not every function call
 - **Pattern**: Show patterns once, not every instance
 
-### WHY: Principles Prevent Documentation Decay
+### III. Principles Prevent Documentation Decay
 
 These principles aren't arbitrary rules - they address specific ways documentation fails over time. Without fixing root causes, documentation accumulates workarounds that obscure the actual design. Without single source of truth, updates create inconsistencies that erode trust. Without zero assumptions, documentation drifts from implementation reality.
 
@@ -120,7 +134,9 @@ Most importantly, these principles make documentation maintainable. When code ch
 
 ## 3. Section Structure Requirements
 
-### WHAT: Standard Section Format
+Every documentation section must follow a standard format with introductions and three distinct layers.
+
+### I. Standard Section Format
 
 ```mermaid
 graph TD
@@ -137,12 +153,14 @@ graph TD
     HOW_D -->|must precede| WHY_D
 ```
 
-### HOW: Section Implementation
+### II. Section Implementation
 
 Every section MUST follow this structure:
 
 ```markdown
 ### X.X Feature Name
+
+[1-2 sentences explaining what this section covers and optionally why it matters]
 
 #### WHAT: [Descriptive Title]
 ```mermaid
@@ -164,7 +182,18 @@ Every section MUST follow this structure:
 [- Why alternatives weren't suitable]
 ```
 
-### WHY: Rigid Structure Enables Verification
+#### Introduction Requirements
+
+**Document-level introduction** (at the very top):
+1. First sentence: What system/feature this documents and its primary purpose
+2. Second sentence: The key problem it solves or constraint it addresses
+3. Brief outline: Major sections in bullet points
+
+**Section-level introduction** (after each section heading):
+1. One sentence: What this section demonstrates or explains
+2. Optional second sentence: Why this is important (only if not obvious)
+
+### III. Rigid Structure Enables Verification
 
 The three-layer structure isn't just organization - it's a verification framework. By requiring every feature to have all three layers, we make incompleteness obvious. Missing HOW sections reveal undocumented implementation details. Missing WHY sections expose unexplained decisions.
 
@@ -174,7 +203,9 @@ Most importantly, this structure makes it impossible to hide missing documentati
 
 ## 4. WHAT Layer Guidelines
 
-### WHAT: Diagram Requirements
+The WHAT layer uses diagrams to show system architecture and logical structure without implementation details.
+
+### I. Diagram Requirements
 
 ```mermaid
 graph LR
@@ -198,7 +229,9 @@ graph LR
     style Values fill:#f99
 ```
 
-### HOW: Diagram Syntax
+**What "code" means here**: Function and file names (like `-validateUser-` and `auth.js`) are required for verification. Actual code snippets, implementation logic, or code examples are forbidden.
+
+### II. Diagram Syntax
 
 #### Node Format Requirements
 ```
@@ -206,7 +239,16 @@ graph LR
 ```
 - **Descriptor**: What the component does logically
 - **functionName**: Actual function/class name for verification
-- **file.js**: Actual file location
+- **file.js**: Actual file location (no path, no line numbers)
+
+**Important**: Never include line numbers. They change frequently and create maintenance burden.
+
+#### Function and File Usage by Layer
+| Layer | Function Names | File Names | Format |
+|-------|---------------|------------|--------|
+| **WHAT** | Required in nodes | Required in nodes | `[Description<br/>-functionName-<br/>file.js]` |
+| **HOW** | In code examples | With examples | Standard code format |
+| **WHY** | Never | Never | Plain prose only |
 
 #### Edge Format by Diagram Type
 - **Flow/Graph**: `-->|methodName()|` or `-->|data flow|`
@@ -221,9 +263,11 @@ subgraph "Logical Group Name"
 end
 ```
 
-### WHY: Diagrams Show Architecture, Not Implementation
+### III. Diagrams Show Architecture, Not Implementation
 
 Diagrams must resist the temptation to show everything. Their power comes from abstraction - showing the forest, not every tree. When diagrams include implementation details, they become unreadable and unmaintainable.
+
+Function and file names appear in WHAT diagrams for verification only - they prove the diagram matches reality. The actual implementation code belongs in the HOW layer, never in WHAT. This separation keeps architectural views clean while preserving all necessary details in their proper place.
 
 The function and file references serve verification, not implementation documentation. They prove the diagram matches reality without cluttering it with details. A diagram that shows `validateUser()` calling `checkPermissions()` is useful; one that shows every validation step is not.
 
@@ -231,7 +275,9 @@ Logical grouping makes complex systems comprehensible. By grouping related compo
 
 ## 5. HOW Layer Guidelines
 
-### WHAT: Implementation Detail Types
+The HOW layer captures all implementation details removed from WHAT diagrams, ensuring nothing is lost.
+
+### I. Implementation Detail Types
 
 ```mermaid
 graph TD
@@ -254,13 +300,15 @@ graph TD
     Constants --> Tables
 ```
 
-### HOW: Implementation Patterns
+### II. Implementation Patterns
+
+**What "code" means here**: This is where actual code examples, implementations, and detailed logic belong. Show real JavaScript, configuration values, SQL queries, etc.
 
 #### Mapping Tables
 ```markdown
 | Diagram Element | Implementation | File Location |
 |----------------|----------------|---------------|
-| Router | handleMessage() | widget-router.js:45 |
+| Router | handleMessage() | widget-router.js |
 | Storage Sync | chrome.storage.sync | Multiple files |
 ```
 
@@ -299,7 +347,7 @@ sequenceDiagram
     end
 ```
 
-### WHY: HOW Layer Preserves Essential Details
+### III. HOW Layer Preserves Essential Details
 
 When we abstract architecture for clarity, we risk losing critical implementation details. The HOW layer ensures nothing is lost - it's just organized better. Every magic number, every ID mapping, every complex sequence has a home.
 
@@ -309,7 +357,9 @@ Most importantly, the HOW layer makes the WHAT layer possible. By providing a pr
 
 ## 6. WHY Layer Guidelines
 
-### WHAT: Required Explanations
+The WHY layer explains design decisions in accessible prose that all stakeholders can understand.
+
+### I. WHY Layer Components
 
 ```mermaid
 graph TD
@@ -326,7 +376,7 @@ graph TD
     Design --> Tradeoffs
 ```
 
-### HOW: Writing Effective WHY Sections
+### II. Writing Effective WHY Sections
 
 #### Structure Template
 ```markdown
@@ -361,9 +411,11 @@ through Chrome's messaging system, creating an audit trail of what extensions
 do with your data.
 ```
 
-### WHY: Prose Makes Documentation Accessible
+### III. Prose Makes Documentation Accessible
 
 Technical documentation often forgets its human readers. The WHY layer restores humanity to documentation by explaining decisions in terms anyone can understand. This isn't dumbing down - it's opening up.
+
+No code or function names should appear in WHY sections. Not because they're forbidden, but because they're unnecessary - the WHY layer explains rationale, not implementation. Technical details would only obscure the human reasoning that makes decisions understandable to all stakeholders.
 
 When documentation explains that "Printify blocks our extension to prevent automation," everyone understands the constraint. When it says "chrome.runtime is null," only developers understand, and even they don't know why it matters.
 
@@ -371,7 +423,9 @@ Accessible explanations build team alignment. When product managers understand t
 
 ## 7. Verification Framework
 
-### WHAT: Verification Requirements
+This framework provides systematic methods to ensure documentation remains accurate and complete.
+
+### I. Verification Structure
 
 ```mermaid
 graph TD
@@ -395,7 +449,7 @@ graph TD
     Quality --> Test
 ```
 
-### HOW: Verification Protocol
+### II. Verification Protocol
 
 #### Coverage Verification
 ```bash
@@ -436,7 +490,7 @@ For each major feature:
 - [ ] All three reference same functionality
 - [ ] No orphaned sections
 
-### WHY: Verification Prevents Documentation Decay
+### III. Verification Prevents Documentation Decay
 
 Documentation has a half-life measured in weeks. Without active verification, it decays into fiction that misleads more than it helps. The verification framework fights this entropy through systematic checking.
 
@@ -446,7 +500,9 @@ Most importantly, the three-layer structure makes verification possible. When im
 
 ## 8. Common Patterns and Anti-Patterns
 
-### WHAT: Pattern Recognition
+Recognizing patterns and anti-patterns helps maintain documentation quality and consistency.
+
+### I. Pattern Recognition
 
 ```mermaid
 graph LR
@@ -467,7 +523,7 @@ graph LR
     style Fiction fill:#f99
 ```
 
-### HOW: Pattern Examples
+### II. Pattern Examples
 
 #### Good Pattern: Logical Grouping
 ```mermaid
@@ -499,7 +555,7 @@ graph TD
 Chrome storage syncs across devices... [no WHAT or HOW above]
 ```
 
-### WHY: Patterns Guide Future Documentation
+### III. Patterns Guide Future Documentation
 
 Patterns aren't rules - they're wisdom distilled from experience. They show what works and what doesn't, helping future documeters avoid known pitfalls. Anti-patterns are especially valuable because they show attractive approaches that lead to maintenance nightmares.
 
@@ -509,7 +565,9 @@ Good patterns reinforce the framework's benefits. Logical grouping shows how abs
 
 ## 9. Maintenance Guidelines
 
-### WHAT: Maintenance Triggers
+Documentation requires regular updates to remain valuable - these guidelines define when and how to maintain it.
+
+### I. Maintenance Triggers
 
 ```mermaid
 graph TD
@@ -535,7 +593,7 @@ graph TD
     Review --> WHY_U
 ```
 
-### HOW: Update Process
+### II. Update Process
 
 1. **Identify changed files**
    ```bash
@@ -562,7 +620,7 @@ graph TD
    - Trace one operation through all changes
    - Review with someone unfamiliar with changes
 
-### WHY: Maintenance Keeps Documentation Alive
+### III. Maintenance Keeps Documentation Alive
 
 Documentation maintenance is like tending a garden - ignore it and weeds take over. The three-layer framework makes maintenance manageable by localizing changes. When implementation details change, usually only the HOW layer needs updates. When architecture changes, WHAT and WHY need attention but HOW might stay the same.
 
@@ -572,7 +630,9 @@ Most importantly, the verification framework makes maintenance verifiable. You c
 
 ## 10. Quick Reference
 
-### WHAT: Documentation Checklist
+Essential checklists and templates for creating compliant three-layer documentation.
+
+### I. Essential Checklists
 
 ```mermaid
 graph TD
@@ -588,11 +648,13 @@ graph TD
     end
 ```
 
-### HOW: Quick Templates
+### II. Quick Templates
 
 #### Section Template
 ```markdown
 ### X.X Feature Name
+
+[1-2 sentences explaining what this section covers]
 
 #### WHAT: Logical Architecture
 ```mermaid
@@ -620,7 +682,7 @@ graph TD
 - [ ] No mixed concerns between layers
 ```
 
-### WHY: Quick Reference Enables Consistent Documentation
+### III. Quick Reference Enables Consistent Documentation
 
 The curse of documentation standards is that nobody follows them. They're too long to remember, too complex to follow, hidden in some wiki. The quick reference fights this by providing the essential patterns at a glance.
 
