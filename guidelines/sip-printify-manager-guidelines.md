@@ -1618,7 +1618,7 @@ The mockup system uses jQuery events for loose coupling between modules:
 
 ```javascript
 // Extension ready event
-$(document).on('extensionReady', function(e, data) {
+$(document).on('extensionDetected', function(e, data) {
     // Re-check for mockup availability
 });
 
@@ -1664,7 +1664,7 @@ When blueprints without mockups are detected on page load:
 
 ### Event-Driven Communication
 The mockup system uses jQuery events for inter-module communication:
-- **`extensionReady`**: Triggered by browser-extension-manager when extension announces readiness
+- **`extensionDetected`**: Triggered by browser-extension-manager when extension announces readiness
 - **`extensionInstalled`**: Triggered when extension is first installed
 - **`blueprintRowsCreated`**: Triggered when product table creates blueprint rows
 

@@ -16,19 +16,19 @@ This document defines the standardized request-based detection pattern for brows
 
 ```mermaid
 sequenceDiagram
-    participant UI as UI Components
-    participant WP as WordPress Plugin
+    participant UI as WordPress UI<br/>(plugin-dashboard.js,<br/>shop-actions.js, etc.)
+    participant BEM as Browser Extension Manager<br/>(browser-extension-actions.js)
     participant Relay as Extension Relay<br/>(widget-relay.js)
     participant Router as Extension Router<br/>(widget-router.js)
     participant Handler as WordPress Handler<br/>(wordpress-handler.js)
     
-    Note over UI: UI starts with "Install Extension" button visible
+    Note over UI: Page loads, needs extension status
     
-    UI->>WP: init() called on page load
-    WP->>WP: checkExtensionStatus()
+    UI->>BEM: browserExtensionManager.checkStatus()
+    BEM->>BEM: checkExtensionStatus()
     
-    Note over WP: Send detection request using internal format
-    WP->>Relay: window.postMessage({<br/>  type: 'wordpress',<br/>  action: 'SIP_REQUEST_EXTENSION_STATUS',<br/>  source: 'sip-plugins-core'<br/>}, window.location.origin)
+    Note over BEM: Send detection request
+    BEM->>Relay: window.postMessage({<br/>  type: 'wordpress',<br/>  action: 'SIP_REQUEST_EXTENSION_STATUS',<br/>  source: 'sip-printify-manager'<br/>}, window.location.origin)
     
     Note over Relay: handleWordPressMessage(event)
     Relay->>Relay: Validate origin === window.location.origin
@@ -52,16 +52,17 @@ sequenceDiagram
     Router-->>Relay: chrome.runtime response
     
     Note over Relay: Pass response directly (no wrapping)
-    Relay-->>WP: window.postMessage({<br/>  success: true,<br/>  type: 'SIP_EXTENSION_DETECTED',<br/>  extension: {<br/>    slug: 'sip-printify-manager-extension',<br/>    version: manifest.version,<br/>    capabilities: {...}<br/>  }<br/>}, window.location.origin)
+    Relay-->>BEM: window.postMessage({<br/>  success: true,<br/>  type: 'SIP_EXTENSION_DETECTED',<br/>  extension: {<br/>    slug: 'sip-printify-manager-extension',<br/>    version: manifest.version,<br/>    capabilities: {...}<br/>  }<br/>}, window.location.origin)
     
-    Note over WP: Listen for direct response
-    WP->>WP: if (event.data.type === 'SIP_EXTENSION_DETECTED')
-    WP->>UI: $(document).trigger('extensionReady', extension)
-    UI->>UI: Hide install button, enable features
+    Note over BEM: Handle response
+    BEM->>BEM: if (event.data.type === 'SIP_EXTENSION_DETECTED')
+    BEM->>UI: $(document).trigger('extensionDetected', extension)
+    UI->>UI: Update UI with extension info
     
-    Note over UI: Example of other commands (e.g., SIP_SHOW_WIDGET)
+    Note over UI: Example of other commands
     
-    WP->>Relay: window.postMessage({<br/>  type: 'wordpress',<br/>  action: 'SIP_SHOW_WIDGET',<br/>  source: 'sip-printify-manager'<br/>}, window.location.origin)
+    UI->>BEM: browserExtensionManager.sendMessage({...})
+    BEM->>Relay: window.postMessage({<br/>  type: 'wordpress',<br/>  action: 'SIP_SHOW_WIDGET',<br/>  source: 'sip-printify-manager'<br/>}, window.location.origin)
     
     Note over Relay,Handler: Same flow - ALL messages go through router
 ```
