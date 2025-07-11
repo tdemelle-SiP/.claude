@@ -63,9 +63,49 @@ sequenceDiagram
     UI->>UI: Update UI with extension info
 ```
 
+### Widget Visibility Control
+
+Once the extension is detected, WordPress controls when the floating widget appears:
+
+```mermaid
+sequenceDiagram
+    participant WP as WordPress Plugin<br/>(Page Logic)
+    participant BEM as Browser Extension Manager<br/>(browser-extension-actions.js)
+    participant Relay as Extension Relay<br/>(wordpress-relay.js)
+    participant Router as Extension Router<br/>(widget-router.js)
+    participant Handler as Widget Handler<br/>(widget-data-handler.js)
+    participant CS as Content Script<br/>(widget-tabs-actions.js)
+    
+    Note over CS: Widget code loaded via manifest<br/>but widget is hidden by default
+    
+    Note over WP: WordPress determines<br/>widget should be visible
+    
+    WP->>BEM: Show widget on this page
+    BEM->>Relay: window.postMessage({<br/>  type: 'wordpress',<br/>  action: 'SIP_SHOW_WIDGET',<br/>  source: 'sip-printify-manager'<br/>})
+    
+    Relay->>Router: chrome.runtime.sendMessage(...)
+    Router->>Handler: Route to widget handler
+    
+    Handler->>CS: chrome.tabs.sendMessage({<br/>  action: 'showWidget'<br/>})
+    
+    CS->>CS: showWidget()<br/>- Ensure position visible<br/>- Add 'sip-visible' class
+    
+    Note over CS: Widget becomes visible to user
+    
+    Handler-->>Router: { success: true,<br/>  message: 'Widget show message sent' }
+    Router-->>Relay: Response (no source field)
+    
+    Note over Relay: Response ignored<br/>(already handled by callback)
+```
+
 ## How
 
 ### Implementation Details
+
+**Two-Stage Widget Display**:
+- **Stage 1 (Manifest)**: Content scripts are automatically injected on all `/wp-admin/*` pages
+- **Stage 2 (Command)**: WordPress sends `SIP_SHOW_WIDGET` to control visibility on specific pages
+- This allows WordPress to have fine-grained control over widget visibility based on context, permissions, or page type
 
 **Message Identification**:
 - Messages are identified by their `source` field, not by structure or content
@@ -86,7 +126,12 @@ sequenceDiagram
 
 **WordPress-side setup** (in any plugin):
 ```javascript
-// Must use Browser Extension Manager from sip-printify-manager plugin
+// Initialize the browser extension manager (required for message listener)
+if (SiP.PrintifyManager && SiP.PrintifyManager.browserExtensionManager) {
+    SiP.PrintifyManager.browserExtensionManager.init();
+}
+
+// Then check for extensions
 SiP.PrintifyManager.browserExtensionManager.checkStatus()
 ```
 
@@ -122,3 +167,8 @@ SiP.PrintifyManager.browserExtensionManager.checkStatus()
 - Direct path back to requester without re-validation
 - Responses can't be spoofed by other page scripts
 - Maintains clean separation between request and response flows
+
+**Browser Extension Manager initialization**:
+- Must be initialized before use to register message listeners
+- Without init(), extension responses arrive but aren't processed
+- Each WordPress page using detection must call init() once
