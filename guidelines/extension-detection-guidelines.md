@@ -46,14 +46,14 @@ sequenceDiagram
     Handler->>Handler: case 'SIP_REQUEST_EXTENSION_STATUS'
     Handler->>Handler: Get manifest version & capabilities
     
-    Handler-->>Router: sendResponse({<br/>  success: true,<br/>  type: 'SIP_EXTENSION_DETECTED',<br/>  extension: {<br/>    slug: 'sip-printify-manager-extension',<br/>    version: manifest.version,<br/>    capabilities: {...}<br/>  }<br/>})
+    Handler-->>Router: sendResponse({<br/>  success: true,<br/>  type: 'SIP_EXTENSION_DETECTED',<br/>  source: 'sip-printify-extension',<br/>  extension: {<br/>    slug: 'sip-printify-manager-extension',<br/>    version: manifest.version,<br/>    capabilities: {...}<br/>  }<br/>})
     
     Router-->>Relay: Chrome runtime response
     
     Note over Relay: Inside sendWordPressMessageToRouter callback
     Relay->>Relay: if (response) {<br/>  window.postMessage(response, allowedOrigin)<br/>}
     
-    Relay-->>BEM: window.postMessage({<br/>  success: true,<br/>  type: 'SIP_EXTENSION_DETECTED',<br/>  extension: {<br/>    slug: 'sip-printify-manager-extension',<br/>    version: manifest.version,<br/>    capabilities: {...}<br/>  }<br/>}, window.location.origin)
+    Relay-->>BEM: window.postMessage({<br/>  success: true,<br/>  type: 'SIP_EXTENSION_DETECTED',<br/>  source: 'sip-printify-extension',<br/>  extension: {<br/>    slug: 'sip-printify-manager-extension',<br/>    version: manifest.version,<br/>    capabilities: {...}<br/>  }<br/>}, window.location.origin)
     
     Note over BEM: Handle response
     BEM->>BEM: if (event.data.type === 'SIP_EXTENSION_DETECTED')
@@ -65,38 +65,60 @@ sequenceDiagram
 
 ## How
 
-### Message Flow
-- WordPress sends messages in internal format: `{ type: 'wordpress', action: 'SIP_REQUEST_EXTENSION_STATUS', source: 'sip-printify-manager' }`
-- Extension relay validates origin and source before forwarding
-- Extension router validates all messages have a `type` field
-- Router checks `type` field to route to wordpress-handler.js
-- Handler checks `request.action` to determine specific command
-- Response is sent directly without wrapping
-- Relay passes messages through unchanged in both directions
+### Implementation Details
 
-### Key Functions
+**Message Identification**:
+- Messages are identified by their `source` field, not by structure or content
+- The relay uses a simple string comparison: `data.source === 'sip-printify-extension'`
+- No complex parsing or validation needed to distinguish requests from responses
 
-1. **validateWordPressMessage(event)** in wordpress-relay.js:
-   - Listens for postMessage events from WordPress
-   - Validates origin matches current site
-   - Validates source is 'sip-plugins-core' or 'sip-printify-manager'
-   - Prevents relaying extension's own messages
+**Callback vs Event Listener**:
+- Responses arrive through TWO paths: the sendMessage callback AND the postMessage event listener
+- The callback handles the actual response processing
+- The event listener ignores responses based on their source field
 
-2. **sendWordPressMessageToRouter(message)** in wordpress-relay.js:
-   - Sends validated messages to background script via chrome.runtime.sendMessage
-   - Handles responses in callback
-   - Posts responses back to WordPress via postMessage
+**Edge Cases Handled**:
+- Messages without a source field are rejected
+- Cross-origin messages are blocked by origin validation
+- The extension's own responses don't create infinite loops
 
-3. **extensionHandler()** in plugin-dashboard.js:
-   - Sets up listener for 'extensionDetected' events
-   - Updates UI when extensions are detected
-   - Manages extension status display in tables
+### Configuration
+
+**WordPress-side setup** (in any plugin):
+```javascript
+// Must use Browser Extension Manager from sip-printify-manager plugin
+SiP.PrintifyManager.browserExtensionManager.checkStatus()
+```
+
+**Extension manifest.json requirements**:
+- Content script must be injected into WordPress admin pages
+- `wordpress-relay.js` must be loaded before other widget scripts
 
 ## Why
 
-- **ALL messages through router**: Security model requires single validation point
-- **Two-layer validation**: Origin/source validation in relay, type/structure validation in router
-- **Consistent message format**: No transformation needed throughout the flow
-- **Event-driven detection**: No state storage prevents stale data
-- **Request-based pattern**: Extension only responds when asked, reducing noise
-- **Secure bridge architecture**: wordpress-relay.js acts as secure bridge between WordPress (postMessage) and extension (Chrome runtime messaging)
+### Architectural Decisions
+
+**Source field on all messages**: 
+- Enables future multi-extension support (each extension has unique source)
+- Prevents response messages from re-entering validation flow
+- Creates self-documenting messages (origin is always clear)
+
+**Two-layer validation**:
+- Relay performs security validation (origin, source)
+- Router performs structural validation (type, action)
+- Separation prevents security checks from being bypassed
+
+**Event-driven, stateless detection**:
+- No stale data - extension status is always current
+- No memory leaks from storing detection state
+- Works correctly even if extension updates while page is open
+
+**Request-based pattern (no proactive announcements)**:
+- Reduces message noise on the page
+- Extension remains passive until queried
+- Prevents timing issues where announcement arrives before listener is ready
+
+**Callback handling for responses**:
+- Direct path back to requester without re-validation
+- Responses can't be spoofed by other page scripts
+- Maintains clean separation between request and response flows
