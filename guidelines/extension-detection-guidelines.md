@@ -172,3 +172,11 @@ SiP.PrintifyManager.browserExtensionManager.checkStatus()
 - Must be initialized before use to register message listeners
 - Without init(), extension responses arrive but aren't processed
 - Each WordPress page using detection must call init() once
+- Extension detection setup MUST happen first in init(), before any UI-related logic
+- Button existence should never gate whether detection runs (detection determines UI state, not vice versa)
+
+**Cross-plugin initialization considerations**:
+- The Printify Manager's main.js initializes modules including browserExtensionManager
+- Other plugins (like Core) may need extension status before main.js completes initialization
+- The browserExtensionManager tracks initialization to prevent duplicate setup
+- If a module is marked as initialized but message handlers weren't set up (e.g., due to cached code), detection will fail silently
