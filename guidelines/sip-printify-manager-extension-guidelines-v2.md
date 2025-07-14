@@ -6,19 +6,14 @@
 
 - [1. Three‑Layer Framework](#three-layer-framework)
 - [2. Overview](#overview)
-- [3. Key Features](#key-features)
-- [4. Architecture](#architecture)
-  - [4.1A UI & Content Scripts](#area-ui-content-scripts)
-  - [4.1B WordPress Tab Integration](#area-wordpress-tab)
-  - [4.1C Background Router & Messaging](#area-router-messaging)
-  - [4.1D Storage & Logging](#area-storage-logging)
-  - [4.1E Printify Tab Integration](#area-printify-tab)
-- [5. Implementation Guide](#implementation-guide)
-  - [5.1 Extension Detection Pattern (Refactor)](#extension-detection-pattern)
-- [6. Storage Schema](#storage-schema) *(see 4.1D)*
-- [7. Message Type Reference](#message-type-reference) *(see 4.1C)*
-- [8. Development Guide](#development-guide)
-- [9. Author Checklist](#author-checklist)
+- [3. Architecture](#architecture)
+  - [3.1A UI & Content Scripts](#area-ui-content-scripts)
+  - [3.1B WordPress Tab Integration](#area-wordpress-tab)
+  - [3.1C Background Router & Messaging](#area-router-messaging)
+  - [3.1D Storage & Logging](#area-storage-logging)
+  - [3.1E Printify Tab Integration](#area-printify-tab)
+- [4. Development Guide](#development-guide)
+- [5. Author Checklist](#author-checklist)
 
 ---
 
@@ -47,7 +42,7 @@ The extension links three contexts to automate Printify product management witho
 2. **WordPress Tab Context** – `dashboard.js` running inside the WP admin page, forwarding store data via the relay.
 3. **Printify Tab Context** – Printify.com page plus internal XHR that content scripts intercept, scrape and pass to the router.
 
-The full‑system diagram in section 4.0 visualises these contexts, data flows, and storage/logging backbones.
+The full‑system diagram in section 4.0 visualises these contexts, data flows, and storage/logging backbones. Features are documented inside their respective Major Areas in section 3 (Architecture).
 
 ### WHY
 
@@ -55,30 +50,9 @@ Printify’s public API omits mock‑up images and some product attributes neede
 
 ---
 
-## 3. KEY FEATURES {#key-features}
+## 3. ARCHITECTURE {#architecture}
 
-Feature index – each feature now appears under its Major Area subsection.
-
-| ID  | Feature                              | Major Area                                                 |
-| --- | ------------------------------------ | ---------------------------------------------------------- |
-| F1  | Tab Pairing System                   | B. WordPress Tab Integration & E. Printify Tab Integration |
-| F2  | Widget Terminal Display              | A. UI & Content Scripts                                    |
-| F3  | Pause/Resume Error Recovery          | C. Background Router & Messaging                           |
-| F4  | Response Logging Architecture        | D. Storage & Logging                                       |
-| F5  | Content Security Policy Compliance   | C. Background Router & Messaging                           |
-| F6  | Public API Naming Standards          | C. Background Router & Messaging                           |
-| F7  | Scene‑Based Mockup Selection Flow    | E. Printify Tab Integration                                |
-| F8  | Scene‑Based Selection Implementation | E. Printify Tab Integration                                |
-| F9  | Error Capture System                 | D. Storage & Logging                                       |
-| F10 | Action Logging Helper                | D. Storage & Logging                                       |
-| F11 | Diagnostic & Monitoring Tools        | E. Printify Tab Integration                                |
-| F12 | Action Log Visual Hierarchy          | D. Storage & Logging                                       |
-
----
-
-## 4. ARCHITECTURE {#architecture}
-
-### 4.0 Full‑System Overview (WHAT)
+### 3.0 Full‑System Overview (WHAT)
 
 ```mermaid
 graph LR
@@ -107,9 +81,23 @@ graph LR
   end
 ```
 
-> **WHY**   The overview highlights three execution contexts and their interactions: • **Browser Extension Context** – injected scripts, relay, and background router that coordinate actions. • **WordPress Tab Context** – `dashboard.js` bridges the admin page and extension, and may call the SiP WordPress plugin’s REST API for store data. • **Printify Tab Context** – the live page, its internal XHR calls, URL‑parameter commands, and DOM that scripts inspect. Content Scripts forward intercepted Printify data to the router; the router never calls the public API. WordPress plugin uses REST for back‑end tasks, separate from the browser extension. Host permissions are limited to printify.com and wp-admin domains to minimize Chrome Web Store review friction while maintaining necessary access.
+#### WHY
 
-### 4.1 Major Areas
+
+The overview highlights three execution contexts and their interactions:
+
+• **Browser Extension Context** – injected scripts, relay, and background router that coordinate actions.  
+• **WordPress Tab Context** – `dashboard.js` bridges the admin page and extension, and may call the SiP WordPress plugin's REST API for store data.  
+• **Printify Tab Context** – the live page, its internal XHR calls, URL‑parameter commands, and DOM that scripts inspect.
+
+Content Scripts forward intercepted Printify data to the router; the router never calls the public API.
+
+WordPress plugin uses REST for back‑end tasks, separate from the browser extension.
+
+Host permissions are limited to printify.com and wp-admin domains to minimize Chrome Web Store review friction while maintaining necessary access.
+
+
+### 3.1 Major Areas
 
 | ID | Major Area                    | Maps to Diagram Node                                      |
 | -- | ----------------------------- | --------------------------------------------------------- |
@@ -121,7 +109,7 @@ graph LR
 
 Each area will become its own subsection (**WHAT | HOW | WHY**) containing relevant Key Features.
 
-### 4.1A UI & Content Scripts {#area-ui-content-scripts}
+### 3.1A UI & Content Scripts {#area-ui-content-scripts}
 
 > **Bundle definition**  `manifest.json` contains **two** `content_scripts` blocks:
 >
@@ -181,7 +169,7 @@ A consistent floating widget keeps all extension actions in one place, avoiding 
 
 ---
 
-### 4.1B WordPress Tab Integration {#area-wordpress-tab}
+### 3.1B WordPress Tab Integration {#area-wordpress-tab}
 
 #### WHAT
 
@@ -224,11 +212,38 @@ sequenceDiagram
 
 #### WHY
 
-WordPress admin is the user’s command hub. In‑page integration respects WP permissions and provides immediate feedback. Tab pairing prevents actions from targeting the wrong Printify tab, while the relay maintains consistent validation and logging.
+WordPress admin is the user's command hub. In‑page integration respects WP permissions and provides immediate feedback. Tab pairing prevents actions from targeting the wrong Printify tab, while the relay maintains consistent validation and logging.
+
+**Deep-dive: Extension Detection**
+
+```mermaid
+sequenceDiagram
+    participant WP as WordPress UI (dashboard.js)
+    participant BEM as Browser Extension Manager
+    participant Relay as Extension Relay (wordpress-relay.js)
+    participant Router as Service Worker Router
+    participant Handler as WordPress Handler
+
+    WP->>BEM: checkStatus()
+    BEM->>Relay: postMessage(SIP_REQUEST_EXTENSION_STATUS)
+    Relay->>Router: chrome.runtime.sendMessage(...)
+    Router->>Handler: route to wordpress handler
+    Handler-->>Router: SIP_EXTENSION_DETECTED
+    Router-->>Relay: response
+    Relay-->>BEM: window.postMessage(response)
+    BEM->>WP: $(document).trigger('extensionDetected')
+```
+
+The extension detection pattern uses:
+- Two‑stage widget display – content scripts always injected, widget revealed only on `SIP_SHOW_WIDGET`
+- Message identification via `source` string (`sip‑printify-extension`)
+- Validation chain – origin → source → structure
+- Stateless detection – request/response each time; no proactive announcements
+- Edge‑case handling – missing `source`, cross‑origin messages, self‑responses
 
 ---
 
-### 4.1C Background Router & Messaging {#area-router-messaging}
+### 3.1C Background Router & Messaging {#area-router-messaging}
 
 #### WHAT
 
@@ -324,7 +339,7 @@ Manifest V3's service worker constraints require active mitigation: workers term
 
 ---
 
-### 4.1D Storage & Logging {#area-storage-logging}
+### 3.1D Storage & Logging {#area-storage-logging}
 
 #### WHAT
 
@@ -406,7 +421,7 @@ Chrome's storage quotas shape the architecture: `sipStore` is capped at 1MB to l
 
 ---
 
-### 4.1E Printify Tab Integration {#area-printify-tab}
+### 3.1E Printify Tab Integration {#area-printify-tab}
 
 #### WHAT
 
@@ -468,70 +483,15 @@ Printify lacks an official scene API, so intercepting internal XHR and scraping 
 
 ---
 
-## 5. IMPLEMENTATION GUIDE {#implementation-guide}
 
-This section contains detailed implementation patterns for key extension features.
+<a id="storage-schema"></a>
+<a id="message-type-reference"></a>
 
-### 5.1 EXTENSION DETECTION PATTERN (Refactor) {#extension-detection-pattern}
-
-#### WHAT
-
-```mermaid
-sequenceDiagram
-    participant WP as WordPress UI (dashboard.js)
-    participant BEM as Browser Extension Manager
-    participant Relay as Extension Relay (wordpress-relay.js)
-    participant Router as Service Worker Router
-    participant Handler as WordPress Handler
-
-    WP->>BEM: checkStatus()
-    BEM->>Relay: postMessage(SIP_REQUEST_EXTENSION_STATUS)
-    Relay->>Router: chrome.runtime.sendMessage(...)
-    Router->>Handler: route to wordpress handler
-    Handler-->>Router: SIP_EXTENSION_DETECTED
-    Router-->>Relay: response
-    Relay-->>BEM: window.postMessage(response)
-    BEM->>WP: $(document).trigger('extensionDetected')
-```
-
-#### HOW
-
-- Two‑stage widget display – content scripts always injected, widget revealed only on `SIP_SHOW_WIDGET`.
-- Message identification via `source` string (`sip‑printify-extension`).
-- Validation chain – origin → source → structure.
-- Stateless detection – request/response each time; no proactive announcements.
-- Edge‑case handling – missing `source`, cross‑origin messages, self‑responses.
-
-| Node                      | Implementation                                                 | File                           |
-| ------------------------- | -------------------------------------------------------------- | ------------------------------ |
-| Browser Extension Manager | `checkStatus()`, `init()`                                      | `browser-extension-actions.js` |
-| Extension Relay           | `validateWordPressMessage()`, `sendWordPressMessageToRouter()` | `wordpress-relay.js`           |
-| Router                    | `handleMessage()`                                              | `widget-router.js`             |
-| WordPress Handler         | `handle()` (`SIP_REQUEST_EXTENSION_STATUS`)                    | `wordpress-handler.js`         |
-
-#### WHY
-
-Request‑based detection avoids unsolicited chatter and guarantees fresh status. A minimal `source` flag prevents spoofing and prepares for multiple SiP extensions. Splitting validation (relay) from routing builds defence‑in‑depth without duplication.
-
----
-
-## 6. STORAGE SCHEMA {#storage-schema}
-
-See [4.1D Storage & Logging](#area-storage-logging) for complete storage documentation.
-
----
-
-## 7. MESSAGE TYPE REFERENCE {#message-type-reference}
-
-See [4.1C Background Router & Messaging](#area-router-messaging) for the complete message type catalog.
-
----
-
-## 8. DEVELOPMENT GUIDE {#development-guide}
+## 4. DEVELOPMENT GUIDE {#development-guide}
 
 ### Adding a New Feature
 
-1. **Register message type** in [4.1C message catalog](#area-router-messaging)
+1. **Register message type** in [3.1C message catalog](#area-router-messaging)
    - Add entry to appropriate section (WordPress Commands, Internal Actions, etc.)
    - Follow `SIP_<VERB>_<NOUN>` naming convention
 
@@ -551,78 +511,16 @@ See [4.1C Background Router & Messaging](#area-router-messaging) for the complet
    - Update message catalog if new messages added
    - Document any new storage keys
 
-5. **Write tests** for new functionality
-   - Unit tests for handler logic
-   - Integration tests for message flow
-   - E2E tests for user-facing features
-
-6. **Run validation**
-   ```bash
-   npm run lint        # Fix code style issues
-   npm run test        # Run test suite
-   npm run build       # Build extension
-   ```
-
-7. **Commit with conventional message**
-   ```bash
-   git add .
-   git commit -m "feat(handler): add SIP_NEW_FEATURE support"
-   ```
-
-### Common Commands
-
-| Task | Command | Notes |
-|------|---------|-------|
-| Lint code | `npm run lint` | Auto-fixes when possible |
-| Run tests | `npm run test` | Includes unit and integration |
-| Build extension | `npm run build` | Creates dist/ folder |
-| Watch mode | `npm run watch` | Auto-rebuilds on changes |
-| Validate manifest | `npm run validate-manifest` | Checks MV3 compliance |
-| Bundle analysis | `npm run analyze` | Shows bundle size breakdown |
-
-### Configuration Files
-
-| File | Purpose | Key Settings |
-|------|---------|-------------|
-| `.eslintrc.json` | Code style rules | Extends `eslint:recommended` |
-| `.prettierrc` | Code formatting | 2-space indent, single quotes |
-| `tsconfig.json` | TypeScript config | Target ES2020, strict mode |
-| `webpack.config.js` | Build configuration | Entry points, output paths |
-
-### Debug Helpers
-
-```javascript
-// Enable verbose logging
-chrome.storage.local.set({ debugMode: true });
-
-// Dump current state
-chrome.storage.local.get(null, console.log);
-
-// Force service worker restart
-chrome.runtime.reload();
-
-// Simulate message from WordPress
-chrome.runtime.sendMessage({
-  source: 'sip',
-  type: 'SIP_TEST_CONNECTION',
-  payload: { test: true }
-});
-```
-
 ---
 
-## 9. AUTHOR CHECKLIST {#author-checklist}
+## 5. AUTHOR CHECKLIST {#author-checklist}
 
-- [x] Each section follows three-layer framework (WHAT/HOW/WHY)
-- [x] WHAT layer contains architecture diagram or high-level overview
-- [x] HOW layer includes all implementation details from source files
-- [x] WHY layer explains rationale in 2 paragraphs or less
+- [ ] Each section follows three-layer framework (WHAT/HOW/WHY)
+- [ ] WHAT layer contains architecture diagram or high-level overview
+- [ ] HOW layer includes all implementation details from source files
+- [ ] WHY layer explains rationale in 2 paragraphs or less
 - [ ] All file references verified against actual codebase
-- [x] Message catalog in 4.1C is complete and accurate
-- [x] Storage documentation in 4.1D covers all keys and patterns
-- [x] No legacy TODOs remain in document
-- [x] Cross-referenced with original guidelines for completeness
-- [x] Verified against sip-development-documentation-guidelines.md
+
 
 [Back to Top](#top)
 
