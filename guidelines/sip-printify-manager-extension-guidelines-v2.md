@@ -39,7 +39,7 @@ Every subsequent section follows SiP’s standard three‑layer model (**WHAT |
 The extension links three contexts to automate Printify product management without direct access to the public API:
 
 1. **Browser‑Extension Context** – content scripts, widget UI, relay, and background router.
-2. **WordPress Tab Context** – `dashboard.js` running inside the WP admin page, forwarding store data via the relay.
+2. **WordPress Tab Context** – WordPress admin page with relay for extension communication.
 3. **Printify Tab Context** – Printify.com page plus internal XHR that content scripts intercept, scrape and pass to the router.
 
 The full‑system diagram in section 4.0 visualises these contexts, data flows, and storage/logging backbones. Features are documented inside their respective Major Areas in section 3 (Architecture).
@@ -60,24 +60,32 @@ graph LR
     CS[Content Scripts] --> WUI[Widget UI]
     CS --> Relay
     Relay --> Router((Service Worker Router))
-    Router --> Storage[(chrome.storage)]
+    Router <-. operation status, config, tab pairs .-> Storage[(chrome.storage)]
+    Router --> CS
+    Router --> WUI
     Router --> Logger[(Action Log)]
+    Storage -. logs .-> Logger
   end
 
   subgraph "WordPress Tab Context"
     WPPage[WordPress Admin Page]
-    WPJS[dashboard.js] --> WPPage
-    WPJS --> Relay
-    WPJS -. REST/XHR .-> WPAPI[(SiP Plugin REST API)]
+    WPRelay[wordpress-relay.js] --> WPPage
+    WPRelay --> Relay
+    WPPage -. REST/XHR .-> WPAPI[(SiP Plugin REST API)]
   end
 
   subgraph "Printify Tab Context"
     PrintifyPage[Printify.com Page]
     InternalAPI[(Printify Internal API XHR)]
+    MICS[Manifest Injected Content Scripts]
+    DIS[Dynamically Injected Scripts]
     PrintifyPage --> InternalAPI
-    CS -. intercept .-> InternalAPI
-    CS -. DOM scrape .-> PrintifyPage
+    InternalAPI -. intercept .-> DIS
+    PrintifyPage -. URL params .-> MICS
+    MICS -. DOM manipulation .-> PrintifyPage
+    DIS -. API data .-> Router
     Router -. URL params .-> PrintifyPage
+    Router -. inject scripts .-> DIS
   end
 ```
 
@@ -87,10 +95,10 @@ graph LR
 The overview highlights three execution contexts and their interactions:
 
 • **Browser Extension Context** – injected scripts, relay, and background router that coordinate actions.  
-• **WordPress Tab Context** – `dashboard.js` bridges the admin page and extension, and may call the SiP WordPress plugin's REST API for store data.  
+• **WordPress Tab Context** – WordPress admin page communicates with extension via relay, and may call the SiP WordPress plugin's REST API for store data.  
 • **Printify Tab Context** – the live page, its internal XHR calls, URL‑parameter commands, and DOM that scripts inspect.
 
-Content Scripts forward intercepted Printify data to the router; the router never calls the public API.
+Content Scripts declared in manifest.json cannot use chrome.runtime on Printify. However, the router can dynamically inject scripts to intercept API responses and relay data back.
 
 WordPress plugin uses REST for back‑end tasks, separate from the browser extension.
 
@@ -102,7 +110,7 @@ Host permissions are limited to printify.com and wp-admin domains to minimize Ch
 | ID | Major Area                    | Maps to Diagram Node                                      |
 | -- | ----------------------------- | --------------------------------------------------------- |
 | A  | UI & Content Scripts          | `Content Scripts`, `Widget UI`                            |
-| B  | WordPress Tab Integration     | `dashboard.js`, `Relay`                                   |
+| B  | WordPress Tab Integration     | `wordpress-relay.js`                                   |
 | C  | Background Router & Messaging | `Service Worker Router`                                   |
 | D  | Storage & Logging             | `chrome.storage`, `Action Log`                            |
 | E  | Printify Tab Integration      | `Printify.com Page`, URL params flow, DOM scraping routes |
@@ -111,26 +119,25 @@ Each area will become its own subsection (**WHAT | HOW | WHY**) containing r
 
 ### 3.1A UI & Content Scripts {#area-ui-content-scripts}
 
-> **Bundle definition**  `manifest.json` contains **two** `content_scripts` blocks:
+> **Bundle definition**  `manifest.json` contains **two** `content_scripts` blocks:
 >
-> 1. **Global bundle** (Printify & WP) – `polyfills.js`, `content-core.js`, `widget-ui.js`, `widget-signals.js`.
-> 2. **WordPress-only** – `dashboard.js`. Chrome injects the four‑file bundle first, then `dashboard.js` on WP‑admin URLs.
+> 1. **Printify bundle** – Core scripts (`widget-error.js`, `action-logger.js`, `error-capture.js`) plus action scripts for Printify pages.
+> 2. **WordPress bundle** – Core scripts plus `wordpress-relay.js` and widget actions for WP admin pages.
 
 #### WHAT
 
 ```mermaid
 graph TD
   subgraph "Content Scripts Load Order"
-    Poly[polyfills.js] -->|next| Core[content-core.js]
-    Core -->|next| Widget[widget-ui.js]
-    Core -->|next| Signals[widget-signals.js]
-    Signals -. toggles .-> Widget
+    Error[widget-error.js] -->|next| Logger[action-logger.js]
+    Logger -->|next| Capture[error-capture.js]
+    Capture -->|next| Actions[Action Scripts]
   end
-  Poly -. inject .-> WPPage((WordPress Admin Page))
-  Poly -. inject .-> PrintifyPage((Printify.com Page))
+  Error -. inject .-> WPPage((WordPress Admin Page))
+  Error -. inject .-> PrintifyPage((Printify.com Page))
 ```
 
-The bundle loads polyfills first, then content-core.js sets up page listeners, and finally initializes Widget UI and Hot-Reload Helper for dynamic widget control.
+The bundles load error handling and logging infrastructure first, then inject action-specific scripts for page interactions and widget UI.
 
 
 
@@ -138,10 +145,12 @@ The bundle loads polyfills first, then content-core.js sets up page listeners, a
 
 | Component           | Responsibility                                               | Key Files                       |
 | ------------------- | ------------------------------------------------------------ | ------------------------------- |
-| Polyfills Loader    | ES feature shims & safe JS APIs                              | `polyfills.js`                  |
-| Content‑Core Bridge | Sets up page listeners; forwards DOM & XHR data to the relay | `content-core.js`               |
-| Widget UI           | Renders floating panel; listens to router events; auto-hides after 30s | `widget-ui.js`, `widget-ui.css` |
-| Hot‑Reload Helper   | Toggles widget on `SIP_SHOW_WIDGET` / `SIP_HIDE_WIDGET`      | `widget-signals.js`             |
+| Error Infrastructure | Global error handling and widget error display               | `widget-error.js`               |
+| Action Logger       | Logs all actions with timing and categorization              | `action-logger.js`              |
+| Error Capture       | Captures and logs uncaught errors and promise rejections     | `error-capture.js`              |
+| Widget UI           | Renders floating panel with terminal display                 | `widget-tabs-actions.js`        |
+| WordPress Relay     | Handles postMessage communication with WordPress             | `wordpress-relay.js`            |
+| Printify Actions    | Handles mockup selection and page automation                 | `mockup-library-actions.js`     |
 
 **Message Flow**
 
@@ -176,38 +185,38 @@ A consistent floating widget keeps all extension actions in one place, avoiding 
 ```mermaid
 graph TD
   WPPage[WordPress Admin Page]
-  WPJS[dashboard.js]
+  WPRelay[wordpress-relay.js]
   Relay((Extension Relay))
-  Pair[tab-pairing.js]
+  Router((Service Worker Router))
 
-  WPPage --> WPJS
-  WPJS --> Relay
-  WPJS --> Pair
+  WPPage --> WPRelay
+  WPRelay --> Relay
+  Relay --> Router
 ```
 
-`dashboard.js` is injected only on WordPress admin pages. It boots the **Tab Pairing System** and relays admin actions to the extension.
+`wordpress-relay.js` is injected on WordPress admin pages. It establishes communication between the WordPress plugin and the extension.
 
 #### HOW
 
 | Component                | Responsibility                                    | Key Files            |
 | ------------------------ | ------------------------------------------------- | -------------------- |
-| `manifest.json` WP block | Registers `dashboard.js` for `*/wp-admin/*`       | `manifest.json`      |
-| dashboard.js             | Captures DOM events; sends `SIP_WP_*` messages    | `dashboard.js`       |
-| tab-pairing.js (F1)      | Maps WP tab ↔︎ Printify tab via `chrome.sessions` | `tab-pairing.js`     |
-| wordpress-relay.js       | Validates & forwards messages to Router           | `wordpress-relay.js` |
+| `manifest.json` WP block | Registers scripts for `*/wp-admin/*`              | `manifest.json`      |
+| wordpress-relay.js       | Handles postMessage from WP; validates & forwards | `wordpress-relay.js` |
+| widget-tabs-actions.js   | Provides floating widget UI on WordPress pages    | `widget-tabs-actions.js` |
+| wordpress-handler.js     | Processes WordPress commands in service worker    | `wordpress-handler.js` |
 
 **Sequence**
 
 ```mermaid
 sequenceDiagram
-  participant WP as dashboard.js
-  participant Relay
+  participant WP as WordPress Plugin
+  participant Relay as wordpress-relay.js
   participant Router
 
-  WP->>Relay: SIP_WP_ROUTE_TO_PRINTIFY
-  Relay->>Router: forward
-  Router-->>Relay: tabId
-  Relay-->>WP: window.postMessage(tabId)
+  WP->>Relay: postMessage(SIP_NAVIGATE)
+  Relay->>Router: chrome.runtime.sendMessage
+  Router-->>Relay: response
+  Relay-->>WP: window.postMessage(response)
 ```
 
 #### WHY
@@ -218,7 +227,7 @@ WordPress admin is the user's command hub. In‑page integration respects WP per
 
 ```mermaid
 sequenceDiagram
-    participant WP as WordPress UI (dashboard.js)
+    participant WP as WordPress Plugin UI
     participant BEM as Browser Extension Manager
     participant Relay as Extension Relay (wordpress-relay.js)
     participant Router as Service Worker Router
@@ -249,18 +258,18 @@ The extension detection pattern uses:
 
 ```mermaid
 graph TD
-  WPPage["dashboard.js (WP)"] --> WPRelay[wordpress-relay.js]
-  PrintifyPage[Printify Page] --> PrintRel[printify-relay.js]
-
-  WPRelay --> Relay[Extension Relay]
-  PrintRel --> Relay
-  Relay --> Router((Service Worker Router))
-
+  WPPage["WordPress Page"] --> WPRelay[wordpress-relay.js]
+  WPRelay --> Router((Service Worker Router))
+  
   Router --> CS[Content Scripts]
   Router --> Logger[(Action Log)]
+  Router -. URL navigation .-> PrintifyPage[Printify Page]
+  
+  PrintifyPage --> Actions[Action Scripts]
+  Actions -. reads .-> URLParams[URL Parameters]
 ```
 
-All page‑generated messages pass through a two‑tier relay chain—context‑specific relay → Extension Relay—before reaching the central **Service‑Worker Router** hub.
+WordPress messages pass through wordpress-relay.js to reach the **Service‑Worker Router**. Printify pages operate in isolation due to chrome.runtime restrictions, using URL parameters as the sole communication method. The Router navigates to Printify pages with specific parameters that action scripts read and execute.
 
 #### HOW
 
@@ -268,25 +277,37 @@ All page‑generated messages pass through a two‑tier relay chain—context‑
 | ----------------------- | -------------------------------------------------------------------------------------- | -------------------- |
 | Service‑Worker Router   | Central switchboard; validates messages; calls handlers; persists logs                 | `widget-router.js`   |
 | wordpress‑relay.js      | In‑page relay that validates WP messages and forwards to Router                        | `wordpress-relay.js` |
-| printify‑relay.js       | In‑page relay for Printify tab messages (`window.postMessage ↔︎ chrome.runtime`)       | `printify-relay.js`  |
-| Pause/Resume Queue (F3) | Holds pending actions when user pauses batch run; persists to `chrome.storage.session` | `action-queue.js`    |
-| CSP Helper (F5)         | Injects dynamic Content‑Security‑Policy headers via `chrome.declarativeNetRequest`     | `csp-helper.js`      |
-| Naming Standard (F6)    | Enforces `SIP_<VERB>_<NOUN>` on outbound messages; throws error on violation           | `message-utils.js`   |
+| Action Scripts          | Handle page-specific actions (mockup selection, product details)                       | `*-actions.js` files |
+| Message Handlers        | Process messages by type and execute appropriate actions                               | `*-handler.js` files |
 
 **Message Lifecycle**
 
-1. Relay receives page event → formats object `{source:'sip', type:'SIP_*', payload}`.
-2. Relay `chrome.runtime.sendMessage` → Router.
-3. Router validates `source` and `type` with regex `/^SIP_[A-Z_]+$/` (F6).
-4. Router dispatches to handler; handler may push log entry (`SIP_TERMINAL_APPEND`).
-5. On *Pause* user action, Router stores queue to `chrome.storage.session` and halts dispatch until *Resume*.
+**WordPress → Router:**
+1. WordPress plugin posts message to window → wordpress-relay.js
+2. Relay validates and formats object `{source:'sip', type:'SIP_*', payload}`
+3. Relay calls `chrome.runtime.sendMessage` → Router
+4. Router dispatches to appropriate handler
+
+**Router → Printify (URL Parameters):**
+1. Router navigates to Printify URL with parameters (e.g., `?sip-action=update&scenes=Front,Back`)
+2. Printify action scripts read URL parameters on page load
+3. Scripts execute requested actions (mockup selection, etc.)
+4. No response path - chrome.runtime is blocked for manifest content scripts
+
+**Router → Printify (Data Fetching):**
+1. Router navigates to Printify mockup library page
+2. Router dynamically injects scripts via `chrome.scripting.executeScript`:
+   - Relay script in ISOLATED world (can use chrome.runtime)
+   - Interceptor script in MAIN world (captures API responses)
+3. Interceptor captures Printify API responses (e.g., `generated-mockup-maps`)
+4. Data flows back: Interceptor → postMessage → Relay → chrome.runtime → Router
 
 Key constants:
 
 ```javascript
 export const MSG_PREFIX = 'SIP_';
-export const PAUSE_KEY = 'sip_queue_paused';
-export const CSP_RULE_ID = 9999; // reserved rule id for dynamic CSP
+export const AUTO_HIDE_MS = 30000; // widget auto-hide timeout
+export const TERMINAL_MAX_LINES = 500; // max log entries in UI
 ```
 
 **Message Type Catalog**
@@ -306,7 +327,6 @@ export const CSP_RULE_ID = 9999; // reserved rule id for dynamic CSP
 | `SIP_TERMINAL_APPEND` | Internal | `widget-data-handler.js` | Add line to terminal |
 | `SIP_TERMINAL_CLEAR` | Internal | `widget-data-handler.js` | Clear terminal content |
 | `SIP_TERMINAL_SET_STATE` | Internal | `widget-data-handler.js` | Update terminal state |
-| `SIP_SCENE_SELECTED` | Printify → Router | `printify-data-handler.js` | User selected scene |
 | `SIP_SCENE_MAP` | Router → WP | (broadcast) | Available scenes update |
 | `SIP_TAB_PAIRED` | Internal | `widget-tabs-actions.js` | Tabs linked successfully |
 | `SIP_TAB_REMOVED` | Internal | `widget-tabs-actions.js` | Tab closed, cleanup pair |
@@ -315,27 +335,23 @@ export const CSP_RULE_ID = 9999; // reserved rule id for dynamic CSP
 | `SIP_OPERATION_STATUS` | Internal | `widget-data-handler.js` | Update progress display |
 | `SIP_STORAGE_UPDATE` | Internal | `widget-data-handler.js` | Sync storage changes |
 | `SIP_LOG_ACTION` | Internal | `action-logger.js` | Record action to log |
-| `SIP_ERROR_CAPTURED` | Internal | `error-listener.js` | Global error occurred |
-| **Printify Page Events** |
-| `SIP_PAGE_READY` | Printify → Router | `printify-tab-actions.js` | DOM ready for interaction |
-| `SIP_PRODUCT_LOADED` | Printify → Router | `printify-data-handler.js` | Product page detected |
-| `SIP_MOCKUP_LIBRARY_OPEN` | Printify → Router | `mockup-library-actions.js` | Library modal appeared |
-| `SIP_MOCKUP_SELECTED` | Printify → Router | `mockup-library-actions.js` | User picked mockup |
-| `SIP_API_INTERCEPTED` | Printify → Router | `printify-data-handler.js` | XHR/fetch captured |
+| `SIP_ERROR_CAPTURED` | Internal | `error-capture.js` | Global error occurred |
+| **Printify Data Events** |
+| `MOCKUP_API_RESPONSE` | Printify → Router | `mockup-fetch-handler.js` | Intercepted API data |
 
-**MV3 Service Worker Components**
+**Handler Files**
 
-| Component | Responsibility | Key Files |
-|-----------|---------------|-----------|
-| `service-worker-keepalive.js` | Prevents idle timeout via alarm API | `service-worker-keepalive.js` |
-| `retry-utils.js` | Exponential backoff for failed operations | `retry-utils.js` |
-| `manifest-v3-polyfills.js` | Shims for MV2→MV3 migration | `manifest-v3-polyfills.js` |
+| Handler | Responsibility | Message Types |
+|---------|---------------|---------------|
+| `mockup-fetch-handler.js` | Fetches mockup data from Printify pages | `SIP_FETCH_MOCKUPS` |
+| `mockup-update-handler.js` | Updates mockup selections on products | `SIP_UPDATE_PRODUCT_MOCKUPS` |
+| `widget-data-handler.js` | Controls widget UI and terminal | `SIP_SHOW_WIDGET`, `SIP_TERMINAL_*` |
+| `printify-data-handler.js` | Processes mockup data fetched from Printify | `SIP_FETCH_MOCKUPS` responses |
+| `wordpress-handler.js` | Processes WordPress plugin commands | `SIP_REQUEST_EXTENSION_STATUS`, `SIP_NAVIGATE` |
 
 #### WHY
 
-A single service‑worker router gives one chokepoint for security and observability: every action is validated, logged, and can be paused/resumed. Dynamic CSP rules let content scripts fetch Printify assets without whitelisting entire domains. Enforcing a strict `SIP_` naming convention prevents accidental collisions with other extensions and makes filtering logs trivial.
-
-Manifest V3's service worker constraints require active mitigation: workers terminate after 30 seconds of inactivity, breaking long-running operations. The keepalive component uses Chrome's alarm API to ping the worker every 20 seconds during active operations. The retry utility implements exponential backoff (2s, 4s, 8s...) for network failures, critical when Printify rate-limits during batch operations.
+A single service‑worker router gives one chokepoint for security and observability: every action is validated, logged, and tracked. The router pattern enables clean separation between message sources and handlers, making the extension maintainable as features grow. Enforcing consistent message naming helps debug issues and prevents collisions with other extensions.
 
 ---
 
@@ -345,23 +361,21 @@ Manifest V3's service worker constraints require active mitigation: workers term
 
 ```mermaid
 graph TD
-  Router((Service Worker Router)) --> LogHelper[log-utils.js]
-  LogHelper --> ActionLog[(Action Log)]
-  ErrorCap[error-listener.js] --> LogHelper
+  Router((Service Worker Router)) --> Logger[action-logger.js]
+  Logger --> ActionLog[(Action Log)]
+  ErrorCap[error-capture.js] --> Logger
   Storage[(chrome.storage.local)] -. persists .-> ActionLog
 ```
 
-All logs—errors or normal actions—flow through `log-utils.js` into a single array **sipActionLogs** stored in `chrome.storage.local`.
+All logs—errors or normal actions—flow through `action-logger.js` into a single array **sipActionLogs** stored in `chrome.storage.local`.
 
 #### HOW
 
 | Component              | Responsibility                                                                                     | Key Files                      |
 | ---------------------- | -------------------------------------------------------------------------------------------------- | ------------------------------ |
-| log-utils.js (F10)     | `createLogEntry(type, payload)`; adds timestamp & tabId; calls `log()` in `action-logger.js`       | `log-utils.js`                 |
-| action-logger.js (F4)  | Maintains `sipActionLogs` array; caps at **500** entries; prunes oldest on overflow                | `action-logger.js`             |
-| action-queue.js        | Stores/resumes queued commands; serialises to `chrome.storage.session`                             | `action-queue.js`              |
-| error-listener.js (F9) | Hooks `window.onerror` & `chrome.runtime.onMessageError`; forwards to `createLogEntry('ERROR', …)` | `error-listener.js`            |
-| log-tree.jsx (F12)     | React component that renders collapsible visual hierarchy of the log                               | `log-tree.jsx`, `log-tree.css` |
+| action-logger.js       | Maintains `sipActionLogs` array; caps at **500** entries; creates hierarchical log entries         | `action-logger.js`             |
+| error-capture.js       | Hooks `window.onerror` & promise rejections; forwards to action logger                             | `error-capture.js`             |
+| widget-error.js        | Global error handling and error display infrastructure                                             | `widget-error.js`              |
 
 **Data Schema (current implementation)**
 
@@ -415,7 +429,7 @@ chrome.storage.sync.get(['wordpressUrl', 'apiKey'], (result) => {
 
 #### WHY
 
-A rolling array of the most‑recent 500 events is simple and fast to query while still covering typical batch‑run history. Centralising entry creation in `log-utils.js` maintains uniform structure, and keeping both functional and error events in the same list gives an immediate chronological view for debugging. Should quota issues arise, daily partitioning can be added later, but the current single‑key design keeps lookup logic trivial.
+A rolling array of the most‑recent 500 events is simple and fast to query while still covering typical batch‑run history. The hierarchical log structure in `action-logger.js` tracks operation start/end times and nesting, making it easy to trace complex workflows. Keeping both functional and error events in the same list gives an immediate chronological view for debugging.
 
 Chrome's storage quotas shape the architecture: `sipStore` is capped at 1MB to leave headroom in the 5MB local quota, while `sipQueue` uses session storage that's automatically cleared on browser restart, preventing stale operations from accumulating. The bidirectional tab mapping in `sipTabPairs` enables instant lookups in either direction without scanning arrays.
 
@@ -429,57 +443,53 @@ Chrome's storage quotas shape the architecture: `sipStore` is capped at 1MB to l
 graph TD
   subgraph "Printify Page Context"
     PPage["Printify.com Page"]
-    SceneBtns["Scene Buttons (UI)"]
-    CS[content-core.js]
-    SceneFlow[scene-flow.js]
-    PairPrint[tab-pairing.js]
-    Diag[diagnostic-panel.js]
+    Actions[Action Scripts]
+    URLParams[URL Parameters]
+    XHR[XHR Intercept]
   end
 
-  PPage --> CS
-  CS --> SceneFlow
-  SceneFlow --> SceneBtns
-  CS --> PairPrint
-  CS --> Diag
+  PPage --> Actions
+  URLParams --> Actions
+  Actions -. intercept .-> XHR
 ```
 
-Content scripts inject **Scene Flow UI** for choosing mock‑up scenes, the **Tab‑Pairing helper**, and an optional **Diagnostic Panel** for developers.
+Content scripts handle mockup selection via URL parameters and intercept XHR requests to capture Printify data.
 
 #### HOW
 
 | Component                  | Responsibility                                                                   | Key Files                                     |
 | -------------------------- | -------------------------------------------------------------------------------- | --------------------------------------------- |
-| tab-pairing.js (F1)        | Detects/creates matching Printify tab for active WP tab; listens for `tabremove` | `tab-pairing.js`                              |
-| scene-flow\.js (F7)        | Renders scene buttons (Front, Right, Back …) and emits `SIP_SCENE_SELECTED`      | `scene-flow.js`, `scene-flow.css`             |
-| mockup-scene-utils.js (F8) | Maps `scene_id` ↔︎ label; intercepts internal XHR to grab mock‑up IDs            | `mockup-scene-utils.js`                       |
-| diagnostic-panel.js (F11)  | Dev‑only panel: shows queue length, last error, selected scene                   | `diagnostic-panel.js`, `diagnostic-panel.css` |
-| printify-relay.js          | Forwards page messages to Extension Relay; strips large image blobs              | `printify-relay.js`                           |
+| mockup-library-actions.js  | Handles mockup selection on library pages via URL params and DOM manipulation     | `mockup-library-actions.js`    |
+| product-details-actions.js | Sets primary/default images on product detail pages                             | `product-details-actions.js`   |
+| printify-tab-actions.js    | Monitors Printify pages (minimal functionality due to restrictions)              | `printify-tab-actions.js`      |
+| Scene Navigation           | Uses URL params `scenes`, `primaryScene`, `primaryColor` for automation         | Built into mockup actions      |
 
-**Message Types**
+**URL Parameters**
 
-- `SIP_SCENE_SELECTED` – Printify tab → Router.
-- `SIP_SCENE_MAP` – Router → WordPress tab (scene id ↔︎ label).
+- `sip-action=update` - Triggers mockup selection automation
+- `scenes=Front,Back,Left` - Comma-separated list of scenes to select
+- `primaryScene=Front` - Designates primary/default scene
+- `primaryColor=Black` - Sets primary color variant
 
-**Sequence (Scene Selection)**
+**Sequence (Mockup Selection via URL)**
 
 ```mermaid
 sequenceDiagram
-  participant User
-  participant SceneBtns as scene-flow.js
-  participant CS as content-core.js
-  participant Relay
+  participant WP as WordPress
   participant Router
+  participant Page as Printify Page
+  participant Script as mockup-library-actions.js
 
-  User->>SceneBtns: click "Front"
-  SceneBtns->>CS: SIP_SCENE_SELECTED {id:102752}
-  CS->>Relay: window.postMessage
-  Relay->>Router: chrome.runtime.sendMessage
-  Router-->>WP: broadcast scene map
+  WP->>Router: SIP_UPDATE_PRODUCT_MOCKUPS
+  Router->>Page: Navigate with URL params
+  Page->>Script: Page loads with ?sip-action=update&scenes=Front,Back
+  Script->>Script: Select mockups by scene
+  Script->>Script: Click save button
 ```
 
 #### WHY
 
-Printify lacks an official scene API, so intercepting internal XHR and scraping DOM labels delivers the required data without violating site terms. Scene buttons give users an explicit, error‑proof way to pick mock‑ups, while the same code path feeds the WordPress plugin with consistent IDs. Separating mapping utilities into **mockup-scene-utils.js** lets unit tests cover the logic outside the UI. A lightweight Diagnostic Panel, hidden by default, accelerates support without cluttering the normal interface. Tab pairing mirrors the WP side to ensure each action targets the correct Printify tab, avoiding accidental edits.
+Printify lacks an official scene API, so intercepting internal XHR and scraping DOM labels delivers the required data without violating site terms. The extension uses two distinct approaches: URL parameter automation for mockup selection (one-way) and dynamic script injection for data extraction (two-way). Dynamic injection bypasses chrome.runtime restrictions by using ISOLATED world scripts as relays. The scene-based selection (Front, Back, etc.) provides a more intuitive interface than raw mockup IDs.
 
 ---
 
@@ -500,10 +510,11 @@ Printify lacks an official scene API, so intercepting internal XHR and scraping 
    - Register in router's handler map
    - Return `true` for async operations
 
-3. **Emit logs** via `createLogEntry()`
+3. **Emit logs** via action logger
    ```javascript
-   import { createLogEntry } from './helpers/log-utils.js';
-   createLogEntry('SIP_FEATURE_ACTIVATED', { feature: 'newFeature' });
+   // Use the global action object
+   action.info('Feature activated', { feature: 'newFeature' });
+   action.error('Operation failed', { error: error.message });
    ```
 
 4. **Update documentation**
