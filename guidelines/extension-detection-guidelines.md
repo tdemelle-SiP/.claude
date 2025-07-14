@@ -93,9 +93,9 @@ sequenceDiagram
     Note over CS: Widget becomes visible to user
     
     Handler-->>Router: { success: true,<br/>  message: 'Widget show message sent' }
-    Router-->>Relay: Response (no source field)
+    Router-->>Relay: { success: true,<br/>  message: 'Widget show message sent',<br/>  source: 'sip-printify-extension' }
     
-    Note over Relay: Response ignored<br/>(already handled by callback)
+    Note over Relay: Response filtered out by source validation<br/>(data.source === 'sip-printify-extension')
 ```
 
 ## How
