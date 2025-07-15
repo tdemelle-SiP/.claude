@@ -22,11 +22,9 @@
 
 The extension links three contexts to automate Printify product management without direct access to the public API:
 
-1. **Browser‑Extension Context** – content scripts, widget UI, relay, and background router.
-2. **WordPress Tab Context** – WordPress admin page with relay for extension communication.
-3. **Printify Tab Context** – Printify.com page plus internal XHR that content scripts intercept, scrape and pass to the router.
-
-The full‑system diagram in the architecture block visualises these contexts, data flows, and storage/logging backbones. Features are documented inside their respective WHW Blocks.
+1. **Browser‑Extension Context** – Service Worker, Message Handlers, Storage
+2. **WordPress Tab Context** – WordPress Admin Page DOM, Widget UI, Content Scripts
+3. **Printify Tab Context** – Printify Page DOM, Printify Internal API, Widget UI, Content Scripts, Dynamic Scripts
 
 ### WHY
 
@@ -39,6 +37,7 @@ Printify’s public API omits mock‑up images and some product attributes neede
 This block documents the extension's full architecture including four major areas: UI & Content Scripts, Tab Management & Integration, Background Router & Messaging, and Storage & Logging.
 
 **Diagram 2.1: Main Architecture**
+
 ```mermaid
 graph LR
   subgraph "Browser Extension Context"
@@ -105,6 +104,18 @@ graph LR
 - [Diagram 6.1: Storage & Logging System](#area-storage-logging)
 
 ### HOW
+
+**Component Distribution Across Contexts:**
+
+| Component | Browser Extension Context | WordPress Tab Context | Printify Tab Context |
+|-----------|--------------------------|----------------------|---------------------|
+| **Service Worker**<br/>[see Section 5](#area-router-messaging) | Central message router and background processing | - | - |
+| **Message Handlers**<br/>[see Section 5](#area-router-messaging) | Process specific message types and execute actions | - | - |
+| **Storage**<br/>[see Section 6](#area-storage-logging) | Persistent data storage (chrome.storage.*) | - | - |
+| **Content Scripts**<br/>[see Section 3](#area-ui-content-scripts) | - | Injected scripts that create UI and relay messages | Injected scripts that automate page interactions |
+| **Widget UI**<br/>[see Section 3](#area-ui-content-scripts) | - | Floating interface for user feedback | Floating interface for user feedback |
+| **Page DOM**<br/>[see Section 4](#area-tab-management) | - | WordPress admin pages | Printify.com pages |
+| **Dynamic Scripts**<br/>[see Section 5](#area-router-messaging) | - | - | Runtime-injected scripts for API interception |
 
 Each Feature is documented in subsequent WHW blocks.
 
