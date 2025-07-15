@@ -5,14 +5,17 @@
 ### TABLE OF CONTENTS
 
 - [1. Overview](#overview)
-- [2. Architecture](#architecture)
-- [3 UI & Content Scripts](#area-ui-content-scripts)
-- [4 Tab Management & Integration](#area-tab-management)
-  - [4.1 Extension Detection](#extension-detection)
-- [5 Background Router & Messaging](#area-router-messaging)
-- [6 Storage & Logging](#area-storage-logging)
-- [7. Development Guide](#development-guide)
-- [8. Author Checklist](#author-checklist)
+- [2. Main Architecture - The Three Contexts](#architecture)
+- [3. Content Scripts & Widget UI](#content-scripts-widget-ui)
+- [4. Service Worker](#service-worker)
+  - [4.1 Tab Pairing](#tab-pairing)
+  - [4.2 Dynamic Script Injection](#dynamic-script-injection)
+- [5. Message Handlers](#message-handlers)
+  - [5.1 Extension Detection](#extension-detection)
+- [6. Action Logger](#action-logger)
+- [7. Storage](#storage)
+- [8. Development Guide](#development-guide)
+- [9. Author Checklist](#author-checklist)
 
 ---
 
@@ -20,38 +23,38 @@
 
 ### WHAT
 
-The extension links three contexts to automate Printify product management without direct access to the public API:
+The SiP Printify Manager Extension links three contexts to automate Printify product management in ways that are unavailable through the Printify public API:
 
-1. **Browser‑Extension Context** – Service Worker, Message Handlers, Storage
-2. **WordPress Tab Context** – WordPress Admin Page DOM, Widget UI, Content Scripts
-3. **Printify Tab Context** – Printify Page DOM, Printify Internal API, Widget UI, Content Scripts, Dynamic Scripts
+1. **Browser Extension Context (Service Worker)** – Router, Message Handlers, Storage
+2. **WordPress Admin Page Context** – WordPress Admin Page DOM, Widget UI, Content Scripts
+3. **Printify Page Context** – Printify Page DOM, Printify Internal API, Widget UI, Content Scripts, Dynamic Scripts
 
 ### WHY
 
-Printify’s public API omits mock‑up images and some product attributes needed for SiP’s automated template creation. The browser extension bridges that gap by harvesting data directly from the live Printify site while staying in sync with the WordPress plugin via in‑page messaging. Keeping the three contexts distinct preserves security boundaries and minimises maintenance risk: each context can evolve independently while the relay and router enforce a stable contract.
+Printify’s public API omits mock‑up images and some product attributes needed for SiP’s automated template creation. The browser extension bridges that gap by harvesting data directly from the live Printify site while staying in sync with the WordPress plugin via in‑page messaging. The extension's three context architecture preserves security boundaries and minimises maintenance risk: each context can evolve independently while the relay and router that intermediates between them enforce a stable contract.
 
 ---
 
-## 2. ARCHITECTURE {#architecture}
+## 2. MAIN ARCHITECTURE - The Three Contexts {#architecture}
 
-This block documents the extension's full architecture including four major areas: UI & Content Scripts, Tab Management & Integration, Background Router & Messaging, and Storage & Logging.
+This block documents the extension's full three context architecture and their component parts.  All parts are fully detailed in the linked blocks that follow.
 
 **Diagram 2.1: Main Architecture**
 
 ```mermaid
 graph LR
-  subgraph "Browser Extension Context"
-    Router((Service Worker Router<br/>see Diagram 5.1))
-    Router <-. tab pairs, config .-> Storage[(chrome.storage<br/>see Diagram 6.1)]
+  subgraph "Browser Extension Context (Service Worker)"
+    Router((Router<br/>see Section 4))
+    Router <-. tab pairs, config .-> Storage[(chrome.storage<br/>see Section 6)]
     Handlers <-. operation status .-> Storage
-    Router --> Handlers[Message Handlers<br/>see Diagram 5.1]
-    Storage -. logs .-> Logger[(Action Log<br/>see Diagram 6.1)]
+    Router --> Handlers[Message Handlers<br/>see Section 5]
+    Storage -. logs .-> Logger[(Action Log<br/>see Section 6)]
   end
 
   subgraph "WordPress Tab Context"
     WPPage[WordPress Admin Page]
-    WPCS[Content Scripts<br/>see Diagram 3.1]
-    WPCS --> WUI1[Widget UI<br/>see Diagram 3.1]
+    WPCS[Content Scripts<br/>see Section 3]
+    WPCS --> WUI1[Widget UI<br/>see Section 3]
     WPCS -->|postMessage| WPPage
     WPPage -->|postMessage| WPCS
     WPCS -->|chrome.runtime| Router
@@ -61,9 +64,9 @@ graph LR
 
   subgraph "Printify Tab Context"
     PrintifyPage[Printify.com Page]
-    PCS[Content Scripts<br/>see Diagram 3.1]
-    PCS --> WUI2[Widget UI<br/>see Diagram 3.1]
-    DIS[Dynamically Injected Scripts<br/>see Diagram 5.1]
+    PCS[Content Scripts<br/>see Section 3]
+    PCS --> WUI2[Widget UI<br/>see Section 3]
+    DIS[Dynamically Injected Scripts<br/>see Section 4.2]
     InternalAPI[(Printify Internal API XHR)]
     PrintifyPage --> InternalAPI
     InternalAPI -. intercept .-> DIS
@@ -95,29 +98,17 @@ graph LR
 
 **Diagram Legend:**
 
-- [Diagram 3.1: Content Scripts Architecture](#area-ui-content-scripts)
-- [Diagram 4.1: Tab Management System](#area-tab-management)
-- [Diagram 4.2: Tab Pairing Flow](#area-tab-management)
-- [Diagram 4.3: Mockup Selection Flow](#area-tab-management)
-- [Diagram 4.1.1: Extension Detection Flow](#extension-detection)
-- [Diagram 5.1: Router & Messaging System](#area-router-messaging)
-- [Diagram 6.1: Storage & Logging System](#area-storage-logging)
+- **Content Scripts** → [Section 3: Content Scripts & Widget UI](#content-scripts-widget-ui)
+- **Widget UI** → [Section 3: Content Scripts & Widget UI](#content-scripts-widget-ui)
+- **Router** → [Section 4: Router](#service-worker)
+- **Dynamically Injected Scripts** → [Section 4.2: Dynamic Script Injection](#dynamic-script-injection)
+- **Message Handlers** → [Section 5: Message Handlers](#message-handlers)
+- **Action Log** → [Section 6: Action Logger](#action-logger)
+- **chrome.storage** → [Section 7: Storage](#storage)
 
 ### HOW
 
-**Component Distribution Across Contexts:**
-
-| Component | Browser Extension Context | WordPress Tab Context | Printify Tab Context |
-|-----------|--------------------------|----------------------|---------------------|
-| **Service Worker**<br/>[see Section 5](#area-router-messaging) | Central message router and background processing | - | - |
-| **Message Handlers**<br/>[see Section 5](#area-router-messaging) | Process specific message types and execute actions | - | - |
-| **Storage**<br/>[see Section 6](#area-storage-logging) | Persistent data storage (chrome.storage.*) | - | - |
-| **Content Scripts**<br/>[see Section 3](#area-ui-content-scripts) | - | Injected scripts that create UI and relay messages | Injected scripts that automate page interactions |
-| **Widget UI**<br/>[see Section 3](#area-ui-content-scripts) | - | Floating interface for user feedback | Floating interface for user feedback |
-| **Page DOM**<br/>[see Section 4](#area-tab-management) | - | WordPress admin pages | Printify.com pages |
-| **Dynamic Scripts**<br/>[see Section 5](#area-router-messaging) | - | - | Runtime-injected scripts for API interception |
-
-Each Feature is documented in subsequent WHW blocks.
+Each component in the main architecture diagram is fully documented in subsequent sections:
 
 #### WHY
 
@@ -127,7 +118,7 @@ Host permissions are limited to printify.com and wp-admin domains to minimize Ch
 
 ---
 
-### 3 UI & Content Scripts {#area-ui-content-scripts}
+### 3 Content Scripts & Widget UI {#content-scripts-widget-ui}
 
 The content scripts system provides error handling, logging, and a floating widget UI that persists state and provides real-time feedback across WordPress and Printify pages.
 
@@ -136,31 +127,13 @@ The content scripts system provides error handling, logging, and a floating widg
 **Diagram 3.1: Content Scripts Architecture**
 ```mermaid
 graph LR
-  subgraph "Browser Extension Context"
+  subgraph "Browser Extension Context (Service Worker)"
     subgraph "Service Worker"
       SW[background.js] --> Router((widget-router.js))
       SW --> Handlers[Handler Scripts]
-      
-      Handlers --> MFH[mockup-fetch-handler.js]
-      Handlers --> MUH[mockup-update-handler.js]
-      Handlers --> WDH[widget-data-handler.js]
-      Handlers --> PDH[printify-data-handler.js]
-      Handlers --> WH[wordpress-handler.js]
-    end
-    
-    subgraph "Shared UI Components"
-      Widget[Floating Widget]
-      Widget --> Terminal[Terminal<br/>500 lines]
-      Widget --> Modal[VanillaModal]
-      Widget --> State[State Manager]
     end
     
     Storage[(chrome.storage)]
-    ActionLog[(sipActionLogs)]
-    Storage -.-> ActionLog
-    State -.->|debounced| Storage
-    Modal -->|save position| Storage
-    Terminal -->|auto-hide| Timer[30s timer]
   end
   
   subgraph "WordPress Tab Context"
@@ -174,9 +147,19 @@ graph LR
       WPBundle --> WSS[widget-styles.css]
     end
     
+    subgraph "UI Components (WordPress)"
+      Widget1[Floating Widget]
+      Widget1 --> Terminal1[Terminal<br/>500 lines]
+      Widget1 --> Modal1[VanillaModal]
+      Widget1 --> State1[State Manager]
+    end
+    
     WPPage[WordPress Admin Page<br/>wp-admin/*]
     WR -->|postMessage| WPPage
     WPPage -->|postMessage| WR
+    WT1 --> Widget1
+    State1 -.->|debounced| Storage
+    Modal1 -.->|save position| Storage
   end
   
   subgraph "Printify Tab Context"
@@ -191,20 +174,28 @@ graph LR
       PBundle --> PDA[product-details-actions.js]
     end
     
+    subgraph "UI Components (Printify)"
+      Widget2[Floating Widget]
+      Widget2 --> Terminal2[Terminal<br/>500 lines]
+      Widget2 --> Modal2[VanillaModal]
+      Widget2 --> State2[State Manager]
+    end
+    
     PrintifyPage[Printify.com Pages]
     PTA -.->|DOM manipulation| PrintifyPage
     MLA -.->|mockup selection| PrintifyPage
     PDA -.->|product inspection| PrintifyPage
+    WT2 --> Widget2
+    State2 -.->|debounced| Storage
+    Modal2 -.->|save position| Storage
   end
   
   WR -->|chrome.runtime| Router
   Router -.->|messages| WT1
   Router -.->|messages| WT2
   Router -.->|inject scripts| PrintifyPage
-  AL1 --> ActionLog
-  AL2 --> ActionLog
-  WT1 --> Widget
-  WT2 --> Widget
+  AL1 --> Storage
+  AL2 --> Storage
   
   %% Styling
   classDef bundleStyle fill:#f9f3e9,stroke:#8a7050,stroke-width:2px
@@ -275,11 +266,13 @@ A consistent floating widget keeps all extension actions in one place, avoiding 
 
 ---
 
-### 4 Tab Management & Integration {#area-tab-management}
+### 4 Service Worker {#service-worker}
+
+The service worker acts as the central message router and background processor for the extension, managing tab coordination, message routing, and Chrome API interactions.
 
 #### WHAT
 
-**Diagram 4.1: Tab Management System**
+**Diagram 4.1: Service Worker Architecture**
 ```mermaid
 graph TD
   subgraph "Service Worker (Background)"
@@ -326,7 +319,7 @@ graph TD
 ```
 [← Back to Diagram 2.1: Main Architecture](#architecture)
 
-The Tab Management system maintains bidirectional pairing between WordPress and Printify tabs, enabling coordinated actions across both contexts while respecting browser security boundaries.
+The service worker includes tab management functionality that maintains bidirectional pairing between WordPress and Printify tabs, enabling coordinated actions across both contexts while respecting browser security boundaries.
 
 #### HOW
 
@@ -371,7 +364,13 @@ sipTabPairs: {
 - **ISOLATED world**: Can use `chrome.runtime` API, sets up message relay
 - **MAIN world**: Can access page's JavaScript context and intercept API calls
 
-**Message Flows**
+---
+
+### 4.1 Tab Pairing {#tab-pairing}
+
+The service worker manages tab pairing to coordinate actions between WordPress and Printify tabs.
+
+#### WHAT
 
 **Diagram 4.2: Tab Pairing Flow**
 ```mermaid
@@ -388,7 +387,15 @@ graph LR
 ```
 [← Back to Diagram 2.1: Main Architecture](#architecture)
 
-**Diagram 4.3: Mockup Selection Flow**
+---
+
+### 4.2 Dynamic Script Injection {#dynamic-script-injection}
+
+The service worker can dynamically inject scripts into Printify pages to intercept API responses and automate interactions.
+
+#### WHAT
+
+**Diagram 4.3: Dynamic Script Injection**
 ```mermaid
 graph LR
   subgraph "Mockup Selection Flow"
@@ -411,11 +418,13 @@ The dual communication approach—URL parameters for one-way automation and dyna
 
 ---
 
-### 4.1 Extension Detection {#extension-detection}
+### 5.1 Extension Detection {#extension-detection}
+
+Extension detection is handled by the wordpress-handler.js message handler to verify the extension is installed and active.
 
 #### WHAT
 
-**Diagram 4.1.1: Extension Detection Flow**
+**Diagram 5.2: Extension Detection Flow**
 ```mermaid
 graph LR
     WP[WordPress Plugin UI] -->|checkStatus| BEM[Browser Extension Manager]
@@ -451,11 +460,13 @@ Extension detection must be reliable without being intrusive. The stateless requ
 
 ---
 
-### 5 Background Router & Messaging {#area-router-messaging}
+### 5 Message Handlers {#message-handlers}
+
+Message handlers process specific message types received by the service worker router, executing actions like fetching mockup data, updating UI, and managing extension state.
 
 #### WHAT
 
-**Diagram 5.1: Router & Messaging System**
+**Diagram 5.1: Message Handlers**
 ```mermaid
 graph TD
   WPPage["WordPress Page"] --> WPRelay[wordpress-relay.js]
@@ -686,11 +697,134 @@ A single service‑worker router gives one chokepoint for security and observabi
 
 ---
 
-### 6 Storage & Logging {#area-storage-logging}
+### 6 Action Logger {#action-logger}
+
+The Action Logger provides comprehensive logging across all extension contexts, capturing user actions, errors, and system events in a structured format for debugging and monitoring.
 
 #### WHAT
 
-**Diagram 6.1: Storage & Logging System**
+**Diagram 6.1: Action Logger System**
+```mermaid
+graph TD
+  subgraph "Browser Extension Context (Service Worker)"
+    Router((Router))
+    Handlers[Message Handlers]
+    Storage[(chrome.storage.local)]
+    ActionLog[(sipActionLogs)]
+    
+    Router --> |log actions| AL_SW[action-logger.js<br/>instance]
+    Handlers --> |log actions| AL_SW
+    AL_SW --> ActionLog
+    Storage -. persists .-> ActionLog
+  end
+  
+  subgraph "WordPress Tab Context"
+    WPScripts[Content Scripts]
+    WPError[error-capture.js]
+    AL_WP[action-logger.js<br/>instance]
+    Terminal1[Terminal UI]
+    
+    WPScripts --> |log actions| AL_WP
+    WPError --> |log errors| AL_WP
+    AL_WP --> ActionLog
+    AL_WP --> Terminal1
+  end
+  
+  subgraph "Printify Tab Context"
+    PScripts[Content Scripts]
+    PError[error-capture.js]
+    AL_P[action-logger.js<br/>instance]
+    Terminal2[Terminal UI]
+    
+    PScripts --> |log actions| AL_P
+    PError --> |log errors| AL_P
+    AL_P --> ActionLog
+    AL_P --> Terminal2
+  end
+  
+  %% Apply styles to match main architecture
+  classDef routerStyle fill:#e8f4f8,stroke:#5a8ca8,stroke-width:2px,color:#1a4a5c
+  classDef storageStyle fill:#f8f3e8,stroke:#8a7d5a,stroke-width:2px,color:#4a3d1a
+  classDef loggerStyle fill:#f8e8f8,stroke:#8a5a7d,stroke-width:2px,color:#4a1a3d
+  
+  class Router routerStyle
+  class Storage,ActionLog storageStyle
+  class AL_SW,AL_WP,AL_P loggerStyle
+```
+[← Back to Diagram 2.1: Main Architecture](#architecture)
+
+#### HOW
+
+**Implementation Overview**
+
+| Component | Purpose | Location |
+|-----------|---------|----------|
+| action-logger.js | Core logging system | Loaded in all contexts |
+| error-capture.js | Global error interception | Content scripts only |
+| sipActionLogs | Persistent log storage | chrome.storage.local |
+| Terminal UI | Real-time log display | Widget in tab contexts |
+
+**Log Categories**
+
+The logger uses categories to organize different types of events:
+
+| Category | Usage | Example Actions |
+|----------|-------|-----------------|
+| `WORDPRESS_ACTION` | WordPress plugin interactions | `SIP_UPDATE_PRODUCT_MOCKUPS` |
+| `NAVIGATION` | Tab navigation events | Tab creation, pairing, switching |
+| `API_CALL` | External API interactions | WordPress REST API calls |
+| `ERROR` | Errors and exceptions | Unhandled errors, failed operations |
+| `EXTENSION_ACTION` | Internal extension events | Widget state changes |
+| `PRINTIFY_ACTION` | Printify page interactions | Mockup selection, product updates |
+
+**Log Entry Structure**
+
+```javascript
+{
+  timestamp: 1713012345678,
+  category: "navigation",
+  action: "Created new Printify tab",
+  details: {
+    tabId: 123,
+    url: "https://printify.com/...",
+    duration: 250
+  },
+  tabInfo: {
+    tabId: 456,
+    tabName: "WordPress Admin",
+    url: "https://site.com/wp-admin/..."
+  }
+}
+```
+
+**Storage Management**
+
+- Logs are capped at **500 entries** to stay within Chrome's storage limits
+- Oldest entries are automatically pruned when limit is reached
+- Each context writes directly to the shared `sipActionLogs` array
+
+**Terminal Display**
+
+- Shows last 500 log entries in the widget UI
+- Auto-hides after 30 seconds of inactivity
+- Color-coded by category for quick scanning
+- Filterable by category or search term
+
+#### WHY
+
+A unified logging system across all contexts provides essential visibility into the extension's complex multi-context operations. By capturing events from content scripts, the service worker, and message handlers in one place, developers can trace user actions through the entire system. The 500-entry limit balances comprehensive logging with Chrome's storage constraints, while the terminal UI gives immediate feedback without requiring developer tools access.
+
+The category system enables quick filtering of relevant events, particularly important when debugging specific workflows like mockup updates that span WordPress initiation, router coordination, and Printify automation. Having the same logger implementation in all contexts ensures consistent formatting and behavior, making the logs predictable and parseable.
+
+---
+
+### 7 Storage {#storage}
+
+The extension uses Chrome's storage APIs to persist configuration, state, logs, and operation data across sessions and devices.
+
+#### WHAT
+
+**Diagram 7.1: Storage System**
 ```mermaid
 graph TD
   Router((Service Worker Router)) --> Logger[action-logger.js]
@@ -855,11 +989,11 @@ Chrome's storage quotas shape the architecture: `sipStore` is capped at 1MB to l
 <a id="storage-schema"></a>
 <a id="message-type-reference"></a>
 
-## 7. DEVELOPMENT GUIDE {#development-guide}
+## 8. DEVELOPMENT GUIDE {#development-guide}
 
 ### Adding a New Feature
 
-1. **Register message type** in [3.1C message catalog](#area-router-messaging)
+1. **Register message type** in [Section 5 message catalog](#message-handlers)
    - Add entry to appropriate section (WordPress Commands, Internal Actions, etc.)
    - Follow `SIP_<VERB>_<NOUN>` naming convention
 
@@ -882,7 +1016,7 @@ Chrome's storage quotas shape the architecture: `sipStore` is capped at 1MB to l
 
 ---
 
-## 8. AUTHOR CHECKLIST {#author-checklist}
+## 9. AUTHOR CHECKLIST {#author-checklist}
 
 - [ ] Each section follows three-layer framework (WHAT/HOW/WHY)
 - [ ] WHAT layer contains architecture diagram or high-level overview

@@ -61,6 +61,7 @@ Each WHW block in the body of any sip guidelines file follows the **WHAT | HOW
 
 The WHAT layer uses diagrams to show system architecture and logical structure, favoring legibility over exhaustive detail.
 If the whole system can be conveyed in a single legible diagram, it should be.
+For diagrams in blocks showing details of parts of the overall architecture, the WHW block diagram needs to show the nodes necessary to fully contextualize the elements being documented in the section even if they are repeated
 
 #### Diagram requirements
 
