@@ -13,28 +13,43 @@
 
 ---
 
+### 2. OVERVIEW
+
+I. WHAT
+SiP documentation files should clearly describe all SiP code files clearly and concisely following the guidelines in the this document.
+
+Documentation should contain the following elements
+- **Title**
+- **Table of Contents** that links to each section
+- **Overview** that explains the WHAT and the WHY of the documentation - add HOW section only if it adds value without repeating the WHAT section; in most cases the documentation itself serves as the HOW for the overview.
+- **Main Architecture WHW Block** that shows the full framework of the code being documented
+- **What|How|Why Blocks** arranged according to the documentaiton guidelines that fully describe the code (henceforth WHW blocks)
+- **Review Checklist** that includes the requirement that the code adhere to the SiP code guidelines and other relevant essential considerations to ensure code conforms to functional requirements
+
+Documentation features that do not follow the format above like Testing protocols, FAQs or any other form that simply repeats content already present in the documenation should not be included.
+
+II. WHY
+The documentation guidelines are used primarily to provide context for an ai agent working on the documentation so that their work follows the SiP Documentation Principles.
+- **Structural correctness** – documentation should follow the standards and patterns described in this document.
+- **Single source of truth** – each fact appears once; WHAT ↔︎ HOW ↔︎ WHY link but don’t repeat.
+- **Zero assumptions** – documentation can be easily related to and verified against the actual code.
+- **Complete representation** – collectively, the hierarchy of WHW blocks represent all implemented functionality.
+- **Current state only** – no history or future plans unless required for WHY.
+- **Logical clarity** – documentation flows from the main architecture diagram; every feature hangs logically from it.
+
+---
+
 ### 1. THE THREE LAYER FRAMEWORK – WHAT, HOW AND WHY {#three-layer-framework}
 
-Every documentation block follows the **WHAT | HOW | WHY** model.
+Each WHW block in the body of any sip guidelines file follows the **WHAT | HOW | WHY** model.
 
 #### LAYER OVERVIEW {#layer-overview-table}
 
-| Layer    | Purpose                         | Typical Content                                  | Mandatory?      |
-| -------- | ------------------------------- | ------------------------------------------------ | --------------- |
-| **WHAT** | System architecture & data flow | High‑level Mermaid diagram (or equivalent)       | **Recommended** |
-| **HOW**  | Implementation detail           | Code samples, mapping tables, detailed sequences | **Yes**         |
-| **WHY**  | Design rationale & constraints  | ≤ 2 short paragraphs                             | **Yes**         |
-
-The Three‑layer framework separates architectural diagrams (WHAT), implementation details (HOW), and design rationale (WHY) to create documentation that adheres to the SiP principles.
-
-### SiP principles
-
-- **Structural correctness** – show clean architecture; fix root causes, not symptoms.
-- **Single source of truth** – each fact appears once; WHAT ↔︎ HOW ↔︎ WHY link but don’t repeat.
-- **Zero assumptions** – verify every element against the actual code.
-- **Complete representation** – document all implemented functionality in a nested hierarchy.
-- **Current state only** – no history or future plans unless required for WHY.
-- **Logical clarity** – documentation flows from the main architecture diagram; every feature hangs logically from it.
+| Layer    | Purpose                         | Typical Content                                  | Mandatory?      | Goal
+| -------- | ------------------------------- | ------------------------------------------------ | --------------- |------------------------------------------------------------------------------ |
+| **WHAT** | System architecture & data flow | High‑level Mermaid diagram (or equivalent)       | **Recommended** | convey architecture at a glance
+| **HOW**  | Implementation detail           | Code samples, mapping tables, detailed sequences | **Yes**         | supplement the WHAT to provide every detail needed to code, debug, or extend
+| **WHY**  | Design rationale & constraints  | ≤ 2 short paragraphs                             | **Yes**         | make decisions obvious to inform coding, debugging and extending
 
 [Back to Top](#top)
 
@@ -45,6 +60,7 @@ The Three‑layer framework separates architectural diagrams (WHAT), implementat
 *Goal: convey architecture at a glance.*
 
 The WHAT layer uses diagrams to show system architecture and logical structure, favoring legibility over exhaustive detail.
+If the whole system can be conveyed in a single legible diagram, it should be.
 
 #### Diagram requirements
 
@@ -67,7 +83,7 @@ graph LR
 #### Include vs. exclude
 
 - **Include** – components, relationships, logical groupings; every other diagram in the document must include a node that maps back to the overview diagram.
-- **Recommended** – file/function names for verification.
+- **Recommended** – file/function names for verification and inter-diagram mapping.
 - **Exclude** – implementation steps, magic numbers, exhaustive flows.
 
 > **Rule of thumb** When a diagram no longer fits on one screen at 100 % zoom, move detail to the HOW layer.
@@ -84,7 +100,7 @@ Although the HOW layer's primary purpose is to fill in the detail that would oth
 
 #### Include vs. exclude
 
-- **Include** – Mapping tables, code constants, sequence or state diagrams.
+- **Include** – Diagrams showing granular code structures, Mapping tables, code constants, sequence or state diagrams.
 - **Exclude** – Lengthy code blocks (use `<details>`/`summary` collapsible blocks when necessary).
 
 Example:
@@ -103,15 +119,7 @@ Example:
 
 *Goal: make decisions obvious to any stakeholder.*
 
-Template:
-
-```markdown
-### WHY: <Decision Summary>
-
-**Constraint** – Plain‑English description.
-**Benefit** – How the choice helps users or the business.
-**Alternatives** – Short note on rejected option(s) and why (optional).
-```
+The WHY layer should clarify why the code is structured the way that it is so that when it's debugged or extended, considerations that enable and optimize the code are preserved.
 
 Limit each WHY subsection to ≈ 150 words. If a WHY topic exceeds this limit, split it into multiple WHY subsections. Avoid code; link back to WHAT/HOW for technical detail.
 
@@ -125,26 +133,25 @@ Limit each WHY subsection to ≈ 150 words. If a WHY topic exceeds this limi
 
 1. **Protect the main architecture diagram**
 
-   - Show only structural scaffolding; every feature diagram must trace back to at least one node on the overview.
-   - If necessary, move node‑level detail to HOW layers or, when HOW layers become bloated, to lower‑tier WHW blocks.
+   - Make sure the main architecture diagram shows the full framework of the code being documented. Every feature diagram must trace back to at least one node on the overview.
+   - If necessary, move node‑level detail to HOW layers or, when HOW layers become bloated, promote it to a bridging block between the main architecture and a new sub‑block where detail can be presented clearly.
 
 2. **Don't repeat yourself**
 
    - The HOW layer must not repeat the WHAT layer (link through shared node).
    - The WHY layer must not repeat the HOW or WHAT layers (link instead).
+   - WHW blocks must not repeat other WHW blocks
 
 3. **Evolving anatomy**
 
-   - If code is a single logical function, keep it a single WHAT‑HOW‑WHY block.
-   - If code contains multiple features, map the full framework in the first block and, if necessary, add WHW blocks per feature.
-   - When a WHW block becomes unreadable, promote it to a bridging block between the main architecture and a new sub‑block where detail can be presented clearly.
+   - If code is a single logical function, keep it a single WHW block.
+   - If code contains multiple features, map the full architectural framework in the main architecture block and, if necessary, add WHW blocks per feature.
+   - When a WHW block becomes unreadable, promote it to a bridging block and add WHW blocks.
 
 4. **Group like features**
 
    - Before adding a new WHW block, review existing sections; if ≥ 70 % of the diagram would duplicate an existing one, integrate instead.
-   - Avoid parallel sections whose diagrams overlap substantially.
-
-> **Rule of thumb** If a diagram won’t fit on one screen at 100 % zoom, promote and add a block to the hierarchy.
+   - Avoid parallel sections whose diagrams overlap substantially..
 
 [Back to Top](#top)
 
