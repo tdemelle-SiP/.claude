@@ -8,10 +8,9 @@
 - [2. Overview](#overview)
 - [3. Architecture](#architecture)
   - [3.1A UI & Content Scripts](#area-ui-content-scripts)
-  - [3.1B WordPress Tab Integration](#area-wordpress-tab)
+  - [3.1B Tab Management & Integration](#area-tab-management)
   - [3.1C Background Router & Messaging](#area-router-messaging)
   - [3.1D Storage & Logging](#area-storage-logging)
-  - [3.1E Printify Tab Integration](#area-printify-tab)
 - [4. Development Guide](#development-guide)
 - [5. Author Checklist](#author-checklist)
 
@@ -60,11 +59,14 @@ graph LR
     CS[Content Scripts] --> WUI[Widget UI]
     CS --> Relay
     Relay --> Router((Service Worker Router))
-    Router <-. operation status, config, tab pairs .-> Storage[(chrome.storage)]
+    Router <-. tab pairs, config .-> Storage[(chrome.storage)]
+    CS <-. widget state, config .-> Storage
+    WUI <-. widget state, config .-> Storage
+    Handlers <-. operation status .-> Storage
+    Router --> Handlers[Message Handlers]
     Router --> CS
     Router --> WUI
-    Router --> Logger[(Action Log)]
-    Storage -. logs .-> Logger
+    Storage -. logs .-> Logger[(Action Log)]
   end
 
   subgraph "WordPress Tab Context"
@@ -87,6 +89,20 @@ graph LR
     Router -. URL params .-> PrintifyPage
     Router -. inject scripts .-> DIS
   end
+  
+  %% Style definitions for main components
+  classDef routerStyle fill:#e8f4f8,stroke:#5a8ca8,stroke-width:2px,color:#1a4a5c
+  classDef contentStyle fill:#f3e8f8,stroke:#7d5a8a,stroke-width:2px,color:#3d1a4a
+  classDef storageStyle fill:#f8f3e8,stroke:#8a7d5a,stroke-width:2px,color:#4a3d1a
+  classDef uiStyle fill:#e8f8e8,stroke:#5a8a5a,stroke-width:2px,color:#1a4a1a
+  classDef handlerStyle fill:#f8e8e8,stroke:#8a5a5a,stroke-width:2px,color:#4a1a1a
+  
+  %% Apply styles to nodes
+  class Router routerStyle
+  class CS contentStyle
+  class Storage storageStyle
+  class WUI uiStyle
+  class Handlers handlerStyle
 ```
 
 #### WHY
@@ -110,10 +126,9 @@ Host permissions are limited to printify.com and wp-admin domains to minimize Ch
 | ID | Major Area                    | Maps to Diagram Node                                      |
 | -- | ----------------------------- | --------------------------------------------------------- |
 | A  | UI & Content Scripts          | `Content Scripts`, `Widget UI`                            |
-| B  | WordPress Tab Integration     | `wordpress-relay.js`                                   |
+| B  | Tab Management & Integration  | `wordpress-relay.js`, `Printify.com Page`, Tab Pairing    |
 | C  | Background Router & Messaging | `Service Worker Router`                                   |
 | D  | Storage & Logging             | `chrome.storage`, `Action Log`                            |
-| E  | Printify Tab Integration      | `Printify.com Page`, URL params flow, DOM scraping routes |
 
 Each area will become its own subsection (**WHAT | HOW | WHY**) containing relevant Key Features.
 
@@ -128,49 +143,90 @@ Each area will become its own subsection (**WHAT | HOW | WHY**) containing r
 
 ```mermaid
 graph TD
-  subgraph "Content Scripts Load Order"
-    Error[widget-error.js] -->|next| Logger[action-logger.js]
-    Logger -->|next| Capture[error-capture.js]
-    Capture -->|next| Actions[Action Scripts]
+  subgraph "Content Scripts System"
+    subgraph "Load Order"
+      Error[widget-error.js] -->|1| Logger[action-logger.js]
+      Logger -->|2| Capture[error-capture.js]
+      Capture -->|3| Actions[Action Scripts]
+    end
+    
+    subgraph "Runtime Components"
+      CS[Content Scripts]
+      WUI[Widget UI]
+      CS --> WUI
+      
+      WUI --> Terminal[Terminal<br/>500 lines]
+      WUI --> Modal[VanillaModal]
+      WUI --> State[State Manager]
+      State -.->|debounced| Storage[(chrome.storage)]
+    end
+    
+    Actions --> CS
+    Logger --> Terminal
+    
+    Router((Router)) -.->|messages| CS
+    CS -.->|inject on| WPPage[WordPress Pages]
+    CS -.->|inject on| PPPage[Printify Pages]
   end
-  Error -. inject .-> WPPage((WordPress Admin Page))
-  Error -. inject .-> PrintifyPage((Printify.com Page))
+  
+  Terminal -->|auto-hide| Timer[30s timer]
+  Modal -->|save position| Storage
+  
+  %% Apply styles
+  classDef contentStyle fill:#f3e8f8,stroke:#7d5a8a,stroke-width:2px,color:#3d1a4a
+  classDef uiStyle fill:#e8f8e8,stroke:#5a8a5a,stroke-width:2px,color:#1a4a1a
+  classDef routerStyle fill:#e8f4f8,stroke:#5a8ca8,stroke-width:2px,color:#1a4a5c
+  
+  class CS contentStyle
+  class WUI uiStyle
+  class Router routerStyle
 ```
 
-The bundles load error handling and logging infrastructure first, then inject action-specific scripts for page interactions and widget UI.
+The content scripts system provides error handling, logging, and a floating widget UI that persists state and provides real-time feedback across WordPress and Printify pages.
 
 
 
 #### HOW
 
-| Component           | Responsibility                                               | Key Files                       |
-| ------------------- | ------------------------------------------------------------ | ------------------------------- |
-| Error Infrastructure | Global error handling and widget error display               | `widget-error.js`               |
-| Action Logger       | Logs all actions with timing and categorization              | `action-logger.js`              |
-| Error Capture       | Captures and logs uncaught errors and promise rejections     | `error-capture.js`              |
-| Widget UI           | Renders floating panel with terminal display                 | `widget-tabs-actions.js`        |
-| WordPress Relay     | Handles postMessage communication with WordPress             | `wordpress-relay.js`            |
-| Printify Actions    | Handles mockup selection and page automation                 | `mockup-library-actions.js`     |
+**Component Implementations**
 
-**Message Flow**
+| WHAT Component | Implementation | File:Line | Key Details |
+|----------------|----------------|-----------|-------------|
+| widget-error.js | Global error handler | widget-error.js:1 | Sets up `window.SiPWidget.showError()` |
+| action-logger.js | Logging system | action-logger.js:1 | Maintains `sipActionLogs` array |
+| error-capture.js | Error interceptor | error-capture.js:1 | Hooks `window.onerror` and unhandled rejections |
+| Widget UI | Main UI controller | widget-tabs-actions.js:1 | Creates floating widget interface |
+| VanillaModal | Modal class | widget-tabs-actions.js:12 | Draggable/resizable dialogs |
+| Terminal | Log display | widget-tabs-actions.js:450 | Circular buffer implementation |
+| State Manager | `saveState()`, `loadState()` | widget-tabs-actions.js:380 | Debounced persistence |
 
-- `SIP_SHOW_WIDGET` – router → content scripts → Widget UI shows.
-- `SIP_TERMINAL_APPEND` – router log entry → content scripts → terminal.
-- Widget auto-hides after `AUTO_HIDE_MS` (30s) of no new logs.
+**Constants & Configuration**
 
-Key constants:
+<details>
+<summary>View constants</summary>
 
 ```javascript
-export const TERMINAL_MAX_LINES = 500;
-export const WIDGET_Z_INDEX = 2147483000; // stays above site pop‑ups
-export const AUTO_HIDE_MS = 30000;       // terminal hides after 30s inactivity
-export const LEVEL_COLORS = {
-  INFO: '#8ae',
-  ERROR: '#e44',
-  SUCCESS: '#4e4',
-  WARNING: '#ea4'
-};
+// Widget positioning
+const WIDGET_Z_INDEX = 2147483000;  // Above all page content
+
+// Terminal settings  
+const TERMINAL_MAX_LINES = 500;     // Circular buffer size
+const AUTO_HIDE_MS = 30000;         // 30 second auto-hide
+
+// State persistence
+const SAVE_DEBOUNCE_MS = 1000;      // 1 second debounce
 ```
+
+</details>
+
+**Message Handlers**
+
+| Message | Handler Function | Action |
+|---------|-----------------|--------|
+| `SIP_SHOW_WIDGET` | `showWidget()` | Makes widget visible |
+| `SIP_HIDE_WIDGET` | `hideWidget()` | Hides widget |
+| `SIP_TERMINAL_APPEND` | `updateTerminal()` | Adds log entry |
+| `SIP_OPERATION_STATUS` | `updateOperationStatus()` | Updates progress display |
 
 #### WHY
 
@@ -178,69 +234,148 @@ A consistent floating widget keeps all extension actions in one place, avoiding 
 
 ---
 
-### 3.1B WordPress Tab Integration {#area-wordpress-tab}
+### 3.1B Tab Management & Integration {#area-tab-management}
 
 #### WHAT
 
 ```mermaid
 graph TD
-  WPPage[WordPress Admin Page]
-  WPRelay[wordpress-relay.js]
-  Relay((Extension Relay))
-  Router((Service Worker Router))
-
-  WPPage --> WPRelay
-  WPRelay --> Relay
-  Relay --> Router
+  subgraph "Service Worker (Background)"
+    Router((Service Worker Router))
+    TPM[Tab Pair Manager]
+    Nav[navigateTab]
+    Store[(sipTabPairs)]
+    
+    Router --> Nav
+    Nav --> TPM
+    TPM <--> Store
+    Nav --> |create/update| ChromeTabs[chrome.tabs API]
+  end
+  
+  subgraph "WordPress Tab"
+    WP[WordPress Page]
+    WPR[wordpress-relay.js]
+    WP -->|postMessage| WPR
+  end
+  
+  subgraph "Printify Tab" 
+    PP[Printify Page]
+    MICS[Manifest Scripts<br/>URL param reader]
+    DIS[Dynamic Scripts<br/>API interceptor]
+    PP --> MICS
+    MICS -.->|DOM actions| PP
+    DIS -.->|capture data| API[Printify API]
+  end
+  
+  WPR -->|chrome.runtime| Router
+  Router -->|URL params| PP
+  Router -->|executeScript| DIS
+  DIS -->|postMessage| Router
+  
+  TPM -.->|"123↔456"| Pairs[Tab Pairs]
+  Pairs -.-> WP
+  Pairs -.-> PP
+  
+  Store -->|onRemoved| Cleanup[Auto-cleanup]
+  
+  %% Style the Router node
+  classDef routerStyle fill:#e8f4f8,stroke:#5a8ca8,stroke-width:2px,color:#1a4a5c
+  class Router routerStyle
 ```
 
-`wordpress-relay.js` is injected on WordPress admin pages. It establishes communication between the WordPress plugin and the extension.
+The Tab Management system maintains bidirectional pairing between WordPress and Printify tabs, enabling coordinated actions across both contexts while respecting browser security boundaries.
 
 #### HOW
 
-| Component                | Responsibility                                    | Key Files            |
-| ------------------------ | ------------------------------------------------- | -------------------- |
-| `manifest.json` WP block | Registers scripts for `*/wp-admin/*`              | `manifest.json`      |
-| wordpress-relay.js       | Handles postMessage from WP; validates & forwards | `wordpress-relay.js` |
-| widget-tabs-actions.js   | Provides floating widget UI on WordPress pages    | `widget-tabs-actions.js` |
-| wordpress-handler.js     | Processes WordPress commands in service worker    | `wordpress-handler.js` |
+**Component Locations**
 
-**Sequence**
+| WHAT Component | Implementation | File:Line |
+|----------------|----------------|-----------|
+| navigateTab | `async function navigateTab(url, tabType, currentTabId)` | widget-router.js:366 |
+| Tab Pair Manager | `tabPairs` Map + helper functions | widget-router.js:42-104 |
+| sipTabPairs storage | `chrome.storage.local` key | Persisted as `{tabId: pairedId}` |
+| wordpress-relay.js | Content script relay | wordpress-relay.js:1-133 |
+| Manifest Scripts | `content_scripts` block | manifest.json:27-60 |
+| Dynamic Scripts | `chrome.scripting.executeScript()` | mockup-fetch-handler.js:263 |
+
+**Data Formats**
+
+<details>
+<summary>View data structures</summary>
+
+```javascript
+// Tab pairs storage structure
+sipTabPairs: {
+  "123": 456,  // WordPress tab 123 ↔ Printify tab 456
+  "456": 123   // Bidirectional for O(1) lookup
+}
+
+// URL parameters for Printify automation
+?sip-action=update&scenes=Front,Back&primaryScene=Front
+
+// Message format through relay
+{
+  type: "SIP_UPDATE_PRODUCT_MOCKUPS",
+  source: "sip-printify-manager",
+  data: { productId: "123", scenes: ["Front", "Back"] }
+}
+```
+
+</details>
+
+**Script Injection Worlds**
+
+- **ISOLATED world**: Can use `chrome.runtime` API, sets up message relay
+- **MAIN world**: Can access page's JavaScript context and intercept API calls
+
+**Message Flows**
 
 ```mermaid
-sequenceDiagram
-  participant WP as WordPress Plugin
-  participant Relay as wordpress-relay.js
-  participant Router
+graph LR
+  subgraph "Tab Pairing Flow"
+    WP1[WordPress Tab] -->|SIP_WP_ROUTE_TO_PRINTIFY| R1((Router))
+    R1 --> TPM1{Tab Paired?}
+    TPM1 -->|Yes| Update[chrome.tabs.update<br/>existing tab]
+    TPM1 -->|No| Create[chrome.tabs.create<br/>new tab]
+    Create --> Pair[createTabPair<br/>store mapping]
+    Update --> PP1[Printify Tab]
+    Pair --> PP1
+  end
+```
 
-  WP->>Relay: postMessage(SIP_NAVIGATE)
-  Relay->>Router: chrome.runtime.sendMessage
-  Router-->>Relay: response
-  Relay-->>WP: window.postMessage(response)
+```mermaid
+graph LR
+  subgraph "Mockup Selection Flow"
+    WP2[WordPress] -->|SIP_UPDATE_PRODUCT_MOCKUPS| R2((Router))
+    R2 -->|Navigate with params| URL[URL: ?sip-action=update<br/>&scenes=Front,Back]
+    URL --> PP2[Printify Page loads]
+    PP2 --> Script[mockup-library-actions.js]
+    Script --> Read[Read URL params]
+    Read --> Select[Select mockups<br/>by scene]
+    Select --> Save[Click save button]
+  end
 ```
 
 #### WHY
 
-WordPress admin is the user's command hub. In‑page integration respects WP permissions and provides immediate feedback. Tab pairing prevents actions from targeting the wrong Printify tab, while the relay maintains consistent validation and logging.
+Tab pairing solves the fundamental challenge of coordinating actions across security-isolated contexts. Without direct API access, the extension must orchestrate browser tabs to automate Printify operations while maintaining state consistency. The bidirectional pairing ensures that each WordPress session maintains its own Printify workspace, preventing cross-contamination in multi-store setups.
+
+The dual communication approach—URL parameters for one-way automation and dynamic script injection for data extraction—works around chrome.runtime restrictions on third-party sites. This architecture respects browser security models while enabling the complex interactions required for mockup management. Tab reuse through pairing reduces resource consumption and provides a smoother user experience than constantly opening new tabs.
 
 **Deep-dive: Extension Detection**
 
 ```mermaid
-sequenceDiagram
-    participant WP as WordPress Plugin UI
-    participant BEM as Browser Extension Manager
-    participant Relay as Extension Relay (wordpress-relay.js)
-    participant Router as Service Worker Router
-    participant Handler as WordPress Handler
-
-    WP->>BEM: checkStatus()
-    BEM->>Relay: postMessage(SIP_REQUEST_EXTENSION_STATUS)
-    Relay->>Router: chrome.runtime.sendMessage(...)
-    Router->>Handler: route to wordpress handler
-    Handler-->>Router: SIP_EXTENSION_DETECTED
-    Router-->>Relay: response
-    Relay-->>BEM: window.postMessage(response)
-    BEM->>WP: $(document).trigger('extensionDetected')
+graph LR
+    WP[WordPress Plugin UI] -->|checkStatus| BEM[Browser Extension Manager]
+    BEM -->|postMessage| Relay[wordpress-relay.js]
+    Relay -->|chrome.runtime.sendMessage| Router((Router))
+    Router -->|route to handler| Handler[WordPress Handler]
+    Handler -->|SIP_EXTENSION_DETECTED| Router
+    Router -->|response| Relay
+    Relay -->|window.postMessage| BEM
+    BEM -->|jQuery trigger| Event[extensionDetected event]
+    
+    style Router fill:#e8f4f8,stroke:#5a8ca8,stroke-width:2px,color:#1a4a5c
 ```
 
 The extension detection pattern uses:
@@ -267,6 +402,13 @@ graph TD
   
   PrintifyPage --> Actions[Action Scripts]
   Actions -. reads .-> URLParams[URL Parameters]
+  
+  %% Apply styles to match main architecture
+  classDef routerStyle fill:#e8f4f8,stroke:#5a8ca8,stroke-width:2px,color:#1a4a5c
+  classDef contentStyle fill:#f3e8f8,stroke:#7d5a8a,stroke-width:2px,color:#3d1a4a
+  
+  class Router routerStyle
+  class CS contentStyle
 ```
 
 WordPress messages pass through wordpress-relay.js to reach the **Service‑Worker Router**. Printify pages operate in isolation due to chrome.runtime restrictions, using URL parameters as the sole communication method. The Router navigates to Printify pages with specific parameters that action scripts read and execute.
@@ -349,6 +491,103 @@ export const TERMINAL_MAX_LINES = 500; // max log entries in UI
 | `printify-data-handler.js` | Processes mockup data fetched from Printify | `SIP_FETCH_MOCKUPS` responses |
 | `wordpress-handler.js` | Processes WordPress plugin commands | `SIP_REQUEST_EXTENSION_STATUS`, `SIP_NAVIGATE` |
 
+**Router Internal Systems**
+
+| System | Purpose | Key Functions |
+|--------|---------|---------------|
+| Config Manager | Extension setup & API keys | `initializeConfig()`, `loadConfiguration()`, `updateConfig()` |
+| Chrome API Layer | Wrapped Chrome APIs with error handling | `createTab()`, `queryTabs()`, `sendTabMessage()`, `updateTab()`, `removeTab()` |
+| Operation Control | Pause/resume for user intervention | `pauseOperation()`, `resumeOperation()` |
+| Message Validation | Single-point validation | `handleMessage()` validates all incoming messages |
+
+**Configuration Management**
+
+The Router manages extension configuration with fallback layers:
+
+```javascript
+async function initializeConfig() {
+  // 1. Try pre-configured settings first
+  const preConfig = await fetch(chrome.runtime.getURL('assets/config.json'))
+    .then(r => r.json())
+    .catch(() => null);
+    
+  if (preConfig?.configured) {
+    return preConfig;
+  }
+  
+  // 2. Fall back to chrome.storage.sync
+  const stored = await chrome.storage.sync.get(['wordpressUrl', 'apiKey']);
+  
+  // 3. Update badge based on config status
+  if (stored.wordpressUrl && stored.apiKey) {
+    chrome.action.setBadgeText({ text: '✓' });
+    chrome.action.setBadgeBackgroundColor({ color: '#4CAF50' });
+  }
+  
+  return stored;
+}
+```
+
+**Chrome API Wrapper Pattern**
+
+All Chrome APIs are wrapped for consistent error handling:
+
+```javascript
+async function createTab(params) {
+  try {
+    const tab = await chrome.tabs.create(params);
+    return { 
+      success: true, 
+      data: { tabId: tab.id, tab: tab } 
+    };
+  } catch (error) {
+    return { 
+      success: false, 
+      error: error.message, 
+      code: 'TAB_CREATION_FAILED' 
+    };
+  }
+}
+```
+
+**Operation Pause/Resume**
+
+For operations requiring user intervention:
+
+```javascript
+async function pauseOperation(tabId, issue, instructions) {
+  operationState.paused = true;
+  operationState.pausedOperation = { tabId, issue, instructions };
+  
+  // Focus the problematic tab
+  await chrome.tabs.update(tabId, { active: true });
+  
+  // Update UI with pause instructions
+  await chrome.storage.local.set({
+    sipOperationStatus: {
+      state: 'paused',
+      issue: issue,
+      instructions: instructions,
+      showResumeButton: true
+    }
+  });
+  
+  // Return promise that resolves when resumed
+  return new Promise((resolve) => {
+    operationState.pausedCallback = resolve;
+  });
+}
+```
+
+**Message Validation Flow**
+
+All messages pass through comprehensive validation:
+
+1. **Structure Check**: Message must have `type` field
+2. **Source Validation**: WordPress messages verified by source and origin
+3. **Handler Routing**: Message type mapped to specific handler
+4. **Response Wrapping**: Success/error responses formatted consistently
+
 #### WHY
 
 A single service‑worker router gives one chokepoint for security and observability: every action is validated, logged, and tracked. The router pattern enables clean separation between message sources and handlers, making the extension maintainable as features grow. Enforcing consistent message naming helps debug issues and prevents collisions with other extensions.
@@ -365,6 +604,13 @@ graph TD
   Logger --> ActionLog[(Action Log)]
   ErrorCap[error-capture.js] --> Logger
   Storage[(chrome.storage.local)] -. persists .-> ActionLog
+  
+  %% Apply styles to match main architecture
+  classDef routerStyle fill:#e8f4f8,stroke:#5a8ca8,stroke-width:2px,color:#1a4a5c
+  classDef storageStyle fill:#f8f3e8,stroke:#8a7d5a,stroke-width:2px,color:#4a3d1a
+  
+  class Router routerStyle
+  class Storage storageStyle
 ```
 
 All logs—errors or normal actions—flow through `action-logger.js` into a single array **sipActionLogs** stored in `chrome.storage.local`.
@@ -427,6 +673,61 @@ chrome.storage.sync.get(['wordpressUrl', 'apiKey'], (result) => {
 });
 ```
 
+**State Management Functions**
+
+Widget components manage their own state persistence:
+
+| Function | Purpose | Storage Key | Scope |
+|----------|---------|-------------|-------|
+| `saveState()` | Debounced widget state saving | `sipWidgetState` | Widget position, visibility, terminal content |
+| `loadState()` | Restore widget on page load | `sipWidgetState` | Called on content script initialization |
+| `autoConfigureForWordPress()` | Auto-detect WP URL | `wordpressUrl` | WordPress admin pages only |
+
+**Auto-Configuration**
+
+On WordPress admin pages, the extension automatically captures the site URL:
+
+```javascript
+function autoConfigureForWordPress() {
+  if (window.location.pathname.includes('/wp-admin/')) {
+    const baseUrl = `${window.location.protocol}//${window.location.hostname}`;
+    
+    // Check if already configured
+    chrome.storage.sync.get(['wordpressUrl'], (items) => {
+      if (!items.wordpressUrl || items.wordpressUrl !== baseUrl) {
+        chrome.storage.sync.set({ 
+          wordpressUrl: baseUrl 
+        }, () => {
+          console.log('Auto-configured WordPress URL:', baseUrl);
+        });
+      }
+    });
+  }
+}
+```
+
+**State Persistence Pattern**
+
+Widget state is saved with debouncing to prevent storage thrashing:
+
+```javascript
+let saveTimeout;
+function saveState() {
+  clearTimeout(saveTimeout);
+  saveTimeout = setTimeout(() => {
+    const state = {
+      isVisible: widgetVisible,
+      position: { x: widget.offsetLeft, y: widget.offsetTop },
+      terminalContent: terminal.innerHTML,
+      terminalState: terminalExpanded,
+      timestamp: Date.now()
+    };
+    
+    chrome.storage.local.set({ sipWidgetState: state });
+  }, 1000); // 1 second debounce
+}
+```
+
 #### WHY
 
 A rolling array of the most‑recent 500 events is simple and fast to query while still covering typical batch‑run history. The hierarchical log structure in `action-logger.js` tracks operation start/end times and nesting, making it easy to trace complex workflows. Keeping both functional and error events in the same list gives an immediate chronological view for debugging.
@@ -435,63 +736,6 @@ Chrome's storage quotas shape the architecture: `sipStore` is capped at 1MB to l
 
 ---
 
-### 3.1E Printify Tab Integration {#area-printify-tab}
-
-#### WHAT
-
-```mermaid
-graph TD
-  subgraph "Printify Page Context"
-    PPage["Printify.com Page"]
-    Actions[Action Scripts]
-    URLParams[URL Parameters]
-    XHR[XHR Intercept]
-  end
-
-  PPage --> Actions
-  URLParams --> Actions
-  Actions -. intercept .-> XHR
-```
-
-Content scripts handle mockup selection via URL parameters and intercept XHR requests to capture Printify data.
-
-#### HOW
-
-| Component                  | Responsibility                                                                   | Key Files                                     |
-| -------------------------- | -------------------------------------------------------------------------------- | --------------------------------------------- |
-| mockup-library-actions.js  | Handles mockup selection on library pages via URL params and DOM manipulation     | `mockup-library-actions.js`    |
-| product-details-actions.js | Sets primary/default images on product detail pages                             | `product-details-actions.js`   |
-| printify-tab-actions.js    | Monitors Printify pages (minimal functionality due to restrictions)              | `printify-tab-actions.js`      |
-| Scene Navigation           | Uses URL params `scenes`, `primaryScene`, `primaryColor` for automation         | Built into mockup actions      |
-
-**URL Parameters**
-
-- `sip-action=update` - Triggers mockup selection automation
-- `scenes=Front,Back,Left` - Comma-separated list of scenes to select
-- `primaryScene=Front` - Designates primary/default scene
-- `primaryColor=Black` - Sets primary color variant
-
-**Sequence (Mockup Selection via URL)**
-
-```mermaid
-sequenceDiagram
-  participant WP as WordPress
-  participant Router
-  participant Page as Printify Page
-  participant Script as mockup-library-actions.js
-
-  WP->>Router: SIP_UPDATE_PRODUCT_MOCKUPS
-  Router->>Page: Navigate with URL params
-  Page->>Script: Page loads with ?sip-action=update&scenes=Front,Back
-  Script->>Script: Select mockups by scene
-  Script->>Script: Click save button
-```
-
-#### WHY
-
-Printify lacks an official scene API, so intercepting internal XHR and scraping DOM labels delivers the required data without violating site terms. The extension uses two distinct approaches: URL parameter automation for mockup selection (one-way) and dynamic script injection for data extraction (two-way). Dynamic injection bypasses chrome.runtime restrictions by using ISOLATED world scripts as relays. The scene-based selection (Front, Back, etc.) provides a more intuitive interface than raw mockup IDs.
-
----
 
 
 <a id="storage-schema"></a>
