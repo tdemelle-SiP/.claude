@@ -297,7 +297,7 @@ Message handlers process specific message types received by the Router, executin
 ```mermaid
 graph TD
   subgraph "Service Worker (Background)"
-    Router((Router))
+    Router((Router<br/>see HOW 4E))
     
     subgraph "Message Handlers"
       WH[wordpress-handler.js<br/>see HOW 4A]
@@ -341,8 +341,11 @@ graph TD
 
 > Processes commands from the WordPress plugin:
 > 
+> <details>
+> <summary>View WordPress message types</summary>
+>
 > | Message Type | Action | Response |
-> |--------------|--------|---------->
+> |--------------|--------|----------|
 > | `SIP_REQUEST_EXTENSION_STATUS` | Confirms extension is active | `SIP_EXTENSION_DETECTED` |
 > | `SIP_TEST_CONNECTION` | Tests WordPress API connection | Connection status |
 > | `SIP_WP_ROUTE_TO_PRINTIFY` | Navigates to Printify tab | Tab ID or error |
@@ -362,83 +365,111 @@ graph TD
 > | Validation chain | origin → source → structure | Security verification |
 > | Stateless detection | Request/response each time; no proactive announcements | Reduces message noise |
 > | Edge‑case handling | Missing `source`, cross‑origin messages, self‑responses | Robustness |
+>
+> </details>
 
 ##### 4B Widget Data Handler
 
 > Controls the floating widget UI across all tabs:
 > 
+> <details>
+> <summary>View widget data handler messages</summary>
+> 
 > | Message Type | Action | Implementation |
-> |--------------|--------|---------------->
+> |--------------|--------|----------------|
 > | `SIP_SHOW_WIDGET` | Makes widget visible | Sets widget state in storage |
 > | `SIP_HIDE_WIDGET` | Hides widget | Updates visibility state |
 > | `SIP_TERMINAL_APPEND` | Adds log entry | Appends to terminal content |
 > | `SIP_TERMINAL_CLEAR` | Clears terminal | Resets terminal array |
 > | `SIP_TERMINAL_SET_STATE` | Expand/collapse | Updates terminal display state |
 > | `SIP_OPERATION_STATUS` | Progress updates | Shows current operation status |
+> 
+> </details>
 
 ##### 4C Mockup Handlers
 
 > Three handlers work together to manage Printify mockups:
 > 
-> **mockup-fetch-handler.js:**
-> - Handles `SIP_FETCH_MOCKUPS` requests
-> - Navigates to Printify mockup library
-> - Injects scripts to intercept API responses
-> - Returns mockup data to WordPress
+> **Diagram 4.1: Mockup Operation Flow**
+> ```mermaid
+> graph TD
+>   WP[/WordPress Admin/] -->|SIP_FETCH_MOCKUPS| Router((Router))
+>   WP -->|SIP_UPDATE_PRODUCT_MOCKUPS| Router
+>   
+>   Router --> MFH[mockup-fetch-handler.js]
+>   Router --> MUH[mockup-update-handler.js]
+>   
+>   MFH -->|navigateTab| MockupLib[/Printify Mockup Library/]
+>   MFH -->|inject script| Interceptor[API Interceptor]
+>   MockupLib -.->|API calls| Interceptor
+>   Interceptor -->|MOCKUP_API_RESPONSE| PDH[printify-data-handler.js]
+>   PDH -->|transformed data| Router
+>   Router -->|mockup data| WP
+>   
+>   MUH -->|navigateTab + params| ProductPage[/Printify Product Page/]
+>   ProductPage -->|automation| Mockups[Mockup Selection]
+>   MUH -->|monitor completion| Status[Operation Status]
+>   Status -->|pause/resume| UserIntervention[User Actions]
+>   
+>   %% Style definitions
+>   classDef userFacingStyle fill:#90EE90,stroke:#228B22,stroke-width:2px
+>   classDef routerStyle fill:#87CEEB,stroke:#4682B4,stroke-width:2px
+>   classDef scriptStyle fill:#E6F3FF,stroke:#4169E1,stroke-width:1px
+>   classDef actionStyle fill:#F0F0F0,stroke:#808080,stroke-width:1px
+>   
+>   %% Apply styles
+>   class WP,MockupLib,ProductPage userFacingStyle
+>   class Router routerStyle
+>   class MFH,MUH,PDH,Interceptor scriptStyle
+>   class Mockups,Status,UserIntervention actionStyle
+> ```
 > 
-> **mockup-update-handler.js:**
-> - Handles `SIP_UPDATE_PRODUCT_MOCKUPS` requests
-> - Navigates to product mockup page with URL parameters
-> - Monitors tab for completion
-> - Supports pause/resume for user intervention
+> **Handler Responsibilities:**
+> 
+> | Handler | Message | Purpose | Key Actions |
+> |---------|---------|---------|-------------|
+> | `mockup-fetch-handler.js` | `SIP_FETCH_MOCKUPS` | Retrieve mockup library data | Navigate to library, inject interceptor, relay data |
+> | `mockup-update-handler.js` | `SIP_UPDATE_PRODUCT_MOCKUPS` | Apply mockups to product | Navigate with params, monitor progress, handle pauses |
+> | `printify-data-handler.js` | `MOCKUP_API_RESPONSE` | Transform API data | Parse Printify format, map scenes, validate data |
 
-**printify-data-handler.js:**
-- Processes raw mockup data from Printify API
-- Transforms data for WordPress consumption
-- Handles scene mapping and validation
+##### 4D Additional Message Types
 
-**Message Type Catalog**
+> This catalog documents internal system messages not covered in handler descriptions above.
+>
+> <details>
+> <summary>View additional message types</summary>
+>
+> **Tab Management Messages**
+> | Message | Purpose | Source |
+> |---------|---------|--------|
+> | `SIP_TAB_PAIRED` | Confirms tabs linked successfully | widget-tabs-actions.js |
+> | `SIP_TAB_REMOVED` | Triggers cleanup when tab closes | Browser event |
+>
+> **Operation Control Messages**
+> | Message | Purpose | Source |
+> |---------|---------|--------|
+> | `SIP_OPERATION_PAUSED` | User paused batch operation | action-queue.js |
+> | `SIP_OPERATION_RESUMED` | User resumed batch operation | action-queue.js |
+>
+> **System Events**
+> | Message | Purpose | Source |
+> |---------|---------|--------|
+> | `SIP_SCENE_MAP` | Broadcasts available mockup scenes | Router |
+> | `SIP_STORAGE_UPDATE` | Notifies of storage changes | widget-data-handler.js |
+> | `SIP_LOG_ACTION` | Records actions to log | action-logger.js |
+> | `SIP_ERROR_CAPTURED` | Reports global errors | error-capture.js |
+> | `MOCKUP_API_RESPONSE` | Carries intercepted Printify data | mockup-fetch-handler.js |
+>
+> </details>
 
-<details>
-<summary>View complete message catalog</summary>
+##### 4E Message Validation
 
-| Type | Direction | Handler | Purpose |
-|------|-----------|---------|---------|
-| **WordPress Commands** |
-| `SIP_REQUEST_EXTENSION_STATUS` | WP → Extension | `wordpress-handler.js` | Check if extension is active |
-| `SIP_EXTENSION_DETECTED` | Extension → WP | (response) | Confirms extension presence |
-| `SIP_SHOW_WIDGET` | WP → Extension | `widget-data-handler.js` | Display floating widget |
-| `SIP_HIDE_WIDGET` | WP → Extension | `widget-data-handler.js` | Hide floating widget |
-| `SIP_UPDATE_PRODUCT_MOCKUPS` | WP → Extension | `mockup-update-handler.js` | Batch update mockups |
-| `SIP_FETCH_MOCKUPS` | WP → Extension | `mockup-fetch-handler.js` | Fetch mockup data via intercept |
-| `SIP_TEST_CONNECTION` | WP → Extension | `wordpress-handler.js` | Test config & connection |
-| `SIP_WP_ROUTE_TO_PRINTIFY` | WP → Extension | `wordpress-handler.js` | Navigate to Printify tab |
-| **Internal Actions** |
-| `SIP_TERMINAL_APPEND` | Internal | `widget-data-handler.js` | Add line to terminal |
-| `SIP_TERMINAL_CLEAR` | Internal | `widget-data-handler.js` | Clear terminal content |
-| `SIP_TERMINAL_SET_STATE` | Internal | `widget-data-handler.js` | Update terminal state |
-| `SIP_SCENE_MAP` | Router → WP | (broadcast) | Available scenes update |
-| `SIP_TAB_PAIRED` | Internal | `widget-tabs-actions.js` | Tabs linked successfully |
-| `SIP_TAB_REMOVED` | Internal | `widget-tabs-actions.js` | Tab closed, cleanup pair |
-| `SIP_OPERATION_PAUSED` | Internal | `action-queue.js` | User paused batch |
-| `SIP_OPERATION_RESUMED` | Internal | `action-queue.js` | User resumed batch |
-| `SIP_OPERATION_STATUS` | Internal | `widget-data-handler.js` | Update progress display |
-| `SIP_STORAGE_UPDATE` | Internal | `widget-data-handler.js` | Sync storage changes |
-| `SIP_LOG_ACTION` | Internal | `action-logger.js` | Record action to log |
-| `SIP_ERROR_CAPTURED` | Internal | `error-capture.js` | Global error occurred |
-| **Printify Data Events** |
-| `MOCKUP_API_RESPONSE` | Printify → Router | `mockup-fetch-handler.js` | Intercepted API data |
-
-</details>
-
-**Message Validation Flow**
-
-All messages pass through comprehensive validation in the Router:
-
-1. **Structure Check**: Message must have `type` field
-2. **Source Validation**: WordPress messages verified by source and origin
-3. **Handler Routing**: Message type mapped to specific handler
-4. **Response Wrapping**: Success/error responses formatted consistently
+> All messages pass through comprehensive validation in the Router:
+>
+> 1. **Structure Check**: Message must have `type` field
+> 2. **Source Validation**: WordPress messages verified by source and origin
+> 3. **Handler Routing**: Message type mapped to specific handler
+> 4. **Response Wrapping**: Success/error responses formatted consistently
 
 #### WHY
 
@@ -460,10 +491,10 @@ graph TD
   subgraph "Browser Extension Context (Service Worker)"
     Router((Router))
     Handlers[Message Handlers]
-    Storage[(chrome.storage.local<br/>see HOW 5D)]
-    ActionLog[(sipActionLogs<br/>see HOW 5C)]
+    Storage[(chrome.storage.local)]
+    ActionLog[(sipActionLogs<br/>see Section 6)]
     
-    Router --> |log actions| AL_SW[action-logger.js<br/>instance<br/>see HOW 5A]
+    Router --> |log actions| AL_SW[action-logger.js<br/>instance]
     Handlers --> |log actions| AL_SW
     AL_SW --> ActionLog
     Storage -. persists .-> ActionLog
@@ -471,101 +502,88 @@ graph TD
   
   subgraph "WordPress Tab Context"
     WPScripts[Content Scripts]
-    WPError[error-capture.js<br/>see HOW 5A]
-    AL_WP[action-logger.js<br/>instance<br/>see HOW 5A]
-    Terminal1[Terminal UI<br/>see HOW 5E]
+    WPError[error-capture.js]
+    AL_WP[action-logger.js<br/>instance]
+    Terminal1[Terminal UI<br/>see Section 7]
     
     WPScripts --> |log actions| AL_WP
     WPError --> |log errors| AL_WP
-    AL_WP --> ActionLog
+    AL_WP -->|ACTION_LOG<br/>messages| Router
     AL_WP --> Terminal1
   end
   
   subgraph "Printify Tab Context"
     PScripts[Content Scripts]
-    PError[error-capture.js<br/>see HOW 5A]
-    AL_P[action-logger.js<br/>instance<br/>see HOW 5A]
-    Terminal2[Terminal UI<br/>see HOW 5E]
+    PError[error-capture.js]
+    AL_P[action-logger.js<br/>instance]
+    Terminal2[Terminal UI<br/>see Section 7]
     
     PScripts --> |log actions| AL_P
     PError --> |log errors| AL_P
-    AL_P --> ActionLog
+    AL_P -->|ACTION_LOG<br/>messages| Router
     AL_P --> Terminal2
   end
   
-  %% Apply styles to match main architecture
-  classDef routerStyle fill:#e8f4f8,stroke:#5a8ca8,stroke-width:2px,color:#1a4a5c
-  classDef storageStyle fill:#f8f3e8,stroke:#8a7d5a,stroke-width:2px,color:#4a3d1a
-  classDef loggerStyle fill:#f8e8f8,stroke:#8a5a7d,stroke-width:2px,color:#4a1a3d
+  %% Cross-context log sharing
+  ActionLog -.->|all contexts read| Terminal1
+  ActionLog -.->|all contexts read| Terminal2
   
+  %% Apply styles to match main architecture
+  classDef userFacingStyle fill:#90EE90,stroke:#228B22,stroke-width:2px
+  classDef routerStyle fill:#87CEEB,stroke:#4682B4,stroke-width:2px
+  classDef scriptStyle fill:#E6F3FF,stroke:#4169E1,stroke-width:1px
+  classDef storageStyle fill:#F8F3E8,stroke:#8B7355,stroke-width:2px
+  
+  class Terminal1,Terminal2 userFacingStyle
   class Router routerStyle
+  class WPScripts,PScripts,WPError,PError,AL_SW,AL_WP,AL_P,Handlers scriptStyle
   class Storage,ActionLog storageStyle
-  class AL_SW,AL_WP,AL_P loggerStyle
 ```
 [← Back to Diagram 2: Main Architecture](#architecture)
 
 #### HOW
 
-##### 5A Core Components
+##### 5A Processing Features
 
-> | Component | Purpose | Location |
-> |-----------|---------|---------->
-> | action-logger.js | Core logging system | Loaded in all contexts |
-> | error-capture.js | Global error interception | Content scripts only |
-> | sipActionLogs | Persistent log storage | chrome.storage.local |
-> | Terminal UI | Real-time log display | Widget in tab contexts |
+> - **Operation Hierarchy** - Detects start/end patterns, indents sub-operations
+> - **Site Detection** - Auto-identifies WordPress vs Printify from URLs
+> - **Tab Enrichment** - Router adds tab ID, name, URL to entries
+> - **Status Tracking** - Success/error states for filtering
+> - **Timing Support** - Built-in duration tracking for performance monitoring
+> 
+> **Display Modes:**
+> - **Terminal** - Shows last action in real-time (see [Widget UI](#widget-ui))
+> - **Log Modal** - Full history viewer showing all 500 entries from all contexts
+> - **Cross-Context** - Both terminals read from shared storage
+> 
+> *Storage: `sipActionLogs` in [Section 6](#storage)*
 
 ##### 5B Log Categories
 
 > The logger uses categories to organize different types of events:
 > 
+> <details>
+> <summary>View log categories</summary>
+> 
 > | Category | Usage | Example Actions |
-> |----------|-------|---------------->
+> |----------|-------|----------------|
 > | `WORDPRESS_ACTION` | WordPress plugin interactions | `SIP_UPDATE_PRODUCT_MOCKUPS` |
 > | `NAVIGATION` | Tab navigation events | Tab creation, pairing, switching |
 > | `API_CALL` | External API interactions | WordPress REST API calls |
 > | `ERROR` | Errors and exceptions | Unhandled errors, failed operations |
 > | `EXTENSION_ACTION` | Internal extension events | Widget state changes |
 > | `PRINTIFY_ACTION` | Printify page interactions | Mockup selection, product updates |
+> 
+> </details>
 
-##### 5C Log Entry Structure
 
-> ```javascript
-> {
->   timestamp: 1713012345678,
->   category: "navigation",
->   action: "Created new Printify tab",
->   details: {
->     tabId: 123,
->     url: "https://printify.com/...",
->     duration: 250
->   },
->   tabInfo: {
->     tabId: 456,
->     tabName: "WordPress Admin",
->     url: "https://site.com/wp-admin/..."
->   }
-> }
-> ```
 
-##### 5D Storage Management
-
-> - Logs are capped at **500 entries** to stay within Chrome's storage limits
-> - Oldest entries are automatically pruned when limit is reached
-> - Each context writes directly to the shared `sipActionLogs` array
-
-##### 5E Terminal Display
-
-> - Shows last 500 log entries in the widget UI
-> - Auto-hides after 30 seconds of inactivity
-> - Color-coded by category for quick scanning
-> - Filterable by category or search term
 
 #### WHY
 
-A unified logging system across all contexts provides essential visibility into the extension's complex multi-context operations. By capturing events from content scripts, the service worker, and message handlers in one place, developers can trace user actions through the entire system. The 500-entry limit balances comprehensive logging with Chrome's storage constraints, while the terminal UI gives immediate feedback without requiring developer tools access.
+A unified logging system across all contexts provides essential visibility into the extension's complex multi-context operations. By routing all logs through the Router, we maintain the core architectural principle of centralized message flow, ensuring consistent validation and tab identification. The 500-entry limit balances comprehensive logging with Chrome's storage constraints.
 
-The category system enables quick filtering of relevant events, particularly important when debugging specific workflows like mockup updates that span WordPress initiation, router coordination, and Printify automation. Having the same logger implementation in all contexts ensures consistent formatting and behavior, making the logs predictable and parseable.
+The single-flow design prevents race conditions in storage writes and ensures that tab context is always properly identified by the Router. This architecture also enables future enhancements like cross-context log filtering or real-time log streaming without modifying individual logger instances.
 
 ---
 
@@ -639,7 +657,7 @@ graph TD
 > 
 > | Key | Scope | Purpose | Schema | Size/Quota |
 > |-----|-------|---------|----------|----------->
-> | `sipActionLogs` | local | Action & error logging | Array of log entries (see Section 6) | Capped at 500 entries |
+> | `sipActionLogs` | local | Action & error logging | Array of log entries (see Section 5) | Capped at 500 entries |
 > | `sipStore` | local | Extension state persistence | `{widgetState, tabPairs, operationStatus}` | Max 1MB total |
 > | `sipQueue` | session | Paused operation queue | Array of pending messages | Cleared on resume |
 > | `sipWidgetState` | local | Widget UI persistence | `{isVisible, position, terminalContent, terminalState}` | ~1KB |
