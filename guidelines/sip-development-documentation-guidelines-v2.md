@@ -99,18 +99,39 @@ graph LR
 
 Although the HOW layer's primary purpose is to fill in the detail that would otherwise clutter the WHAT layer, it too must remain accessible and legible.
 
+Each entry in the HOW layer should be derived from, map back to and be structured to correspond to the data in the diagram. For example, the first how entry in block 3 would be 3A. [Title of Referencing Node]. Correspondingly, the referencing node in the diagram would show the element's title and beneath that say "see 3A".  
+
 #### Include vs. exclude
 
 - **Include** – Diagrams showing granular code structures, Mapping tables, code constants, sequence or state diagrams.
 - **Exclude** – Lengthy code blocks (use `<details>`/`summary` collapsible blocks when necessary).
 
-Example:
+  Visual Structure for HOW Subsections
 
-```markdown
-| Diagram Node | Implementation   | File      |
-|--------------|------------------|-----------|
-| Router       | `handleMessage()`| router.js |
-```
+#### HOW Section Format
+  All HOW subsections (e.g., 3.1A, 4.2B) must use blockquote formatting
+   to create visual separation and improve readability:
+
+  ##### 3.1A Component Name
+
+  > Description of the component and its purpose.
+  >
+  > | Column 1 | Column 2 | Column 3 |
+  > |----------|----------|----------|
+  > | Data     | Data     | Data     |
+  >
+  > Additional details, code examples, and all other content
+  > within this subsection should be contained within the blockquote.
+
+  This formatting:
+  - Creates a clear visual boundary for each subsection
+  - Reduces the "wall of text" effect in long HOW sections
+  - Makes it easier to scan and locate specific implementation details      
+  - Maintains consistency across all technical documentation
+
+  The blockquote should encompass all content within the subsection,        
+  including tables, code blocks, lists, and detailed explanations,
+  ending only when the next heading is reached.
 
 [Back to Top](#top)
 
