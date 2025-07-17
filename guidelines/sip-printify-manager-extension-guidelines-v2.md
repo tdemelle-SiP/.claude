@@ -9,10 +9,9 @@
 - [3. Content Scripts](#content-scripts-widget-ui)
 - [4. Message Handlers](#message-handlers)
 - [5. Action Logger](#action-logger)
-- [6. Storage](#storage)
-- [7. Widget UI](#widget-ui)
-- [8. Development Guide](#development-guide)
-- [9. Author Checklist](#author-checklist)
+- [6. Widget UI](#widget-ui)
+- [7. Development Guide](#development-guide)
+- [8. Author Checklist](#author-checklist)
 
 ---
 
@@ -44,7 +43,7 @@ graph TD
   
   subgraph "Browser Extension Context (Service Worker)"
     Router((Router<br/>see HOW 2A))
-    Router <-. tab pairs, config .-> Storage[(chrome.storage<br/>see Section 6)]
+    Router <-. tab pairs, config .-> Storage[(chrome.storage<br/>see HOW 2C)]
     Handlers <-. operation status .-> Storage
     Router --> Handlers[Message Handlers<br/>see Section 4]
     Storage -. logs .-> Logger[(Action Log<br/>see Section 5)]
@@ -136,10 +135,50 @@ graph TD
 >- **Content Scripts** → [Section 3: Content Scripts](#content-scripts-widget-ui)
 >- **Message Handlers** → [Section 4: Message Handlers](#message-handlers)
 >- **Action Log** → [Section 5: Action Logger](#action-logger)
->- **chrome.storage** → [Section 6: Storage](#storage)
->- **Widget UI** → [Section 7: Widget UI](#widget-ui)
+>- **chrome.storage** → [See HOW 2C below](#storage-how)
+>- **Widget UI** → [Section 6: Widget UI](#widget-ui)
 
-#### WHY
+#### 2C Storage {#storage-how}
+
+> Chrome provides two storage areas for persisting extension data:
+> 
+> | API | Scope | Quota | Use Cases |
+> |-----|-------|-------|-----------|
+> | **chrome.storage.local** | Device-specific | 10MB | Large data, logs, state |
+> | **chrome.storage.sync** | Synced across devices | 100KB total, 8KB per item | User settings, config |
+> 
+> <details>
+> <summary>View all storage keys</summary>
+> 
+> | Key | Scope | Purpose | Schema | Size |
+> |-----|-------|---------|----------|------|
+> | `sipActionLogs` | local | Action & error logging | Array of log entries (see Section 5) | Capped at 500 entries |
+> | `sipWidgetState` | local | Widget UI persistence | `{isVisible, isExpanded, position, terminalContent, terminalState}` | ~1KB |
+> | `sipTabPairs` | local | WP↔Printify tab mapping | `{[wpTabId]: printifyTabId}` bidirectional | ~500B |
+> | `sipOperationStatus` | local | Current operation tracking | `{state, operation, task, progress, issue, timestamp}` | ~2KB |
+> | `sip-extension-state` | local | Extension pause/resume state | `{isPaused, timestamp}` | ~100B |
+> | `fetchStatus_*` | local | Temporary fetch results | `{status, error, data, timestamp}` per product | ~50KB each |
+> | `wordpressUrl` | sync | Cross-device WP URL | String URL | ~100B |
+> | `apiKey` | sync | Cross-device auth | String (variable length) | ~50B |
+> 
+> </details>
+> 
+> **Storage Access Pattern:**
+> ```javascript
+> // Read from storage
+> chrome.storage.local.get(['sipWidgetState'], (result) => {
+>   const state = result.sipWidgetState || {};
+> });
+> 
+> // Write to storage  
+> chrome.storage.local.set({
+>   sipOperationStatus: { state: 'idle', timestamp: Date.now() }
+> });
+> ```
+> 
+> The extension auto-configures on WordPress admin pages by capturing the site URL and storing it in sync storage for cross-device access.
+
+### WHY
 
 Printify blocks Chrome.Runtime so content Scripts declared in manifest.json cannot use chrome.runtime features on the Printify site. However, the router can dynamically inject scripts to intercept API responses and relay data back.
 
@@ -492,9 +531,9 @@ graph TD
     Router((Router))
     Handlers[Message Handlers]
     Storage[(chrome.storage.local)]
-    ActionLog[(sipActionLogs<br/>see Section 6)]
+    ActionLog[(sipActionLogs<br/>see HOW 2C)]
     
-    Router --> |log actions| AL_SW[action-logger.js<br/>instance]
+    Router --> |log actions| AL_SW[action-logger.js<br/>instance<br/>see HOW 5A]
     Handlers --> |log actions| AL_SW
     AL_SW --> ActionLog
     Storage -. persists .-> ActionLog
@@ -503,7 +542,7 @@ graph TD
   subgraph "WordPress Tab Context"
     WPScripts[Content Scripts]
     WPError[error-capture.js]
-    AL_WP[action-logger.js<br/>instance]
+    AL_WP[action-logger.js<br/>instance<br/>see HOW 5A]
     Terminal1[Terminal UI<br/>see Section 7]
     
     WPScripts --> |log actions| AL_WP
@@ -515,7 +554,7 @@ graph TD
   subgraph "Printify Tab Context"
     PScripts[Content Scripts]
     PError[error-capture.js]
-    AL_P[action-logger.js<br/>instance]
+    AL_P[action-logger.js<br/>instance<br/>see HOW 5A]
     Terminal2[Terminal UI<br/>see Section 7]
     
     PScripts --> |log actions| AL_P
@@ -543,36 +582,59 @@ graph TD
 
 #### HOW
 
-##### 5A Processing Features
+##### 5A action-logger.js
 
-> - **Operation Hierarchy** - Detects start/end patterns, indents sub-operations
-> - **Site Detection** - Auto-identifies WordPress vs Printify from URLs
-> - **Tab Enrichment** - Router adds tab ID, name, URL to entries
-> - **Status Tracking** - Success/error states for filtering
-> - **Timing Support** - Built-in duration tracking for performance monitoring
+> **Diagram 5.1: Logger Processing Pipeline**
+> ```mermaid
+> graph LR
+>   subgraph "Each action-logger.js Instance"
+>     A[Log Request] --> B{Categorize}
+>     B --> C[Detect Context]
+>     C --> D[Track Hierarchy]
+>     D --> E[Track Status]
+>     E --> F[Measure Time]
+>     F --> G[Update Terminal]
+>     G --> H{Route to Storage}
+>   end
+>   
+>   H -->|Content Scripts| I[ACTION_LOG message<br/>to Router]
+>   H -->|Service Worker| J[Direct write to<br/>chrome.storage]
+>   
+>   I --> K[Router adds<br/>tab info]
+>   K --> J
+>   
+>   %% Style definitions
+>   classDef processStyle fill:#E6F3FF,stroke:#4169E1,stroke-width:1px
+>   classDef routeStyle fill:#87CEEB,stroke:#4682B4,stroke-width:2px
+>   classDef storageStyle fill:#F8F3E8,stroke:#8B7355,stroke-width:2px
+>   
+>   class B,C,D,E,F,G processStyle
+>   class I,K routeStyle
+>   class J storageStyle
+> ```
 > 
-> **Display Modes:**
-> - **Terminal** - Shows last action in real-time (see [Widget UI](#widget-ui))
-> - **Log Modal** - Full history viewer showing all 500 entries from all contexts
-> - **Cross-Context** - Both terminals read from shared storage
-> 
-> *Storage: `sipActionLogs` in [Section 6](#storage)*
-
-##### 5B Log Categories
-
-> The logger uses categories to organize different types of events:
+> **Processing Steps:**
+> 1. **Log Request** - Logger receives `log(category, action, details)` call
+> 2. **Categorize** - Uses category parameter (one of seven defined types)
+> 3. **Detect Context** - Identifies tab type from URL or falls back to "Unknown Tab"
+> 4. **Track Hierarchy** - Detects operation boundaries and manages indentation stack
+> 5. **Track Status** - Uses `details.status` parameter or defaults to "success"
+> 6. **Measure Time** - Duration passed in details (timing handled externally)
+> 7. **Update Terminal** - Updates widget display (content scripts only)
+> 8. **Route to Storage** - Content scripts send ACTION_LOG to Router; Service Worker writes directly
+> 9. **Router Enhancement** - Router enriches with sender.tab info before storage
 > 
 > <details>
-> <summary>View log categories</summary>
+> <summary>View processing details</summary>
 > 
-> | Category | Usage | Example Actions |
-> |----------|-------|----------------|
-> | `WORDPRESS_ACTION` | WordPress plugin interactions | `SIP_UPDATE_PRODUCT_MOCKUPS` |
-> | `NAVIGATION` | Tab navigation events | Tab creation, pairing, switching |
-> | `API_CALL` | External API interactions | WordPress REST API calls |
-> | `ERROR` | Errors and exceptions | Unhandled errors, failed operations |
-> | `EXTENSION_ACTION` | Internal extension events | Widget state changes |
-> | `PRINTIFY_ACTION` | Printify page interactions | Mockup selection, product updates |
+> | Stage | Categories/Values | Implementation |
+> |-------|------------------|----------------|
+> | **Categorize** | `WORDPRESS_ACTION`, `NAVIGATION`, `DATA_FETCH`, `API_CALL`, `USER_ACTION`, `INFO`, `EXTENSION_ACTION` | Category passed in by caller |
+> | **Detect Context** | "WordPress Tab", "Printify Tab", or "Unknown Tab" | Check URL for `/wp-admin/` or `printify.com` |
+> | **Track Hierarchy** | 🔻 start, 🔺 end, │ indent | Detects "starting", "Starting", "Received: SIP_" for start; "completed", "Complete", "failed", "Failed", "SUCCESS:", "ERROR:" for end |
+> | **Track Status** | "success" or "error" | From `details.status` parameter (defaults to "success") |
+> | **Measure Time** | Duration in ms | Uses separate `startTiming()`/`endTiming()` methods |
+> | **Update Terminal** | Color by site/status | Calls `updateWidgetDisplay()` in content scripts only |
 > 
 > </details>
 
@@ -583,197 +645,17 @@ graph TD
 
 A unified logging system across all contexts provides essential visibility into the extension's complex multi-context operations. By routing all logs through the Router, we maintain the core architectural principle of centralized message flow, ensuring consistent validation and tab identification. The 500-entry limit balances comprehensive logging with Chrome's storage constraints.
 
-The single-flow design prevents race conditions in storage writes and ensures that tab context is always properly identified by the Router. This architecture also enables future enhancements like cross-context log filtering or real-time log streaming without modifying individual logger instances.
+Having independent logger instances in each context (rather than a single shared logger) allows each environment to perform context-specific processing like site detection and terminal updates locally, while still maintaining centralized storage through the Router. This design prevents race conditions, ensures proper tab identification, and keeps the logging system functional even if individual contexts are isolated or restricted (like Printify's chrome.runtime limitations).
 
 ---
 
-### 6 Storage {#storage}
-
-The extension uses Chrome's storage APIs to persist configuration, state, logs, and operation data across sessions and devices.
-
-#### WHAT
-
-**Diagram 6: Storage System**
-```mermaid
-graph TD
-  subgraph "Storage APIs"
-    Local[(chrome.storage.local<br/>see HOW 6A)]
-    Sync[(chrome.storage.sync<br/>see HOW 6A)]
-    Session[(chrome.storage.session<br/>see HOW 6A)]
-  end
-  
-  subgraph "Stored Data"
-    Config[Configuration<br/>see HOW 6B]
-    State[Widget State<br/>see HOW 6C]
-    TabPairs[Tab Pairs<br/>see HOW 6C]
-    Logs[Action Logs<br/>see Section 5]
-    OpStatus[Operation Status<br/>see HOW 6C]
-  end
-  
-  Sync --> Config
-  Local --> State
-  Local --> TabPairs
-  Local --> Logs
-  Local --> OpStatus
-  Session --> Queue[Paused Operations<br/>see HOW 6C]
-  
-  %% Apply styles to match main architecture
-  classDef storageStyle fill:#f8f3e8,stroke:#8a7d5a,stroke-width:2px,color:#4a3d1a
-  
-  class Local,Sync,Session,Config,State,TabPairs,Logs,OpStatus,Queue storageStyle
-```
-[← Back to Diagram 2: Main Architecture](#architecture)
-
-#### HOW
-
-##### 6A Storage APIs
-
-> Chrome provides three storage areas with different scopes:
-> 
-> | API | Scope | Quota | Use Cases |
-> |-----|-------|-------|----------->
-> | **chrome.storage.local** | Device-specific | 10MB | Large data, logs, state |
-> | **chrome.storage.sync** | Synced across devices | 100KB total, 8KB per item | User settings, config |
-> | **chrome.storage.session** | Tab session only | 10MB | Temporary data, queues |
-
-##### 6B Configuration Storage
-
-> Extension configuration uses sync storage for cross-device availability:
-> 
-> | Key | Type | Purpose | Example |
-> |-----|------|---------|---------|
-> | `wordpressUrl` | String | WordPress site URL | `"https://site.com"` |
-> | `apiKey` | String | Authentication key | `"sk_123abc..."` |
-> 
-> **Auto-configuration** occurs when content scripts detect WordPress admin pages.
-
-##### 6C Data Storage Keys
-
-> 
-> <details>
-> <summary>View all storage keys</summary>
-> 
-> *All keys live in chrome.storage unless noted otherwise.*
-> 
-> | Key | Scope | Purpose | Schema | Size/Quota |
-> |-----|-------|---------|----------|----------->
-> | `sipActionLogs` | local | Action & error logging | Array of log entries (see Section 5) | Capped at 500 entries |
-> | `sipStore` | local | Extension state persistence | `{widgetState, tabPairs, operationStatus}` | Max 1MB total |
-> | `sipQueue` | session | Paused operation queue | Array of pending messages | Cleared on resume |
-> | `sipWidgetState` | local | Widget UI persistence | `{isVisible, position, terminalContent, terminalState}` | ~1KB |
-> | `sipTabPairs` | local | WP↔Printify tab mapping | `{[wpTabId]: printifyTabId}` bidirectional | ~500B |
-> | `sipOperationStatus` | local | Current operation tracking | `{operation, task, progress, state, timestamp}` | ~2KB |
-> | `fetchStatus_*` | local | Temporary fetch results | `{status, data, timestamp}` per operation | ~50KB each |
-> | `wordpressUrl` | sync | Cross-device WP URL | String URL | ~100B |
-> | `apiKey` | sync | Cross-device auth | 32-char string | ~50B |
-> 
-> </details>
-> 
-> **Storage Access Patterns**
-> 
-> <details>
-> <summary>View storage access patterns</summary>
-> 
-> ```javascript
-> // Local storage (device-specific)
-> chrome.storage.local.get(['sipStore', 'sipActionLogs'], (result) => {
->   const state = result.sipStore || {};
->   const logs = result.sipActionLogs || [];
-> });
-> 
-> // Session storage (tab-specific, cleared on close)
-> chrome.storage.session.get(['sipQueue'], (result) => {
->   const queue = result.sipQueue || [];
-> });
-> 
-> // Sync storage (cross-device)
-> chrome.storage.sync.get(['wordpressUrl', 'apiKey'], (result) => {
->   const config = { url: result.wordpressUrl, key: result.apiKey };
-> });
-> ```
-> 
-> </details>
-> 
-> **State Management Functions**
-> 
-> Widget components manage their own state persistence:
-> 
-> | Function | Purpose | Storage Key | Scope |
-> |----------|---------|-------------|-------|
-> | `saveState()` | Debounced widget state saving | `sipWidgetState` | Widget position, visibility, terminal content |
-> | `loadState()` | Restore widget on page load | `sipWidgetState` | Called on content script initialization |
-> | `autoConfigureForWordPress()` | Auto-detect WP URL | `wordpressUrl` | WordPress admin pages only |
-> 
-> **Auto-Configuration**
-> 
-> On WordPress admin pages, the extension automatically captures the site URL:
-> 
-> <details>
-> <summary>View auto-configuration code</summary>
-> 
-> ```javascript
-> function autoConfigureForWordPress() {
->   if (window.location.pathname.includes('/wp-admin/')) {
->     const baseUrl = `${window.location.protocol}//${window.location.hostname}`;
->     
->     // Check if already configured
->     chrome.storage.sync.get(['wordpressUrl'], (items) => {
->       if (!items.wordpressUrl || items.wordpressUrl !== baseUrl) {
->         chrome.storage.sync.set({ 
->           wordpressUrl: baseUrl 
->         }, () => {
->           console.log('Auto-configured WordPress URL:', baseUrl);
->         });
->       }
->     });
->   }
-> }
-> ```
-> 
-> </details>
-> 
-> **State Persistence Pattern**
-> 
-> Widget state is saved with debouncing to prevent storage thrashing:
-> 
-> <details>
-> <summary>View state persistence implementation</summary>
-
-> ```javascript
-> let saveTimeout;
-> function saveState() {
->   clearTimeout(saveTimeout);
->   saveTimeout = setTimeout(() => {
->     const state = {
->       isVisible: widgetVisible,
->       position: { x: widget.offsetLeft, y: widget.offsetTop },
->       terminalContent: terminal.innerHTML,
->       terminalState: terminalExpanded,
->       timestamp: Date.now()
->     };
->     
->     chrome.storage.local.set({ sipWidgetState: state });
->   }, 1000); // 1 second debounce
-> }
-> ```
-> 
-> </details>
-
-#### WHY
-
-A rolling array of the most‑recent 500 events is simple and fast to query while still covering typical batch‑run history. The hierarchical log structure in `action-logger.js` tracks operation start/end times and nesting, making it easy to trace complex workflows. Keeping both functional and error events in the same list gives an immediate chronological view for debugging.
-
-Chrome's storage quotas shape the architecture: `sipStore` is capped at 1MB to leave headroom in the 5MB local quota, while `sipQueue` uses session storage that's automatically cleared on browser restart, preventing stale operations from accumulating. The bidirectional tab mapping in `sipTabPairs` enables instant lookups in either direction without scanning arrays.
-
----
-
-## 7. WIDGET UI {#widget-ui}
+## 6. WIDGET UI {#widget-ui}
 
 The Widget UI provides a floating interface for monitoring extension operations, viewing logs, and debugging issues across both WordPress and Printify contexts.
 
 ### WHAT
 
-**Diagram 7: Widget UI Components**
+**Diagram 6: Widget UI Components**
 ```mermaid
 graph TD
   subgraph "Widget UI (Created by widget-tabs-actions.js)"
@@ -824,7 +706,7 @@ The Widget UI serves as the primary debugging interface for the extension, provi
 <a id="storage-schema"></a>
 <a id="message-type-reference"></a>
 
-## 8. DEVELOPMENT GUIDE {#development-guide}
+## 7. DEVELOPMENT GUIDE {#development-guide}
 
 ### Adding a New Feature
 
@@ -851,7 +733,7 @@ The Widget UI serves as the primary debugging interface for the extension, provi
 
 ---
 
-## 9. AUTHOR CHECKLIST {#author-checklist}
+## 8. AUTHOR CHECKLIST {#author-checklist}
 
 - [ ] Each section follows three-layer framework (WHAT/HOW/WHY)
 - [ ] WHAT layer contains architecture diagram or high-level overview
