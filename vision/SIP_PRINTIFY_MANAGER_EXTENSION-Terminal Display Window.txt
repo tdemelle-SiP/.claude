@@ -1,0 +1,30 @@
+New Design for Widget Display Window.  See 
+"C:\Users\tdeme\Documents\VSCode_Images_Repo\WidgetWindowDesign02.png"
+"C:\Users\tdeme\Documents\VSCode_Images_Repo\WidgetWindowDesign03.png"
+"C:\Users\tdeme\Documents\VSCode_Images_Repo\WidgetWindowDesign01.png"
+
+The Widget display window should show the following:
+
+When there are no actions being reported, it should show the ready state with Ready at the bottom of the window as in one of the concept pngs.
+
+When there is a an action being reported, the status should be shown at the top of the display window and the action message should be shown in the center of the screen.  If not replaced by another message, the message should dim after 5 seconds, but stay present until a new message replaces it.  Again, when there's not an active message actively being logged, the ready messages should appear at the bottom.
+
+When there is an action "process" that has a beginning and an end, the bottom message should change from ready to Processing... The progress bar should show the progress of the extension action process. This accompanies the above described behavior with the center part of the screen  showing the latest action message and the top part of the screen showing the status.
+
+When the action is complete the % counter should disappear and the success message should show again following the same rules for the message.  In the mockup the meter stays lit at 100% while the success message is showing, but it can just dim back to default state after 5 seconds like the message if it's not interrupted by another message.
+
+I think that's it!  Points of note... the user can always click the view log button to see a record of all the action logs that have been logged.  The progress meter in the extension widget display should NOT be confused with the plugins progress dialog.  These two progress meters work together but are distinct from one another. The plugin progress dialog monitors the batch of work initiated in the plugin tables and sends individual tasks to the extension. The extension tracks the progress of individual tasks and sends the work back to the plugin. The plugin progress meter then shows the progress and sends the next individual task to the extension.  This should already be hooked up and working and documented.  
+
+  1. Operations with progress tracking (like mockup updates):
+    - Use reportStatus to update overall operation progress
+    - Start at 0%, progress through various percentages, complete at 100%
+    - When complete, show "Update Complete" with progress: 100
+    - After 2 seconds, set state to 'idle' to return to READY
+  2. One-off action messages:
+    - Flow through ActionLogger.log() which calls updateWidgetDisplay
+    - Already have proper color coding implemented
+    - Show briefly in READY state without changing to PROCESSING
+  3. The three display modes:
+    - READY: Shows "READY" at bottom, dots in middle (or one-off messages)
+    - PROCESSING: Shows "PROCESSING..." at bottom, progress bar, operation messages
+    - Transient messages: One-off actions that don't hide READY state

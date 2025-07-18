@@ -1,60 +1,8 @@
 Paired tab vision
 
+the sip printify manager extension includes a widget that appears on the sip printify manager plugin dashboard and on printify site pages that creates a bridge between the sip printify manager plugin and the  printify website.  
 
-│ > ok! everything seems to be working as    │
-│   expected.  Next thing on the list...     │
-│   the sip printify manager extension       │
-│   includes a widget that appears on the    │
-│   sip printify manager plugin dashboard    │
-│   and on printify site pages that          │
-│   creates a bridge between the sip         │
-│   printify manager plugin and the          │
-│   printify website.  One of the primary    │
-│   features that enables useful bridging    │
-│   for the end user  is the extensions      │
-│   ability to navigate back and forth       │
-│   between the two sites in the browser by  │
-│   clicking the "Go to ... " button that    │
-│   contextually switches you between the    │
-│   widget instances on the two sites.       │
-│   This is meant to be done using paired    │
-│   tabs. The widget should know if there's  │
-│   a paired printify site tab if there is   │
-│   one.  When it's first created and the    │
-│   Go to button is clicked on the widget    │
-│   on the printify manager plugin           │
-│   page,there will not be a printify site   │
-│   tab at which time it needs to create     │
-│   one.  The new printify tab will then be  │
-│   the paired tab and the widget will       │
-│   appear on it.  When the "Go to ..."      │
-│   button is clicked on the widget that     │
-│   appears in the printify site paired tab  │
-│   widget, it should send the user back     │
-│   to the printify manager plugin           │
-│   dashboard in wordpress.  At that point,  │
-│   the buttons should toggle back and       │
-│   forth between the two paired tabs (and   │
-│   not create new tabs).  If one of the     │
-│   two paired tabs is closed, the widget    │
-│   should be smart enough to create a new   │
-│   paired tab and send the user there       │
-│   where work can resume and the widgets    │
-│   in the new shared tabs will now send     │
-│   the user back and forth between those    │
-│   two new paired tab pages  New tabs       │
-│   should NOT be created if an existing     │
-│   paired tab is present.  The current      │
-│   implementation of the widget results in  │
-│   new tabs being created every time the    │
-│   "Go to ..." button is clicked resulting  │
-│   in infinite alternating plugin           │
-│   dashboard and printify site tabs as the  │
-│   user clicks back and forth between       │
-│   them. Please help me analyze the code    │
-│   that is managing the paired tab logic    │
-│   and refine it so that it functions as    │
-│   described above.  
+One of the primary features that enables useful bridging for the end user  is the extensions ability to navigate back and forth    between the two sites in the browser by clicking the "Go to ... " button that contextually switches you between the widget instances on the two sites.  This is meant to be done using paired tabs. The widget should know if there's a paired printify site tab if there is one.  When it's first created and the Go to button is clicked on the widget on the printify manager plugin page,there will not be a printify sitetab at which time it needs to create  one.  The new printify tab will then be the paired tab and the widget will    appear on it.  When the "Go to ..."   button is clicked on the widget that  appears in the printify site paired tab widget, it should send the user back  to the printify manager plugin dashboard in wordpress.  At that point, the buttons should toggle back and    forth between the two paired tabs (andnot create new tabs).  If one of the  two paired tabs is closed, the widget should be smart enough to create a newpaired tab and send the user there where work can resume and the widgets in the new shared tabs will now send  the user back and forth between those two new paired tab pages  New tabs should NOT be created if an existing  paired tab is present.  The current   implementation of the widget results in new tabs being created every time the "Go to ..." button is clicked resulting in infinite alternating plugin dashboard and printify site tabs as the user clicks back and forth between them. Please help me analyze the code that is managing the paired tab logic and refine it so that it functions as described above.  
 
 
  > One more clue... I haven't updated the      
@@ -399,8 +347,7 @@ Paired tab vision
   Comprehensive Solution Plan
 
 ╭────────────────────────────────────────────╮
-│ Ready to code?                             │
-│                                            │
+│ Ready to code?                                                                   │
 │ Here is Claude's plan:                     │
 │ ╭────────────────────────────────────────╮ │
 │ │ I'll implement a proper tab pairing    │ │

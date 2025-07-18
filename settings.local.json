@@ -57,7 +57,9 @@
       "Bash(git -C /mnt/c/Users/tdeme/Repositories/sip-printify-manager-extension log --all --grep=\"showWidget\" --oneline)",
       "Bash(git -C /mnt/c/Users/tdeme/Repositories/sip-printify-manager-extension log --oneline)",
       "Bash(pwsh:*)",
-      "WebFetch(domain:developer.chrome.com)"
+      "WebFetch(domain:developer.chrome.com)",
+      "WebFetch(domain:github.com)",
+      "Bash(cd:*)"
     ],
     "deny": []
   },

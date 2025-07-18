@@ -18,7 +18,6 @@
 #### I. WHAT
 SiP documentation describes all SiP code clearly and concisely following the guidelines in the this document.
 
-
 #### II. HOW
 SiP documentation contains the following elements
 >- **Title**
@@ -44,7 +43,8 @@ In order to...
 1. **Protect the main architecture diagram**
 
    - Main architecture diagram shows the full framework of the code being documented. Every feature diagram must trace back to at least one node on the overview.
-   - If necessary, move node‑level detail to HOW layers or, when HOW layers become bloated, promote it to a bridging block between the main architecture and a new sub‑block where detail can be presented clearly.
+   - If necessary to keep the main architecture diagram legible, move detail to HOW layers or, if HOW layers cannot reasonably containt the broken out data, create subsequent WHW sections that follow these guidelines.
+   - Collectively, the mermaid diagrams should map the entirety of the code and its functioning
 
 2. **Avoid repetition**
 

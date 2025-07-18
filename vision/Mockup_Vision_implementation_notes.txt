@@ -1,4 +1,6 @@
 
+SiP Printify Manager Pluging - Mockup Update Progress Dialog
+
 The Mockup Update progress dialog is appearing as expected.  Instead of immediately executing, I'd like the progress meter to summarize what its about to do and let the user either proceed or cancel.  The message should say something like this:
 
 - x work in progress products' mockups updated
@@ -17,7 +19,7 @@ And then in the final summary message at the end:
 
 and then the button at the bottom can say download updated mockups
 
-There is no "publish products" option (yet). That can be removed.
+There is no "publish products" option (yet).
 
 
 ------
