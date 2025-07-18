@@ -6,7 +6,7 @@
 
 - [1. Overview](#overview)
 - [2. Main Architecture - The Three Contexts](#architecture)
-- [3. Content Scripts](#content-scripts-widget-ui)
+- [3. Content Scripts](#content-scripts)
 - [4. Message Handlers](#message-handlers)
 - [5. Action Logger](#action-logger)
 - [6. Widget UI](#widget-ui)
@@ -52,7 +52,7 @@ graph TD
   subgraph "WordPress Tab Context"
     WPPage[/WordPress Admin Page/]
     WPCS[Content Scripts<br/>see Section 3]
-    WPCS --> WUI1[Widget UI<br/>see Section 7]
+    WPCS --> WUI1[Widget UI<br/>see Section 6]
     WPCS -->|postMessage| WPPage
     WPPage -->|postMessage| WPCS
     WPCS -->|chrome.runtime| Router
@@ -172,7 +172,7 @@ graph TD
 > | `sipTabPairs` | local | WP↔Printify tab mapping | `{[wpTabId]: printifyTabId}` bidirectional | ~500B |
 > | `sipOperationStatus` | local | Current operation tracking | `{state, operation, task, progress, issue, timestamp}` | ~2KB |
 > | `sip-extension-state` | local | Extension pause/resume state | `{isPaused, timestamp}` | ~100B |
-> | `sipDiscoveries` | local | Printify data discovery catalog | `{api_endpoints[], dom_patterns[], data_structures[]}` (see Section 3D) | ~10KB |
+> | `sipDiscoveries` | local | Printify data discovery catalog | `{api_endpoints[], dom_patterns[], data_structures[]}` (see Section 6D) | ~10KB |
 > | `fetchStatus_*` | local | Temporary fetch results | `{status, error, data, timestamp}` per product | ~50KB each |
 > | `wordpressUrl` | sync | Cross-device WP URL | String URL | ~100B |
 > | `apiKey` | sync | Cross-device auth | String (variable length) | ~50B |
@@ -204,7 +204,7 @@ Web accessible resources include assets needed across origins: config.json, logo
 
 ---
 
-### 3 Content Scripts {#content-scripts-widget-ui}
+## 3. Content Scripts {#content-scripts}
 
 Content scripts are JavaScript files injected by Chrome into web pages based on URL patterns defined in manifest.json. They provide the bridge between web pages and the extension's background service worker.
 
@@ -231,7 +231,7 @@ graph LR
       WPBundle --> AL1[action-logger.js<br/>see HOW 3C]
       WPBundle --> EC1[error-capture.js<br/>see HOW 3C]
       WPBundle --> WR[wordpress-relay.js<br/>see HOW 3A]
-      WPBundle --> WT1[widget-tabs-actions.js<br/>see HOW 3C & Section 6]
+      WPBundle --> WT1[widget-tabs-actions.js<br/>see HOW 3C and Section 6]
       WPBundle --> WSS[widget-styles.css]
     end
     
@@ -246,7 +246,7 @@ graph LR
       PBundle --> WE2[widget-error.js<br/>see HOW 3C]
       PBundle --> AL2[action-logger.js<br/>see HOW 3C]
       PBundle --> EC2[error-capture.js<br/>see HOW 3C]
-      PBundle --> WT2[widget-tabs-actions.js<br/>see HOW 3C & Section 6]
+      PBundle --> WT2[widget-tabs-actions.js<br/>see HOW 3C and Section 6]
       PBundle --> MLA[mockup-library-actions.js<br/>see HOW 3B]
       PBundle --> PDA[product-details-actions.js<br/>see HOW 3B]
     end
@@ -345,7 +345,7 @@ Chrome's content script architecture provides security isolation between web pag
 
 ---
 
-### 4 Message Handlers {#message-handlers}
+## 4. Message Handlers {#message-handlers}
 
 Message handlers process specific message types received by the Router, executing actions like fetching mockup data, updating UI, and managing extension state.
 
@@ -521,7 +521,7 @@ A single router gives one chokepoint for security and observability: every actio
 
 ---
 
-### 5 Action Logger {#action-logger}
+## 5. Action Logger {#action-logger}
 
 The Action Logger provides comprehensive logging across all extension contexts, capturing user actions, errors, and system events in a structured format for debugging and monitoring.
 
@@ -546,7 +546,7 @@ graph TD
     WPScripts[Content Scripts]
     WPError[error-capture.js]
     AL_WP[action-logger.js<br/>instance<br/>see HOW 5A]
-    Terminal1[Terminal UI<br/>see Section 7]
+    Terminal1[Terminal UI<br/>see Section 6]
     
     WPScripts --> |log actions| AL_WP
     WPError --> |log errors| AL_WP
@@ -558,7 +558,7 @@ graph TD
     PScripts[Content Scripts]
     PError[error-capture.js]
     AL_P[action-logger.js<br/>instance<br/>see HOW 5A]
-    Terminal2[Terminal UI<br/>see Section 7]
+    Terminal2[Terminal UI<br/>see Section 6]
     
     PScripts --> |log actions| AL_P
     PError --> |log errors| AL_P
@@ -805,11 +805,6 @@ The widget is created once per tab by widget-tabs-actions.js and persists across
 The Widget UI serves as the primary debugging interface for the extension, providing real-time visibility into operations without requiring developer tools. By floating above page content and persisting position across sessions, it offers consistent access to logs and status information. The 500-line terminal buffer and auto-hide behavior balance information availability with screen real estate, while the modal system enables future expansion for configuration dialogs or detailed views.
 
 ---
-
-
-
-<a id="storage-schema"></a>
-<a id="message-type-reference"></a>
 
 ## 7. DEVELOPMENT GUIDE {#development-guide}
 
