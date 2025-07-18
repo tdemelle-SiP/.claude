@@ -6,7 +6,7 @@
 
 - [1. Overview](#overview)
 - [2. Main Architecture - The Three Contexts](#architecture)
-- [3. Content Scripts](#content-scripts)
+- [3. Content Scripts](#content-scripts-widget-ui)
 - [4. Message Handlers](#message-handlers)
 - [5. Action Logger](#action-logger)
 - [6. Widget UI](#widget-ui)
@@ -52,7 +52,7 @@ graph TD
   subgraph "WordPress Tab Context"
     WPPage[/WordPress Admin Page/]
     WPCS[Content Scripts<br/>see Section 3]
-    WPCS --> WUI1[Widget UI<br/>see Section 6]
+    WPCS --> WUI1[Widget UI<br/>see Section 7]
     WPCS -->|postMessage| WPPage
     WPPage -->|postMessage| WPCS
     WPCS -->|chrome.runtime| Router
@@ -172,7 +172,7 @@ graph TD
 > | `sipTabPairs` | local | WP↔Printify tab mapping | `{[wpTabId]: printifyTabId}` bidirectional | ~500B |
 > | `sipOperationStatus` | local | Current operation tracking | `{state, operation, task, progress, issue, timestamp}` | ~2KB |
 > | `sip-extension-state` | local | Extension pause/resume state | `{isPaused, timestamp}` | ~100B |
-> | `sipDiscoveries` | local | Printify data discovery catalog | `{api_endpoints[], dom_patterns[], data_structures[]}` (see Section 6D) | ~10KB |
+> | `sipDiscoveries` | local | Printify data discovery catalog | `{api_endpoints[], dom_patterns[], data_structures[]}` (see Section 3D) | ~10KB |
 > | `fetchStatus_*` | local | Temporary fetch results | `{status, error, data, timestamp}` per product | ~50KB each |
 > | `wordpressUrl` | sync | Cross-device WP URL | String URL | ~100B |
 > | `apiKey` | sync | Cross-device auth | String (variable length) | ~50B |
@@ -204,7 +204,7 @@ Web accessible resources include assets needed across origins: config.json, logo
 
 ---
 
-## 3. Content Scripts {#content-scripts}
+### 3 Content Scripts {#content-scripts-widget-ui}
 
 Content scripts are JavaScript files injected by Chrome into web pages based on URL patterns defined in manifest.json. They provide the bridge between web pages and the extension's background service worker.
 
@@ -231,7 +231,7 @@ graph LR
       WPBundle --> AL1[action-logger.js<br/>see HOW 3C]
       WPBundle --> EC1[error-capture.js<br/>see HOW 3C]
       WPBundle --> WR[wordpress-relay.js<br/>see HOW 3A]
-      WPBundle --> WT1[widget-tabs-actions.js<br/>see HOW 3C and Section 6]
+      WPBundle --> WT1[widget-tabs-actions.js<br/>see HOW 3C & Section 6]
       WPBundle --> WSS[widget-styles.css]
     end
     
@@ -246,7 +246,7 @@ graph LR
       PBundle --> WE2[widget-error.js<br/>see HOW 3C]
       PBundle --> AL2[action-logger.js<br/>see HOW 3C]
       PBundle --> EC2[error-capture.js<br/>see HOW 3C]
-      PBundle --> WT2[widget-tabs-actions.js<br/>see HOW 3C and Section 6]
+      PBundle --> WT2[widget-tabs-actions.js<br/>see HOW 3C & Section 6]
       PBundle --> MLA[mockup-library-actions.js<br/>see HOW 3B]
       PBundle --> PDA[product-details-actions.js<br/>see HOW 3B]
     end
@@ -345,7 +345,7 @@ Chrome's content script architecture provides security isolation between web pag
 
 ---
 
-## 4. Message Handlers {#message-handlers}
+### 4 Message Handlers {#message-handlers}
 
 Message handlers process specific message types received by the Router, executing actions like fetching mockup data, updating UI, and managing extension state.
 
@@ -355,7 +355,7 @@ Message handlers process specific message types received by the Router, executin
 ```mermaid
 graph TD
   subgraph "Service Worker (Background)"
-    Router((Router<br/>see HOW 2A))
+    Router((Router<br/>see HOW 4E))
     
     subgraph "Message Handlers"
       WH[wordpress-handler.js<br/>see HOW 4A]
@@ -504,9 +504,14 @@ graph TD
 >
 > </details>
 
-##### 4E Router Reference
+##### 4E Message Validation
 
-> The Router validates all messages before routing them to handlers. See HOW 2A in Section 2 for complete Router documentation including message validation, error handling, and response formatting.
+> All messages pass through comprehensive validation in the Router:
+>
+> 1. **Structure Check**: Message must have `type` field
+> 2. **Source Validation**: WordPress messages verified by source and origin
+> 3. **Handler Routing**: Message type mapped to specific handler
+> 4. **Response Wrapping**: Success/error responses formatted consistently
 
 #### WHY
 
@@ -516,7 +521,7 @@ A single router gives one chokepoint for security and observability: every actio
 
 ---
 
-## 5. Action Logger {#action-logger}
+### 5 Action Logger {#action-logger}
 
 The Action Logger provides comprehensive logging across all extension contexts, capturing user actions, errors, and system events in a structured format for debugging and monitoring.
 
@@ -541,7 +546,7 @@ graph TD
     WPScripts[Content Scripts]
     WPError[error-capture.js]
     AL_WP[action-logger.js<br/>instance<br/>see HOW 5A]
-    Terminal1[Terminal UI<br/>see Section 6]
+    Terminal1[Terminal UI<br/>see Section 7]
     
     WPScripts --> |log actions| AL_WP
     WPError --> |log errors| AL_WP
@@ -553,7 +558,7 @@ graph TD
     PScripts[Content Scripts]
     PError[error-capture.js]
     AL_P[action-logger.js<br/>instance<br/>see HOW 5A]
-    Terminal2[Terminal UI<br/>see Section 6]
+    Terminal2[Terminal UI<br/>see Section 7]
     
     PScripts --> |log actions| AL_P
     PError --> |log errors| AL_P
@@ -673,8 +678,8 @@ graph TD
   WTA --> Status
   
   subgraph "Context-Specific Features"
-    WP[WordPress Context<br/>see HOW 6B<br/>- View discoveries only<br/>- Shows on: SiP Manager admin pages]
-    PR[Printify Context<br/>see HOW 6B<br/>- Collect & view discoveries<br/>- API interception<br/>- Shows on: all printify.com pages]
+    WP[WordPress Context<br/>- View discoveries only<br/>- Shows on: SiP Manager admin pages]
+    PR[Printify Context<br/>- Collect & view discoveries<br/>- API interception<br/>- Shows on: all printify.com pages]
   end
   
   WTA --> WP
@@ -711,11 +716,9 @@ graph TD
 
 ### HOW
 
-The widget is created once per tab by widget-tabs-actions.js and persists across page navigations within the same tab.
-
-##### 6A Core Components
-
-> All widget components are created by widget-tabs-actions.js and shared across both WordPress and Printify contexts.
+> The widget is created once per tab by widget-tabs-actions.js and persists across page navigations within the same tab.
+>
+> **Core Components (All Contexts):**
 >
 > | Component | Purpose | Details |
 > |-----------|---------|---------|
@@ -724,10 +727,8 @@ The widget is created once per tab by widget-tabs-actions.js and persists across
 > | **Modal System** | Dialog framework | VanillaModal for reports and future dialogs |
 > | **Control Buttons** | User actions | Expand/Collapse, Clear Terminal, Hide Widget, Discovery Report |
 > | **Status Display** | Operation tracking | Shows progress for mockup updates and other operations |
-
-##### 6B Context-Specific Behaviors
-
-> While core components are shared, certain features behave differently depending on the context.
+>
+> **Context-Specific Behaviors:**
 >
 > | Feature | WordPress Context | Printify Context |
 > |---------|------------------|------------------|
@@ -735,18 +736,14 @@ The widget is created once per tab by widget-tabs-actions.js and persists across
 > | **Discovery Report** | View-only access to stored discoveries | Full access: collect new data + view stored |
 > | **Discovery Collection** | Not active | Runs `analyzePageOnce()` and `setupDiscoveryIntercept()` on page load |
 > | **Widget Visibility** | Only on SiP Printify Manager pages | On all Printify.com pages |
-
-##### 6C Terminal Display Integration
-
-> The terminal component has special integration with the Action Logger system for real-time log display.
 >
+> **Terminal Display Integration:**
 > - **Real-time logs**: action-logger.js calls `updateWidgetDisplay()` directly to show logs in the terminal
 > - **Operation status**: Router sends `updateOperationStatus` actions (not SIP_ messages) to update progress
 > - **Direct DOM updates**: Widget code directly manipulates terminal innerHTML for pause UI and status messages
 > - **No message-based terminal control**: Terminal is updated via direct function calls, not messages
-
-##### 6D Discovery Tool
-
+>
+> **Discovery Tool:**
 > The Discovery Tool is a lightweight data discovery system that passively collects information about Printify's data landscape. Data collection only occurs while browsing Printify.com, but the Discovery Report can be viewed from any context (WordPress or Printify).
 >
 > **Implementation Components:**
@@ -800,6 +797,11 @@ The widget is created once per tab by widget-tabs-actions.js and persists across
 The Widget UI serves as the primary debugging interface for the extension, providing real-time visibility into operations without requiring developer tools. By floating above page content and persisting position across sessions, it offers consistent access to logs and status information. The 500-line terminal buffer and auto-hide behavior balance information availability with screen real estate, while the modal system enables future expansion for configuration dialogs or detailed views.
 
 ---
+
+
+
+<a id="storage-schema"></a>
+<a id="message-type-reference"></a>
 
 ## 7. DEVELOPMENT GUIDE {#development-guide}
 

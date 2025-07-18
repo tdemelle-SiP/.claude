@@ -179,7 +179,7 @@ Early Critical Master vision doc for centralized extension design concept
   extension so that they can iterate quickly without        
   having to wait for the chrome store to publish the        
   extension to test it.  Those use cases and that idea      
-  should be preserved in the documentaiton and
+  should be preserved in the documentation and
   implementation of the master extension solution.
 
 ● Thank you for that clarification! I now understand        
