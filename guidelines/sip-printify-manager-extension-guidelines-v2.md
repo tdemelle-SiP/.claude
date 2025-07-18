@@ -172,6 +172,7 @@ graph TD
 > | `sipTabPairs` | local | WP↔Printify tab mapping | `{[wpTabId]: printifyTabId}` bidirectional | ~500B |
 > | `sipOperationStatus` | local | Current operation tracking | `{state, operation, task, progress, issue, timestamp}` | ~2KB |
 > | `sip-extension-state` | local | Extension pause/resume state | `{isPaused, timestamp}` | ~100B |
+> | `sipDiscoveries` | local | Printify data discovery catalog | `{api_endpoints[], dom_patterns[], data_structures[]}` (see Section 3D) | ~10KB |
 > | `fetchStatus_*` | local | Temporary fetch results | `{status, error, data, timestamp}` per product | ~50KB each |
 > | `wordpressUrl` | sync | Cross-device WP URL | String URL | ~100B |
 > | `apiKey` | sync | Cross-device auth | String (variable length) | ~50B |
@@ -230,7 +231,7 @@ graph LR
       WPBundle --> AL1[action-logger.js<br/>see HOW 3C]
       WPBundle --> EC1[error-capture.js<br/>see HOW 3C]
       WPBundle --> WR[wordpress-relay.js<br/>see HOW 3A]
-      WPBundle --> WT1[widget-tabs-actions.js<br/>see HOW 3C]
+      WPBundle --> WT1[widget-tabs-actions.js<br/>see HOW 3C & Section 6]
       WPBundle --> WSS[widget-styles.css]
     end
     
@@ -245,14 +246,12 @@ graph LR
       PBundle --> WE2[widget-error.js<br/>see HOW 3C]
       PBundle --> AL2[action-logger.js<br/>see HOW 3C]
       PBundle --> EC2[error-capture.js<br/>see HOW 3C]
-      PBundle --> PTA[printify-tab-actions.js<br/>see HOW 3B]
-      PBundle --> WT2[widget-tabs-actions.js<br/>see HOW 3C]
+      PBundle --> WT2[widget-tabs-actions.js<br/>see HOW 3C & Section 6]
       PBundle --> MLA[mockup-library-actions.js<br/>see HOW 3B]
       PBundle --> PDA[product-details-actions.js<br/>see HOW 3B]
     end
     
     PrintifyPage[/Printify.com Pages/]
-    PTA -.->|DOM manipulation| PrintifyPage
     MLA -.->|mockup selection| PrintifyPage
     PDA -.->|product inspection| PrintifyPage
   end
@@ -280,7 +279,7 @@ graph LR
   %% Apply styles
   class WPPage,PrintifyPage userFacingStyle
   class Router routerStyle
-  class WE,WE2,AL1,AL2,EC1,EC2,WR,PTA,WT1,WT2,MLA,PDA scriptStyle
+  class WE,WE2,AL1,AL2,EC1,EC2,WR,WT1,WT2,MLA,PDA scriptStyle
   class Storage storageStyle
   class WPBundle,PBundle groupStyle
   class Chrome chromeStyle
@@ -313,7 +312,6 @@ The Browser Extension Context shows the Service Worker, which is Chrome's backgr
 > 
 > | Script | Purpose | When Active |
 > |--------|---------|-------------|
-> | **printify-tab-actions.js** | Main coordinator - reads URL parameters and orchestrates automation | All Printify pages |
 > | **mockup-library-actions.js** | Automates mockup selection by clicking UI elements based on scene names | Mockup library page when automation parameters present |
 > | **product-details-actions.js** | Extracts product data, mockup URLs, and variant information from DOM | Product detail pages |
 > 
@@ -331,7 +329,7 @@ The Browser Extension Context shows the Service Worker, which is Chrome's backgr
 > | **widget-error.js** | Global error handler | Provides `window.SiPWidget.showError()` for consistent error display |
 > | **action-logger.js** | Centralized logging system | Maintains logs in chrome.storage with categories and timestamps |
 > | **error-capture.js** | Runtime error interceptor | Catches uncaught errors and promise rejections for logging |
-> | **widget-tabs-actions.js** | Widget UI creator | Builds the floating widget interface and manages its state |
+> | **widget-tabs-actions.js** | Widget UI creator | Builds the floating widget interface, manages state, includes Discovery Tool for Printify data collection (see Section 6) |
 > 
 > **Other Bundle Contents:**
 > - **widget-styles.css** - Comprehensive styles for the floating widget UI
@@ -340,7 +338,6 @@ The Browser Extension Context shows the Service Worker, which is Chrome's backgr
 >   - Responsive design with drag-and-drop support and smooth animations
 >   - Dark theme terminal with syntax highlighting for log entries
 >   - Listed in web_accessible_resources for cross-origin access
-
 
 #### WHY
 
@@ -664,47 +661,144 @@ The Widget UI provides a floating interface for monitoring extension operations,
 **Diagram 6: Widget UI Components**
 ```mermaid
 graph TD
-  subgraph "Widget UI (Created by widget-tabs-actions.js)"
-    FW[Floating Widget<br/>Main Container]
-    FW --> Terminal[Terminal<br/>Log Display<br/>500 lines]
-    FW --> Modal[VanillaModal<br/>Dialog System]
-    FW --> State[State Manager]
-    
-    Terminal --> Logs[(Action Logs<br/>from storage)]
-    State --> Position[(Widget Position<br/>in storage)]
-    Modal --> ModalState[(Modal Positions<br/>in storage)]
-    
-    Controls[Widget Controls]
-    Controls --> Expand[Expand/Collapse]
-    Controls --> Clear[Clear Terminal]
-    Controls --> Hide[Hide Widget]
+  WTA[widget-tabs-actions.js<br/>Content Script]
+  
+  subgraph "Core Widget Components"
+    FW[Floating Widget Container<br/>see HOW 6A]
+    Terminal[Terminal Display<br/>see HOW 6A]
+    Modal[Modal System<br/>see HOW 6A]
+    Controls[Control Buttons<br/>see HOW 6A]
+    Status[Status Display<br/>see HOW 6A]
   end
   
-  ExtIcon[Extension Icon<br/>Click] -->|toggleWidget| FW
-  Messages[Extension Messages] -->|SIP_SHOW_WIDGET| FW
-  Router[Router Messages] -->|updateOperationStatus| StatusDisplay[Status Display]
+  WTA --> FW
+  WTA --> Terminal
+  WTA --> Modal
+  WTA --> Controls
+  WTA --> Status
+  
+  subgraph "Context-Specific Features"
+    WP[WordPress Context<br/>see HOW 6B<br/>- View discoveries only<br/>- Shows on: SiP Manager admin pages]
+    PR[Printify Context<br/>see HOW 6B<br/>- Collect & view discoveries<br/>- API interception<br/>- Shows on: all printify.com pages]
+  end
+  
+  WTA --> WP
+  WTA --> PR
+  
+  Storage[(chrome.storage)]
+  
+  FW <-->|widget state| Storage
+  Storage -->|logs| Terminal
+  Modal -->|modal positions| Storage
+  Storage -->|operation status| Status
+  Storage -.->|discoveries| WP
+  PR <-->|reads/writes discoveries| Storage
+  
+  ExtIcon[Extension Icon] -->|toggleWidget| WTA
+  Messages[Extension Messages] -->|SIP_SHOW_WIDGET| WTA
+  Router[Router Messages] -->|updateOperationStatus| WTA
   
   %% Style definitions
   classDef userFacingStyle fill:#90EE90,stroke:#228B22,stroke-width:2px
   classDef storageStyle fill:#F8F3E8,stroke:#8B7355,stroke-width:2px
   classDef actionStyle fill:#F0F0F0,stroke:#808080,stroke-width:1px
+  classDef scriptStyle fill:#E6F3FF,stroke:#4169E1,stroke-width:1px
+  classDef contextStyle fill:#F3E8F8,stroke:#8B7AB8,stroke-width:2px
   
   %% Apply styles
-  class FW,Terminal,Modal,StatusDisplay userFacingStyle
-  class Logs,Position,ModalState storageStyle
-  class Controls,Expand,Clear,Hide,ExtIcon,Messages actionStyle
+  class WTA scriptStyle
+  class FW,Terminal,Modal,Controls,Status userFacingStyle
+  class Storage storageStyle
+  class ExtIcon,Messages,Router actionStyle
+  class WP,PR contextStyle
 ```
 [← Back to Diagram 2: Main Architecture](#architecture)
 
 ### HOW
 
-> The widget is created once per tab by widget-tabs-actions.js and persists across page navigations within the same tab.
-> 
-> **Terminal Display Integration:**
+The widget is created once per tab by widget-tabs-actions.js and persists across page navigations within the same tab.
+
+##### 6A Core Components
+
+> All widget components are created by widget-tabs-actions.js and shared across both WordPress and Printify contexts.
+>
+> | Component | Purpose | Details |
+> |-----------|---------|---------|
+> | **Floating Widget Container** | Main UI frame | Draggable, collapsible, persists position |
+> | **Terminal Display** | Log viewer | Shows action logs from chrome.storage (500 line buffer) |
+> | **Modal System** | Dialog framework | VanillaModal for reports and future dialogs |
+> | **Control Buttons** | User actions | Expand/Collapse, Clear Terminal, Hide Widget, Discovery Report |
+> | **Status Display** | Operation tracking | Shows progress for mockup updates and other operations |
+
+##### 6B Context-Specific Behaviors
+
+> While core components are shared, certain features behave differently depending on the context.
+>
+> | Feature | WordPress Context | Printify Context |
+> |---------|------------------|------------------|
+> | **Terminal Logs** | Shows all logs from chrome.storage (both contexts) | Shows all logs from chrome.storage (both contexts) |
+> | **Discovery Report** | View-only access to stored discoveries | Full access: collect new data + view stored |
+> | **Discovery Collection** | Not active | Runs `analyzePageOnce()` and `setupDiscoveryIntercept()` on page load |
+> | **Widget Visibility** | Only on SiP Printify Manager pages | On all Printify.com pages |
+
+##### 6C Terminal Display Integration
+
+> The terminal component has special integration with the Action Logger system for real-time log display.
+>
 > - **Real-time logs**: action-logger.js calls `updateWidgetDisplay()` directly to show logs in the terminal
 > - **Operation status**: Router sends `updateOperationStatus` actions (not SIP_ messages) to update progress
 > - **Direct DOM updates**: Widget code directly manipulates terminal innerHTML for pause UI and status messages
 > - **No message-based terminal control**: Terminal is updated via direct function calls, not messages
+
+##### 6D Discovery Tool
+
+> The Discovery Tool is a lightweight data discovery system that passively collects information about Printify's data landscape. Data collection only occurs while browsing Printify.com, but the Discovery Report can be viewed from any context (WordPress or Printify).
+>
+> **Implementation Components:**
+> 
+> | Component | Function | Implementation |
+> |-----------|----------|----------------|
+> | `initDiscoverySystem()` | Initializes discovery on page load | Called once in init() |
+> | `analyzePageOnce()` | Performs one-time DOM analysis | Extracts data-* attributes, identifies patterns |
+> | `setupDiscoveryIntercept()` | Intercepts fetch API calls | Overrides window.fetch to capture responses |
+> | `saveDiscoveries()` | Persists discoveries to storage | Deduplicates and marks new items |
+> | `showDiscoveryReport()` | Displays modal with discoveries | Categories: api_endpoints, dom_patterns, data_structures |
+>
+> **Storage Schema (`sipDiscoveries`):**
+> ```javascript
+> {
+>   api_endpoints: [{
+>     url: string,
+>     method: string,
+>     timestamp: number,
+>     hasSeenBefore: boolean
+>   }],
+>   dom_patterns: [{
+>     pattern: string,
+>     example: string,
+>     count: number,
+>     timestamp: number,
+>     hasSeenBefore: boolean
+>   }],
+>   data_structures: [{
+>     name: string,
+>     fields: string[],
+>     source: string,
+>     timestamp: number,
+>     hasSeenBefore: boolean
+>   }]
+> }
+> ```
+>
+> **Key Features:**
+> - One-time page analysis (no polling) - only on Printify pages
+> - Passive API interception - only on Printify pages
+> - Persistent storage with deduplication
+> - NEW badge visible in all contexts when unseen discoveries exist
+> - Discovery Report accessible from both WordPress and Printify contexts
+> - Export functionality for discovered data
+> - Modal display with categories
+> - "Mark all as seen" functionality
 
 ### WHY
 
