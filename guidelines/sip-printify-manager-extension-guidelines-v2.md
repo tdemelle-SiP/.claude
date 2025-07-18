@@ -355,7 +355,7 @@ Message handlers process specific message types received by the Router, executin
 ```mermaid
 graph TD
   subgraph "Service Worker (Background)"
-    Router((Router<br/>see HOW 4E))
+    Router((Router<br/>see HOW 2A))
     
     subgraph "Message Handlers"
       WH[wordpress-handler.js<br/>see HOW 4A]
@@ -504,14 +504,9 @@ graph TD
 >
 > </details>
 
-##### 4E Message Validation
+##### 4E Router Reference
 
-> All messages pass through comprehensive validation in the Router:
->
-> 1. **Structure Check**: Message must have `type` field
-> 2. **Source Validation**: WordPress messages verified by source and origin
-> 3. **Handler Routing**: Message type mapped to specific handler
-> 4. **Response Wrapping**: Success/error responses formatted consistently
+> The Router validates all messages before routing them to handlers. See HOW 2A in Section 2 for complete Router documentation including message validation, error handling, and response formatting.
 
 #### WHY
 
