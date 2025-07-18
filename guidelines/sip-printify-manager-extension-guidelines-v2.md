@@ -124,10 +124,25 @@ graph TD
 > - **Wraps Chrome APIs** with consistent error handling
 > - **Manages tab pairing** to coordinate WordPress and Printify tabs
 > - **Injects scripts** dynamically when manifest-declared scripts can't access needed APIs
+> - **Updates extension badge** via chrome.action API to show status (✓ green for success, ! orange for warnings)
 > 
 > Message flow: Content Scripts → `chrome.runtime.sendMessage()` → Router → Handler → `chrome.tabs.sendMessage()` → Content Scripts
 > 
-> **Dynamic Script Injection:** When Printify's restrictions prevent manifest-declared content scripts from accessing needed APIs, the Router uses `chrome.scripting.executeScript()` to inject scripts dynamically. These scripts can intercept XHR responses and access Printify's internal data structures.
+> **Dynamic Script Injection:** The Router uses `chrome.scripting.executeScript()` in two scenarios:
+> 1. **API Interception**: When Printify's restrictions prevent manifest-declared content scripts from accessing needed APIs, the Router dynamically injects scripts that can intercept XHR responses and access Printify's internal data structures.
+> 2. **Install/Update Events**: During extension install or update (`onInstalled`), the Router injects the full set of content scripts into already-open WordPress and Printify tabs, matching exactly what manifest.json declares for each context. This ensures pre-existing tabs receive complete extension functionality without requiring a page refresh.
+> 
+> **Pause/Resume System:** The Router includes built-in operation pausing for user intervention:
+> - `pauseOperation(tabId, issue, instructions)` - Pauses operation and shows UI with instructions
+> - `resumeOperation()` - Resumes when user clicks the resume button in the widget
+> - Messages use internal format: `{ type: 'widget', action: 'resumeOperation' }`
+> - Automatically focuses the problematic tab and displays pause status in widget
+> 
+> **Configuration Loading:** The Router attempts to load pre-configuration from `assets/config.json`:
+> - Contains optional pre-configured settings: `wordpressUrl`, `apiKey`, `autoSync`, `configured`
+> - If `configured: true`, these settings are automatically applied on extension install
+> - Falls back to chrome.storage.sync if config.json is unavailable
+> - Useful for enterprise deployments with pre-configured extensions
 
 #### 2B Documentation Links
 
@@ -183,6 +198,8 @@ graph TD
 Printify blocks Chrome.Runtime so content Scripts declared in manifest.json cannot use chrome.runtime features on the Printify site. However, the router can dynamically inject scripts to intercept API responses and relay data back.
 
 Host permissions are limited to printify.com and wp-admin domains to minimize Chrome Web Store review friction while maintaining necessary access.
+
+Web accessible resources include assets needed across origins: config.json, logo images, loading animation, and widget-styles.css.
 
 ---
 
@@ -317,7 +334,12 @@ The Browser Extension Context shows the Service Worker, which is Chrome's backgr
 > | **widget-tabs-actions.js** | Widget UI creator | Builds the floating widget interface and manages its state |
 > 
 > **Other Bundle Contents:**
-> - **widget-styles.css** (WordPress bundle only) - Styles for the floating widget UI
+> - **widget-styles.css** - Comprehensive styles for the floating widget UI
+>   - Injected into WordPress pages via manifest and dynamically into other pages
+>   - Includes styles for: floating widget, terminal display, modal dialogs, toast notifications
+>   - Responsive design with drag-and-drop support and smooth animations
+>   - Dark theme terminal with syntax highlighting for log entries
+>   - Listed in web_accessible_resources for cross-origin access
 
 
 #### WHY
@@ -386,9 +408,13 @@ graph TD
 > | Message Type | Action | Response |
 > |--------------|--------|----------|
 > | `SIP_REQUEST_EXTENSION_STATUS` | Confirms extension is active | `SIP_EXTENSION_DETECTED` |
-> | `SIP_TEST_CONNECTION` | Tests WordPress API connection | Connection status |
-> | `SIP_WP_ROUTE_TO_PRINTIFY` | Navigates to Printify tab | Tab ID or error |
 > | `SIP_NAVIGATE` | General navigation request | Success/failure |
+> | `SIP_OPEN_TAB` | Opens new tab with URL | Tab ID or error |
+> | `SIP_TOGGLE_WIDGET` | Toggles widget collapsed/expanded | Success/failure |
+> | `SIP_SHOW_WIDGET` | Ensures widget is visible | Success/failure |
+> | `SIP_FETCH_MOCKUPS` | Initiates mockup data fetch | `SIP_MOCKUP_DATA` response |
+> | `SIP_UPDATE_PRODUCT_MOCKUPS` | Updates product mockups | `SIP_MOCKUP_UPDATE_COMPLETE` |
+> | `SIP_CLEAR_STATUS` | Clears operation status | Success/failure |
 > 
 > **Key Functions:**
 > - Validates WordPress URL and API key configuration
@@ -416,12 +442,7 @@ graph TD
 > 
 > | Message Type | Action | Implementation |
 > |--------------|--------|----------------|
-> | `SIP_SHOW_WIDGET` | Makes widget visible | Sets widget state in storage |
-> | `SIP_HIDE_WIDGET` | Hides widget | Updates visibility state |
-> | `SIP_TERMINAL_APPEND` | Adds log entry | Appends to terminal content |
-> | `SIP_TERMINAL_CLEAR` | Clears terminal | Resets terminal array |
-> | `SIP_TERMINAL_SET_STATE` | Expand/collapse | Updates terminal display state |
-> | `SIP_OPERATION_STATUS` | Progress updates | Shows current operation status |
+> | `SIP_SHOW_WIDGET` | Makes widget visible | Routes to widget-data-handler |
 > 
 > </details>
 
@@ -478,25 +499,10 @@ graph TD
 > <details>
 > <summary>View additional message types</summary>
 >
-> **Tab Management Messages**
-> | Message | Purpose | Source |
-> |---------|---------|--------|
-> | `SIP_TAB_PAIRED` | Confirms tabs linked successfully | widget-tabs-actions.js |
-> | `SIP_TAB_REMOVED` | Triggers cleanup when tab closes | Browser event |
->
-> **Operation Control Messages**
-> | Message | Purpose | Source |
-> |---------|---------|--------|
-> | `SIP_OPERATION_PAUSED` | User paused batch operation | action-queue.js |
-> | `SIP_OPERATION_RESUMED` | User resumed batch operation | action-queue.js |
->
 > **System Events**
 > | Message | Purpose | Source |
 > |---------|---------|--------|
-> | `SIP_SCENE_MAP` | Broadcasts available mockup scenes | Router |
-> | `SIP_STORAGE_UPDATE` | Notifies of storage changes | widget-data-handler.js |
-> | `SIP_LOG_ACTION` | Records actions to log | action-logger.js |
-> | `SIP_ERROR_CAPTURED` | Reports global errors | error-capture.js |
+> | `ACTION_LOG` | Records actions to storage | action-logger.js |
 > | `MOCKUP_API_RESPONSE` | Carries intercepted Printify data | mockup-fetch-handler.js |
 >
 > </details>
@@ -675,9 +681,8 @@ graph TD
   end
   
   ExtIcon[Extension Icon<br/>Click] -->|toggleWidget| FW
-  Messages[Extension Messages] -->|SIP_SHOW_WIDGET<br/>SIP_HIDE_WIDGET| FW
-  Messages -->|SIP_TERMINAL_APPEND| Terminal
-  Messages -->|SIP_OPERATION_STATUS| StatusDisplay[Status Display]
+  Messages[Extension Messages] -->|SIP_SHOW_WIDGET| FW
+  Router[Router Messages] -->|updateOperationStatus| StatusDisplay[Status Display]
   
   %% Style definitions
   classDef userFacingStyle fill:#90EE90,stroke:#228B22,stroke-width:2px
@@ -694,6 +699,12 @@ graph TD
 ### HOW
 
 > The widget is created once per tab by widget-tabs-actions.js and persists across page navigations within the same tab.
+> 
+> **Terminal Display Integration:**
+> - **Real-time logs**: action-logger.js calls `updateWidgetDisplay()` directly to show logs in the terminal
+> - **Operation status**: Router sends `updateOperationStatus` actions (not SIP_ messages) to update progress
+> - **Direct DOM updates**: Widget code directly manipulates terminal innerHTML for pause UI and status messages
+> - **No message-based terminal control**: Terminal is updated via direct function calls, not messages
 
 ### WHY
 
