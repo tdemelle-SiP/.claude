@@ -123,9 +123,9 @@ graph TD
 > - **Validates** incoming messages for required fields and security
 > - **Routes** messages to appropriate handlers based on message type
 > - **Stores** all events in chrome.storage for historical viewing
-> - **Forwards** display updates to paired tabs only
+> - **Forwards** display updates to all extension tabs (WordPress and Printify)
 > - **Wraps Chrome APIs** with consistent error handling
-> - **Manages tab pairing** to coordinate WordPress and Printify tabs
+> - **Manages tab pairing** ONLY for navigation (prevents duplicate tabs)
 > - **Injects scripts** dynamically when manifest-declared scripts can't access needed APIs
 > - **Updates extension badge** via chrome.action API to show status (✓ green for success, ! orange for warnings)
 > 
@@ -138,7 +138,39 @@ graph TD
 > 
 > These messages are:
 > 1. Stored in `sipExtensionLogs` (max 500 entries)
-> 2. Forwarded as `DISPLAY_UPDATE` to paired tabs only
+> 2. Forwarded as `DISPLAY_UPDATE` to tabs tracked in `injectedTabs` Set
+> 
+> **Injected Tabs Tracking:**
+> To prevent "Could not establish connection" errors, the Router maintains a Set of tab IDs where content scripts are loaded:
+> - Content scripts announce readiness via `chrome.runtime.sendMessage({ type: 'CONTENT_SCRIPT_READY' })`
+> - Router adds tabs to Set after successful script injection during `onInstalled`
+> - Tabs removed from Set when closed (`onRemoved`) or navigating (`onUpdated` with status='loading')
+> - `forwardDisplayUpdate` only sends to tabs in this Set
+> 
+> **Tab Pairing Usage Guidelines:**
+> - ✅ **USE** for `navigateTab()` - Prevents duplicate tabs, reuses existing ones
+> - ❌ **DON'T USE** for message broadcasting - Use injectedTabs tracking instead
+> - ❌ **DON'T USE** for display updates - Terminal should update in all contexts
+> 
+> <details>
+> <summary>Message Broadcasting Pattern (Current Implementation)</summary>
+> 
+> ```javascript
+> // Only send to tabs we know have content scripts
+> for (const tabId of injectedTabs) {
+>     try {
+>         await chrome.tabs.sendMessage(tabId, {
+>             type: 'DISPLAY_UPDATE',
+>             data: data
+>         });
+>     } catch (error) {
+>         // Tab closed or navigated - remove from Set
+>         injectedTabs.delete(tabId);
+>     }
+> }
+> ```
+> 
+> </details>
 > 
 > **Dynamic Script Injection:** The Router uses `chrome.scripting.executeScript()` in two scenarios:
 > 1. **API Interception**: When Printify's restrictions prevent manifest-declared content scripts from accessing needed APIs, the Router dynamically injects scripts that can intercept XHR responses and access Printify's internal data structures.
@@ -554,6 +586,7 @@ graph TD
 > | `operation` | Progress-tracked operations | Mockup handlers |
 > | `MOCKUP_API_RESPONSE` | Carries intercepted Printify data | mockup-fetch-handler.js |
 > | `DISPLAY_UPDATE` | Terminal display updates | Router |
+> | `CONTENT_SCRIPT_READY` | Announces content script loaded | All content scripts |
 >
 > </details>
 
@@ -566,7 +599,7 @@ graph TD
 > 3. **Handler Routing**: Message type mapped to specific handler
 > 4. **Response Wrapping**: Success/error responses formatted consistently
 > 5. **Event Logging**: All action/operation messages stored in sipExtensionLogs
-> 6. **Display Forwarding**: Updates sent to paired tabs via DISPLAY_UPDATE
+> 6. **Display Forwarding**: Updates broadcast to all extension tabs via DISPLAY_UPDATE
 
 ### III. WHY
 
@@ -793,7 +826,7 @@ The Widget UI serves as the primary debugging interface for the extension, provi
 
 The separation between high-level batch progress (WordPress) and granular operation progress (Extension) enables fluid user experience without complex polling. The 500-line log buffer and auto-hide behavior balance information availability with screen real estate.
 
-By routing all display updates through the Router to paired tabs only, the system maintains efficiency while ensuring both WordPress and Printify tabs show synchronized progress information.
+Display updates are broadcast to tabs tracked in the `injectedTabs` Set, ensuring terminal visibility regardless of message origin (WordPress tab, Printify tab, or service worker). This approach eliminates both the "no origin tab" problem when handlers run in service worker context and the "Could not establish connection" errors from sending to tabs without content scripts. Tab pairing remains focused solely on its primary purpose: preventing duplicate tabs during navigation.
 
 ---
 
