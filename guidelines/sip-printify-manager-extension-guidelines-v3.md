@@ -131,6 +131,8 @@ graph TD
 > 
 > Message flow: Content Scripts → `chrome.runtime.sendMessage()` → Router → Handler → `chrome.tabs.sendMessage()` → Content Scripts
 > 
+> **Important:** Message handlers run in the Service Worker context - see Section 4 for critical messaging patterns.
+> 
 > **Terminal Display Integration:**
 > The Router processes two types of display messages:
 > - `type: 'action'` - One-off status messages with category (success/error/warning/info)
@@ -410,6 +412,15 @@ Chrome's content script architecture provides security isolation between web pag
 
 Message handlers process specific message types received by the Router, executing actions like fetching mockup data, updating UI, and managing extension state.
 
+**⚠️ CRITICAL: Service Worker Context**
+All message handlers run in the Service Worker context (same as the Router). This means:
+- ❌ **CANNOT** use `chrome.runtime.sendMessage()` - it won't work within the same context
+- ✅ **MUST** use direct router methods for reporting status:
+  - `router.reportOperation(progress, message, complete)` - For progress-tracked operations
+  - `router.reportAction(message, category)` - For one-off status messages
+
+This is a common source of bugs where operation messages don't appear in the terminal display.
+
 ### I. WHAT
 
 **Diagram 4: Message Handlers**
@@ -501,6 +512,8 @@ graph TD
 > |--------------|--------|----------------|
 > | `SIP_SHOW_WIDGET` | Makes widget visible | Routes to widget-data-handler |
 > 
+> Note: The widget now auto-expands when receiving operation messages. No explicit expandWidget action is needed.
+> 
 > </details>
 
 #### 4C Mockup Handlers
@@ -560,14 +573,18 @@ graph TD
 > <details>
 > <summary>Progress Reporting Code Example</summary>
 > 
-> Mockup handlers send operation messages to the Router:
+> Mockup handlers report operation progress using direct router methods:
 > ```javascript
-> chrome.runtime.sendMessage({
->     type: 'operation',
->     progress: 45,
->     message: 'Fetching Mockups: Loading data...',
->     complete: false
-> });
+> // ✅ CORRECT - Direct router method (handlers run in Service Worker context)
+> router.reportOperation(45, 'Fetching Mockups: Loading data...');
+> 
+> // ❌ WRONG - This won't work in Service Worker context
+> // chrome.runtime.sendMessage({
+> //     type: 'operation',
+> //     progress: 45,
+> //     message: 'Fetching Mockups: Loading data...',
+> //     complete: false
+> // });
 > ```
 > 
 > </details>
@@ -730,6 +747,12 @@ graph TD
 > - **Idle (READY)**: No active operations, shows "..." or previous message
 > - **Active (PROCESSING...)**: Operation in progress with percentage
 > - **Completion**: Shows SUCCESS/ERROR/WARNING briefly, then returns to idle
+>
+> **Auto-Expand Behavior:**
+> - Widget automatically expands when receiving an operation message (not complete)
+> - Ensures users see operation progress without manual interaction
+> - Only triggers if widget is currently collapsed
+> - Implemented in `TerminalDisplay.autoExpandWidget()` method
 
 #### 5C Log Viewer
 
@@ -846,19 +869,15 @@ Display updates are broadcast to tabs tracked in the `injectedTabs` Set, ensurin
 
 3. **Send display messages** for user visibility
    ```javascript
-   // One-off status message
+   // For handlers in Service Worker context:
+   router.reportAction('Feature activated', 'success');
+   router.reportOperation(50, 'Processing data...');
+   
+   // For content scripts:
    chrome.runtime.sendMessage({
        type: 'action',
        message: 'Feature activated',
        category: 'success'  // or 'error', 'warning', 'info'
-   });
-   
-   // Progress-tracked operation
-   chrome.runtime.sendMessage({
-       type: 'operation',
-       progress: 50,
-       message: 'Processing data...',
-       complete: false
    });
    ```
 
