@@ -17,7 +17,7 @@ These principles drive both code creation AND documentation creation:
 **Documentation**: Verify all elements against actual implementation with file references
 
 ### 4. STRUCTURAL CORRECTNESS
-**Code**: Build systems that work by design, not by defensive programming  
+**Code**: Build systems that work by design, not by defensive programming. Define functions in dependency order - basic utilities first, then functions that use them.
 **Documentation**: Show correct implementation, don't guess at problems or edge cases
 
 ### 5. COMPLETE REPRESENTATION
@@ -198,6 +198,7 @@ If your solution includes ANY of these, STOP and reconsider:
 □ Hook timing differences from documented patterns
 □ Response format deviations from standard structures
 □ JavaScript utility usage that bypasses documented methods
+□ Functions calling other functions defined later in the same file (breaks dependency order)
 
 **📋 Pattern-Specific Checkpoints**
 □ AJAX: Parameter naming matches between PHP/JS

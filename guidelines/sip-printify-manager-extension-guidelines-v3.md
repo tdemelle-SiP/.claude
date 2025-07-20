@@ -142,6 +142,12 @@ graph TD
 > 1. Stored in `sipExtensionLogs` (max 500 entries)
 > 2. Forwarded as `DISPLAY_UPDATE` to tabs tracked in `injectedTabs` Set
 > 
+> **Critical: Async Storage Race Condition:**
+> The `storeEventLog()` function uses `chrome.storage.local.set()` which is asynchronous. When multiple log entries are written in quick succession without awaiting, a race condition occurs where later writes can overwrite earlier ones before they complete. To prevent this:
+> - **Always** use `await storeEventLog(data)` to ensure sequential writes
+> - **Never** call `storeEventLog()` without await in loops or rapid sequences
+> - This applies to all contexts where `storeEventLog()` is called
+> 
 > **Injected Tabs Tracking:**
 > To prevent "Could not establish connection" errors, the Router maintains a Set of tab IDs where content scripts are loaded:
 > - Content scripts announce readiness via `chrome.runtime.sendMessage({ type: 'CONTENT_SCRIPT_READY' })`
