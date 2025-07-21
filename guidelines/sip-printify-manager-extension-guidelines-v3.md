@@ -6,7 +6,7 @@
 
 - [1. Overview](#overview)
 - [2. Main Architecture - The Three Contexts](#architecture)
-- [3. Content Scripts](#content-scripts-widget-ui)
+- [3. Content Scripts](#content-scripts)
 - [4. Message Handlers](#message-handlers)
 - [5. Widget UI & Terminal Display](#widget-ui-terminal-display)
 - [6. Development Guide](#development-guide)
@@ -142,10 +142,16 @@ graph TD
 > }
 > ```
 > 
+> **Field Definitions:**
+> - **context** = Origin/category (where the message comes from)
+> - **action** = Specific operation to perform (what to do)
+> - **source** = Sender identification (which plugin/extension sent it)
+> - **data** = Optional payload for the action
+> 
 > **Handler Registration Pattern:**
-> The Router implements a WordPress AJAX-style registration system:
+> The Router implements a WordPress AJAX-style registration system that mirrors the SiP plugin pattern exactly:
 > ```javascript
-> // Register handlers with two-parameter pattern
+> // Register handlers with two-parameter pattern like WordPress
 > registerHandler('wordpress', '*', wordpressHandler);  // Wildcard for all WordPress actions
 > registerHandler('wordpress', 'SIP_FETCH_MOCKUPS', mockupFetchHandler);  // Specific action
 > 
@@ -170,7 +176,7 @@ graph TD
 > 
 > **Injected Tabs Tracking:**
 > To prevent "Could not establish connection" errors, the Router maintains a Set of tab IDs where content scripts are loaded:
-> - Content scripts announce readiness via `chrome.runtime.sendMessage({ type: 'CONTENT_SCRIPT_READY' })`
+> - Content scripts announce readiness via `chrome.runtime.sendMessage({ context: 'extension', action: 'SIP_CONTENT_SCRIPT_READY', source: 'sip-printify-extension' })`
 > - Router adds tabs to Set after successful script injection during `onInstalled`
 > - Tabs removed from Set when closed (`onRemoved`) or navigating (`onUpdated` with status='loading')
 > - `forwardDisplayUpdate` only sends to tabs in this Set
@@ -207,7 +213,7 @@ graph TD
 > **Pause/Resume System:** The Router includes built-in operation pausing for user intervention:
 > - `pauseOperation(tabId, issue, instructions)` - Pauses operation and shows UI with instructions
 > - `resumeOperation()` - Resumes when user clicks the resume button in the widget
-> - Messages use internal format: `{ type: 'widget', action: 'resumeOperation' }`
+> - Messages use internal format: `{ context: 'extension', action: 'SIP_RESUME_OPERATION', source: 'sip-printify-extension' }`
 > - Automatically focuses the problematic tab and displays pause status in widget
 > 
 > **Configuration Loading:** The Router attempts to load pre-configuration from `assets/config.json`:
@@ -219,7 +225,7 @@ graph TD
 #### 2B Documentation Links
 
 > The following sections detail elements referenced in the Main Architecture Diagram.
->- **Content Scripts** → [Section 3: Content Scripts](#content-scripts-widget-ui)
+>- **Content Scripts** → [Section 3: Content Scripts](#content-scripts)
 >- **Message Handlers** → [Section 4: Message Handlers](#message-handlers)
 >- **Widget UI & Terminal Display** → [Section 5: Widget UI & Terminal Display](#widget-ui-terminal-display)
 >- **chrome.storage** → [See HOW 2C below](#storage-how)
@@ -284,7 +290,7 @@ Web accessible resources include assets needed across origins: config.json, logo
 
 ---
 
-## 3. CONTENT SCRIPTS {#content-scripts-widget-ui}
+## 3. CONTENT SCRIPTS {#content-scripts}
 
 Content scripts are JavaScript files injected by Chrome into web pages based on URL patterns defined in manifest.json. They provide the bridge between web pages and the extension's background service worker.
 
@@ -436,15 +442,31 @@ Chrome's content script architecture provides security isolation between web pag
 
 ## 4. MESSAGE HANDLERS {#message-handlers}
 
-Message handlers process specific message types received by the Router, executing actions like fetching mockup data, updating UI, and managing extension state.
+Message handlers process messages received by the Router based on their context and action, implementing the extension's core functionality.
 
-**Message Type Convention:**
-The `type` field identifies the **message source/context**, not the operation:
-- `wordpress` - Commands from WordPress pages (via relay)
-- `printify` - Data/responses from Printify pages
-- `widget` - Widget UI actions
+**Handler Architecture:**
+The extension mirrors the WordPress AJAX pattern exactly:
+- **Context-based routing**: Messages routed by their `context` field (wordpress|printify|extension)
+- **Plain function handlers**: No object wrappers or methods, just functions with switch statements
+- **Two-parameter registration**: `registerHandler(context, action, handler)` like WordPress
+- **Wildcard support**: Context handlers use '*' to handle all actions from that context
 
-The `action` field specifies **what the message does** (e.g., `SIP_FETCH_MOCKUPS`, `MOCKUP_API_RESPONSE`).
+**Message Format:**
+All messages follow the standardized structure:
+```javascript
+{
+    context: 'wordpress' | 'printify' | 'extension',
+    action: 'SIP_FETCH_MOCKUPS' | 'SIP_NAVIGATE' | etc.,
+    source: 'sip-printify-manager' | 'sip-printify-extension',
+    data: { ... }  // Optional payload
+}
+```
+
+**Action Naming Convention:**
+All actions use `SIP_` prefix with CAPS_WITH_UNDERSCORES:
+- Consistent with WordPress/PHP conventions
+- Universal prefix indicates SiP system membership
+- Context field already indicates origin
 
 **⚠️ CRITICAL: Service Worker Context**
 All message handlers run in the Service Worker context (same as the Router). This means:
@@ -457,30 +479,38 @@ This is a common source of bugs where operation messages don't appear in the ter
 
 ### I. WHAT
 
-**Diagram 4: Message Handlers**
+**Diagram 4: Message Handlers Architecture**
 ```mermaid
 graph TD
   subgraph "Service Worker (Background)"
-    Router((Router<br/>see HOW 4F))
+    Router((Router<br/>Message Dispatcher))
     
-    subgraph "Message Handlers"
+    subgraph "Handler Registration"
+      REG[registerHandler Function<br/>see HOW 4F]
+    end
+    
+    subgraph "Context Handlers"
       WH[wordpress-handler.js<br/>see HOW 4A]
       EH[extension-handler.js<br/>see HOW 4B]
       PH[printify-handler.js<br/>see HOW 4C]
+    end
+    
+    subgraph "Specific Action Handlers"
       MFH[mockup-fetch-handler.js<br/>see HOW 4D]
       MUH[mockup-update-handler.js<br/>see HOW 4E]
     end
     
-    Router -->|context:wordpress| WH
-    Router -->|context:extension| EH
-    Router -->|context:printify| PH
-    Router -->|wordpress:SIP_FETCH_MOCKUPS| MFH
-    Router -->|wordpress:SIP_UPDATE_PRODUCT_MOCKUPS| MUH
+    REG -->|wordpress:*| WH
+    REG -->|extension:*| EH
+    REG -->|printify:*| PH
+    REG -->|wordpress:SIP_FETCH_MOCKUPS| MFH
+    REG -->|wordpress:SIP_UPDATE_PRODUCT_MOCKUPS| MUH
   end
   
   WPPage[/"WordPress Page"/] --> WPRelay[wordpress-relay.js]
-  WPRelay -->|context:wordpress| Router
+  WPRelay -->|{context: 'wordpress',<br/>action: 'SIP_*'}| Router
   
+  Router -->|Route by compound key| REG
   Router -. commands .-> CS[Content Scripts]
   Router -. events .-> EventLogs[(Event Logs)]
   
@@ -493,7 +523,7 @@ graph TD
   %% Apply styles
   class WPPage userFacingStyle
   class Router routerStyle
-  class WH,EH,PH,MFH,MUH,WPRelay,CS scriptStyle
+  class WH,EH,PH,MFH,MUH,WPRelay,CS,REG scriptStyle
   class EventLogs storageStyle
 ```
 [← Back to Diagram 2: Main Architecture](#architecture)
@@ -520,8 +550,8 @@ graph TD
 > 
 > **Key Functions:**
 > - Routes messages to appropriate handlers based on action
-> - Navigation commands go to WidgetDataHandler
-> - Mockup operations go to their respective handlers
+> - Widget commands handled within this handler
+> - Mockup operations routed to their specific handlers
 > - Returns standardized success/error responses
 > 
 > **Extension Detection Pattern:**
@@ -536,128 +566,145 @@ graph TD
 >
 > </details>
 
-#### 4B Widget Data Handler
+#### 4B Extension Handler
 
-> Controls the floating widget UI across all tabs:
+> Processes extension-internal messages for UI control, status updates, and error logging:
 > 
 > <details>
-> <summary>View widget data handler messages</summary>
+> <summary>View extension handler actions</summary>
 > 
-> | Message Type | Action | Implementation |
-> |--------------|--------|----------------|
-> | `SIP_SHOW_WIDGET` | Makes widget visible | Routes to widget-data-handler |
+> | Action | Purpose | Implementation |
+> |--------|---------|----------------|
+> | `SIP_SHOW_WIDGET` | Makes widget visible | Shows widget UI |
+> | `SIP_TOGGLE_WIDGET` | Toggle widget collapsed/expanded | Updates widget state |
+> | `SIP_LOG_ERROR` | Log error to extension logs | Stores in sipExtensionLogs |
+> | `SIP_UPDATE_PROGRESS` | Update operation progress | Updates terminal display |
+> | `SIP_CLEAR_LOGS` | Clear log history | Clears sipExtensionLogs |
+> | `SIP_PING` | Health check | Returns pong response |
+> | `SIP_CHECK_STATUS` | Get current operation status | Returns status object |
 > 
-> Note: The widget now auto-expands when receiving operation messages. No explicit expandWidget action is needed.
+> **Key Implementation:**
+> - Handles all `context: 'extension'` messages
+> - Uses switch statement to route actions
+> - Direct access to chrome.storage for state management
+> - Auto-expands widget on operation messages
 > 
 > </details>
 
-#### 4C Mockup Handlers
+#### 4C Printify Handler
 
-> Three handlers work together to manage Printify mockups:
+> Processes data and responses from Printify pages:
 > 
 > <details>
-> <summary>Mockup Operation Flow Diagram</summary>
+> <summary>View Printify handler actions</summary>
 > 
-> **Diagram 4.1: Mockup Operation Flow**
-> ```mermaid
-> graph TD
->   WP[/WordPress Admin/] -->|SIP_FETCH_MOCKUPS| Router((Router))
->   WP -->|SIP_UPDATE_PRODUCT_MOCKUPS| Router
->   
->   Router --> MFH[mockup-fetch-handler.js]
->   Router --> MUH[mockup-update-handler.js]
->   
->   MFH -->|navigateTab| MockupLib[/Printify Mockup Library/]
->   MFH -->|inject script| Interceptor[API Interceptor]
->   MockupLib -.->|API calls| Interceptor
->   Interceptor -->|MOCKUP_API_RESPONSE| PDH[printify-data-handler.js]
->   PDH -->|transformed data| Router
->   Router -->|mockup data| WP
->   
->   MUH -->|navigateTab + params| ProductPage[/Printify Product Page/]
->   ProductPage -->|automation| Mockups[Mockup Selection]
->   MUH -->|monitor completion| Status[Operation Status]
->   Status -->|pause/resume| UserIntervention[User Actions]
->   
->   %% Style definitions
->   classDef userFacingStyle fill:#90EE90,stroke:#228B22,stroke-width:2px
->   classDef routerStyle fill:#87CEEB,stroke:#4682B4,stroke-width:2px
->   classDef scriptStyle fill:#E6F3FF,stroke:#4169E1,stroke-width:1px
->   classDef actionStyle fill:#F0F0F0,stroke:#808080,stroke-width:1px
->   
->   %% Apply styles
->   class WP,MockupLib,ProductPage userFacingStyle
->   class Router routerStyle
->   class MFH,MUH,PDH,Interceptor scriptStyle
->   class Mockups,Status,UserIntervention actionStyle
-> ```
+> | Action | Purpose | Response |
+> |--------|---------|----------|
+> | `SIP_UPDATE_STATUS` | Update operation status | Status stored |
+> | `SIP_GET_STATUS` | Get current status | Returns status object |
+> | `SIP_PRODUCT_DATA` | Product data from page | Processed and stored |
+> | `SIP_MOCKUP_API_RESPONSE` | Intercepted API response | Transforms and forwards data |
+> | `SIP_REPORT_ERROR` | Error from Printify page | Logs error |
+> 
+> **Key Implementation:**
+> - Handles all `context: 'printify'` messages
+> - Processes intercepted Printify API responses
+> - Transforms raw Printify data to SiP format
+> - Reports status back to WordPress
 > 
 > </details>
+
+#### 4D Mockup Fetch Handler
+
+> Handles the complex operation of fetching mockup data from Printify:
 > 
 > <details>
-> <summary>Handler Responsibilities</summary>
+> <summary>Mockup Fetch Operation Flow</summary>
 > 
-> | Handler | Message Type & Action | Purpose | Key Actions |
-> |---------|---------|---------|-------------|
-> | `mockup-fetch-handler.js` | via `wordpress` → `SIP_FETCH_MOCKUPS` | Retrieve mockup library data | Navigate to library, inject interceptor, wait for response |
-> | `mockup-update-handler.js` | via `wordpress` → `SIP_UPDATE_PRODUCT_MOCKUPS` | Apply mockups to product | Navigate with params, monitor progress, handle pauses |
-> | `printify-data-handler.js` | `printify` → various actions | Handle Printify data | Process API responses, update status, sync data |
+> **Operation Flow:**
+> 1. Receives `SIP_FETCH_MOCKUPS` from WordPress with blueprint data
+> 2. Navigates to Printify mockup library page
+> 3. Injects API interceptor script
+> 4. Waits for Printify API response
+> 5. Transforms data and returns to WordPress
 > 
-> </details>
->
-> <details>
-> <summary>Progress Reporting Code Example</summary>
-> 
-> Mockup handlers report operation progress using direct router methods:
+> **Progress Reporting:**
 > ```javascript
-> // ✅ CORRECT - Direct router method (handlers run in Service Worker context)
-> router.reportOperation(45, 'Fetching Mockups: Loading data...');
-> 
-> // ❌ WRONG - This won't work in Service Worker context
-> // chrome.runtime.sendMessage({
-> //     type: 'operation',
-> //     progress: 45,
-> //     message: 'Fetching Mockups: Loading data...',
-> //     complete: false
-> // });
+> router.reportOperation(10, `Fetching Mockups: Preparing to fetch mockup data for ${displayName}`);
+> router.reportOperation(25, 'Fetching Mockups: Navigating to mockup library...');
+> router.reportOperation(45, 'Fetching Mockups: Loading mockup data...');
+> router.reportOperation(90, 'Fetching Mockups: Processing mockup data...');
+> router.reportOperation(100, 'Fetching Mockups: Complete', true);
 > ```
 > 
+> **Blueprint Name Usage:**
+> - Receives `blueprint_name` in request data
+> - Uses name in all progress messages for user clarity
+> - Falls back to `Blueprint #${blueprint_id}` if name missing
+> 
 > </details>
 
-#### 4D Additional Message Types
+#### 4E Mockup Update Handler
 
-> This catalog documents internal system messages not covered in handler descriptions above.
->
+> Handles updating product mockups on Printify:
+> 
 > <details>
-> <summary>View additional message types</summary>
->
-> **System Events**
-> | Type | Action | Purpose | Source |
-> |------|--------|---------|--------|
-> | (no type) | `action` | One-off status messages | Any content script |
-> | (no type) | `operation` | Progress-tracked operations | Mockup handlers |
-> | `printify` | `MOCKUP_API_RESPONSE` | Carries intercepted Printify data | Injected scripts via mockup-fetch-handler |
-> | (no type) | `DISPLAY_UPDATE` | Terminal display updates | Router |
-> | (no type) | `CONTENT_SCRIPT_READY` | Announces content script loaded | All content scripts |
->
+> <summary>Mockup Update Operation Flow</summary>
+> 
+> **Operation Flow:**
+> 1. Receives `SIP_UPDATE_PRODUCT_MOCKUPS` with product and mockup data
+> 2. Navigates to product page with automation parameters
+> 3. Content scripts automatically select mockups
+> 4. Monitors for completion or issues
+> 5. Handles pause/resume for user intervention
+> 
+> **Pause/Resume System:**
+> - Detects when manual intervention needed
+> - Pauses operation with clear instructions
+> - Shows resume button in widget
+> - Continues when user resolves issue
+> 
+> **Error Handling:**
+> - Validates product exists before navigation
+> - Checks mockup availability
+> - Reports specific errors to terminal
+> - Allows retry after error resolution
+> 
 > </details>
 
-#### 4E Message Validation
+#### 4F Message Validation
 
 > All messages pass through comprehensive validation in the Router:
 >
-> 1. **Structure Check**: Message must have `type` field
-> 2. **Source Validation**: WordPress messages verified by source and origin
-> 3. **Handler Routing**: Message type mapped to specific handler
-> 4. **Response Wrapping**: Success/error responses formatted consistently
-> 5. **Event Logging**: All action/operation messages stored in sipExtensionLogs
-> 6. **Display Forwarding**: Updates broadcast to all extension tabs via DISPLAY_UPDATE
+> 1. **Structure Check**: Message must have `context`, `action`, and `source` fields
+> 2. **Context Validation**: Must be one of: wordpress, printify, extension
+> 3. **Source Validation**: WordPress messages verified by source and origin
+> 4. **Handler Lookup**: Uses compound key `${context}:${action}` or wildcard `${context}:*`
+> 5. **Response Wrapping**: Success/error responses formatted consistently
+> 6. **Event Logging**: All action/operation messages stored in sipExtensionLogs
+> 7. **Display Forwarding**: Updates broadcast to all extension tabs via DISPLAY_UPDATE
+>
+> **Registration Pattern Example:**
+> ```javascript
+> function registerHandler(context, action, handler) {
+>     if (typeof handler !== 'function') {
+>         console.error(`Invalid handler for ${context}:${action}: must be a function`);
+>         return;
+>     }
+>     
+>     const key = `${context}:${action}`;
+>     handlers[key] = handler;
+>     console.log(`Registered handler for ${key}`);
+> }
+> ```
 
 ### III. WHY
 
-WordPress messages pass through wordpress-relay.js to reach the Router. Printify pages operate in isolation due to chrome.runtime restrictions, using URL parameters as the sole communication method. The Router navigates to Printify pages with specific parameters that action scripts read and execute.
+The handler architecture mirrors WordPress AJAX exactly, making it immediately familiar to SiP developers. The two-parameter registration pattern (`context`, `action`) creates a predictable system where handlers can be registered at any granularity - from handling all messages from a context to handling a single specific action.
 
-A single router gives one chokepoint for security and observability: every action is validated, logged, and tracked. The router pattern enables clean separation between message sources and handlers, making the extension maintainable as features grow. Enforcing consistent message naming helps debug issues and prevents collisions with other extensions.
+Using plain functions instead of object wrappers reduces complexity and matches WordPress conventions. The compound key routing (`context:action`) with wildcard fallback provides flexibility while maintaining clear boundaries. Universal SIP_ prefix for actions prevents naming collisions while the context field already indicates message origin.
+
+Separating complex operations (mockup fetch/update) into dedicated handlers keeps the codebase modular and maintainable. The direct router method calls from handlers (instead of chrome.runtime.sendMessage) avoid the common bug where messages disappear because they can't be sent within the same Service Worker context.
 
 ---
 
