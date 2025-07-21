@@ -884,9 +884,26 @@ $mockups_dir = $storage->get_folder_path('sip-printify-manager', 'mockups');
 $blueprint_dir = $mockups_dir . '/' . $blueprint_id . '/';
 
 // Files in each blueprint folder:
-// - metadata.json: Mockup metadata and URLs
+// - metadata.json: Mockup metadata including blueprint_name (as of v1.3.0)
 // - *.jpg: Downloaded mockup images
 // - generated-mockup-maps.json: Raw API response (optional)
+```
+
+**Metadata Structure (v1.3.0+):**
+```json
+{
+    "blueprint_id": "6",
+    "blueprint_name": "Unisex Staple T-Shirt | Bella + Canvas 3001",
+    "product_id": "677c8b9f3dd59f053400c2a5",
+    "generated_at": "2025-01-21T12:00:00Z",
+    "mockups": {
+        "front": {
+            "id": "front",
+            "label": "Front",
+            "src": "https://..."
+        }
+    }
+}
 ```
 
 **Detection Logic:**
@@ -1280,6 +1297,40 @@ function export_products_csv() {
 ## 7. WordPress Options API (Server-Side)
 
 For plugin settings and configuration.
+
+### Request-Level Caching Pattern
+
+For frequently accessed options data, implement request-level caching to avoid repeated database queries:
+
+```php
+/**
+ * Get cached blueprint data for the current request
+ * Following SiP data storage pattern
+ */
+function sip_get_cached_blueprints() {
+    static $blueprints = null;
+    
+    if ($blueprints === null) {
+        $blueprints_raw = get_option('sip_printify_blueprints', array());
+        // Ensure we have an array
+        $blueprints = is_array($blueprints_raw) ? $blueprints_raw : maybe_unserialize($blueprints_raw);
+    }
+    
+    return $blueprints;
+}
+```
+
+**Usage:**
+```php
+// Instead of multiple calls to get_option():
+$blueprints = sip_get_cached_blueprints();
+$blueprint_name = isset($blueprints[$blueprint_id]['title']) ? $blueprints[$blueprint_id]['title'] : 'Blueprint #' . $blueprint_id;
+```
+
+**Benefits:**
+- Single database query per request
+- Consistent data throughout request lifecycle
+- Simple implementation with static variables
 
 ### Basic Usage
 ```php

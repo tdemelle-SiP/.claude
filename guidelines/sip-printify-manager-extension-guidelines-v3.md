@@ -120,8 +120,8 @@ graph TD
 > The Router (`widget-router.js`) is the extension's central message dispatcher, running in the Service Worker context. **All messages pass through the Router** - there are no direct connections between contexts. This single-point message flow ensures consistent validation, logging, and error handling.
 > 
 > The Router:
-> - **Validates** incoming messages for required fields and security
-> - **Routes** messages to appropriate handlers based on message type
+> - **Validates** incoming messages for required `context`, `action`, and `source` fields
+> - **Routes** messages to registered handlers using compound keys (`context:action`)
 > - **Stores** all events in chrome.storage for historical viewing
 > - **Forwards** display updates to all extension tabs (WordPress and Printify)
 > - **Wraps Chrome APIs** with consistent error handling
@@ -131,16 +131,36 @@ graph TD
 > 
 > Message flow: Content Scripts → `chrome.runtime.sendMessage()` → Router → Handler → `chrome.tabs.sendMessage()` → Content Scripts
 > 
-> **Important:** Message handlers run in the Service Worker context - see Section 4 for critical messaging patterns.
+> **Message Format:**
+> All messages use the standardized format:
+> ```javascript
+> {
+>     context: 'wordpress' | 'printify' | 'extension',
+>     action: 'SIP_FETCH_MOCKUPS' | 'SIP_NAVIGATE' | etc.,
+>     source: 'sip-printify-manager' | 'sip-printify-extension',
+>     data: { ... }  // Optional payload
+> }
+> ```
+> 
+> **Handler Registration Pattern:**
+> The Router implements a WordPress AJAX-style registration system:
+> ```javascript
+> // Register handlers with two-parameter pattern
+> registerHandler('wordpress', '*', wordpressHandler);  // Wildcard for all WordPress actions
+> registerHandler('wordpress', 'SIP_FETCH_MOCKUPS', mockupFetchHandler);  // Specific action
+> 
+> // Routing logic tries specific first, then wildcard
+> const handler = handlers[`${context}:${action}`] || handlers[`${context}:*`];
+> ```
 > 
 > **Terminal Display Integration:**
-> The Router processes two types of display messages:
-> - `type: 'action'` - One-off status messages with category (success/error/warning/info)
-> - `type: 'operation'` - Progress-tracked operations with percentage and completion status
+> The Router stores and forwards operation messages for the terminal display:
+> - Action messages: One-off status with category (success/error/warning/info)
+> - Operation messages: Progress-tracked with percentage and completion status
 > 
 > These messages are:
 > 1. Stored in `sipExtensionLogs` (max 500 entries)
-> 2. Forwarded as `DISPLAY_UPDATE` to tabs tracked in `injectedTabs` Set
+> 2. Forwarded as internal `DISPLAY_UPDATE` messages to tabs tracked in `injectedTabs` Set
 > 
 > **Critical: Async Storage Race Condition:**
 > The `storeEventLog()` function uses `chrome.storage.local.set()` which is asynchronous. When multiple log entries are written in quick succession without awaiting, a race condition occurs where later writes can overwrite earlier ones before they complete. To prevent this:
@@ -418,6 +438,14 @@ Chrome's content script architecture provides security isolation between web pag
 
 Message handlers process specific message types received by the Router, executing actions like fetching mockup data, updating UI, and managing extension state.
 
+**Message Type Convention:**
+The `type` field identifies the **message source/context**, not the operation:
+- `wordpress` - Commands from WordPress pages (via relay)
+- `printify` - Data/responses from Printify pages
+- `widget` - Widget UI actions
+
+The `action` field specifies **what the message does** (e.g., `SIP_FETCH_MOCKUPS`, `MOCKUP_API_RESPONSE`).
+
 **⚠️ CRITICAL: Service Worker Context**
 All message handlers run in the Service Worker context (same as the Router). This means:
 - ❌ **CANNOT** use `chrome.runtime.sendMessage()` - it won't work within the same context
@@ -433,25 +461,25 @@ This is a common source of bugs where operation messages don't appear in the ter
 ```mermaid
 graph TD
   subgraph "Service Worker (Background)"
-    Router((Router<br/>see HOW 4E))
+    Router((Router<br/>see HOW 4F))
     
     subgraph "Message Handlers"
       WH[wordpress-handler.js<br/>see HOW 4A]
-      WDH[widget-data-handler.js<br/>see HOW 4B]
-      MFH[mockup-fetch-handler.js<br/>see HOW 4C]
-      MUH[mockup-update-handler.js<br/>see HOW 4C]
-      PDH[printify-data-handler.js<br/>see HOW 4C]
+      EH[extension-handler.js<br/>see HOW 4B]
+      PH[printify-handler.js<br/>see HOW 4C]
+      MFH[mockup-fetch-handler.js<br/>see HOW 4D]
+      MUH[mockup-update-handler.js<br/>see HOW 4E]
     end
     
-    Router --> WH
-    Router --> WDH
-    Router --> MFH
-    Router --> MUH
-    Router --> PDH
+    Router -->|context:wordpress| WH
+    Router -->|context:extension| EH
+    Router -->|context:printify| PH
+    Router -->|wordpress:SIP_FETCH_MOCKUPS| MFH
+    Router -->|wordpress:SIP_UPDATE_PRODUCT_MOCKUPS| MUH
   end
   
   WPPage[/"WordPress Page"/] --> WPRelay[wordpress-relay.js]
-  WPRelay -->|messages| Router
+  WPRelay -->|context:wordpress| Router
   
   Router -. commands .-> CS[Content Scripts]
   Router -. events .-> EventLogs[(Event Logs)]
@@ -465,7 +493,7 @@ graph TD
   %% Apply styles
   class WPPage userFacingStyle
   class Router routerStyle
-  class WH,WDH,MFH,MUH,PDH,WPRelay,CS scriptStyle
+  class WH,EH,PH,MFH,MUH,WPRelay,CS scriptStyle
   class EventLogs storageStyle
 ```
 [← Back to Diagram 2: Main Architecture](#architecture)
@@ -486,13 +514,14 @@ graph TD
 > | `SIP_OPEN_TAB` | Opens new tab with URL | Tab ID or error |
 > | `SIP_TOGGLE_WIDGET` | Toggles widget collapsed/expanded | Success/failure |
 > | `SIP_SHOW_WIDGET` | Ensures widget is visible | Success/failure |
-> | `SIP_FETCH_MOCKUPS` | Initiates mockup data fetch | `SIP_MOCKUP_DATA` response |
-> | `SIP_UPDATE_PRODUCT_MOCKUPS` | Updates product mockups | `SIP_MOCKUP_UPDATE_COMPLETE` |
+> | `SIP_FETCH_MOCKUPS` | Initiates mockup data fetch (routes to MockupFetchHandler) | `SIP_MOCKUP_DATA` response |
+> | `SIP_UPDATE_PRODUCT_MOCKUPS` | Updates product mockups (routes to MockupUpdateHandler) | `SIP_MOCKUP_UPDATE_COMPLETE` |
 > | `SIP_CLEAR_STATUS` | Clears operation status | Success/failure |
 > 
 > **Key Functions:**
-> - Validates WordPress URL and API key configuration
-> - Uses Router's `navigateTab()` for smart tab management
+> - Routes messages to appropriate handlers based on action
+> - Navigation commands go to WidgetDataHandler
+> - Mockup operations go to their respective handlers
 > - Returns standardized success/error responses
 > 
 > **Extension Detection Pattern:**
@@ -568,11 +597,11 @@ graph TD
 > <details>
 > <summary>Handler Responsibilities</summary>
 > 
-> | Handler | Message | Purpose | Key Actions |
+> | Handler | Message Type & Action | Purpose | Key Actions |
 > |---------|---------|---------|-------------|
-> | `mockup-fetch-handler.js` | `SIP_FETCH_MOCKUPS` | Retrieve mockup library data | Navigate to library, inject interceptor, relay data |
-> | `mockup-update-handler.js` | `SIP_UPDATE_PRODUCT_MOCKUPS` | Apply mockups to product | Navigate with params, monitor progress, handle pauses |
-> | `printify-data-handler.js` | `MOCKUP_API_RESPONSE` | Transform API data | Parse Printify format, map scenes, validate data |
+> | `mockup-fetch-handler.js` | via `wordpress` → `SIP_FETCH_MOCKUPS` | Retrieve mockup library data | Navigate to library, inject interceptor, wait for response |
+> | `mockup-update-handler.js` | via `wordpress` → `SIP_UPDATE_PRODUCT_MOCKUPS` | Apply mockups to product | Navigate with params, monitor progress, handle pauses |
+> | `printify-data-handler.js` | `printify` → various actions | Handle Printify data | Process API responses, update status, sync data |
 > 
 > </details>
 >
@@ -603,13 +632,13 @@ graph TD
 > <summary>View additional message types</summary>
 >
 > **System Events**
-> | Message | Purpose | Source |
-> |---------|---------|--------|
-> | `action` | One-off status messages | Any content script |
-> | `operation` | Progress-tracked operations | Mockup handlers |
-> | `MOCKUP_API_RESPONSE` | Carries intercepted Printify data | mockup-fetch-handler.js |
-> | `DISPLAY_UPDATE` | Terminal display updates | Router |
-> | `CONTENT_SCRIPT_READY` | Announces content script loaded | All content scripts |
+> | Type | Action | Purpose | Source |
+> |------|--------|---------|--------|
+> | (no type) | `action` | One-off status messages | Any content script |
+> | (no type) | `operation` | Progress-tracked operations | Mockup handlers |
+> | `printify` | `MOCKUP_API_RESPONSE` | Carries intercepted Printify data | Injected scripts via mockup-fetch-handler |
+> | (no type) | `DISPLAY_UPDATE` | Terminal display updates | Router |
+> | (no type) | `CONTENT_SCRIPT_READY` | Announces content script loaded | All content scripts |
 >
 > </details>
 

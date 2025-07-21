@@ -81,6 +81,8 @@ Blueprint rows can display mockup buttons that allow users to:
 - Files: Individual `.jpg` images and `metadata.json`
 - Detection: Only blueprints with actual image files are considered to have mockups
 - Cleanup: Incomplete folders (metadata without images) are automatically cleaned
+- Optimization: Blueprint names are stored in metadata.json (v1.3.0+) to avoid database lookups during display
+- Caching: Blueprint data uses request-level caching via `sip_get_cached_blueprints()`
 
 **Mockup Button States:**
 - No button: Blueprint has no mockup images
@@ -95,6 +97,10 @@ Blueprint rows can display mockup buttons that allow users to:
 - Gallery display: `displayMockupGallery()` - hybrid thumbnail grid + PhotoSwipe
 - Cleanup utility: `cleanupIncompleteMockups()` - removes incomplete downloads
 - Extension integration: Requires `mockupFetching` capability
+- Frontend optimization: Blueprint names pass through from DOM data, avoiding redundant database lookups
+- Functions updated for efficiency:
+  - `fetchMockupsForBlueprint(blueprintId, blueprintName, dialog)` - accepts name parameter
+  - `getProductForBlueprint(blueprintId, blueprintName)` - uses passed name when available
 
 **Template Preview Implementation:**
 - Module: `template-actions.js`
