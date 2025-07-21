@@ -59,7 +59,10 @@
       "Bash(pwsh:*)",
       "WebFetch(domain:developer.chrome.com)",
       "WebFetch(domain:github.com)",
-      "Bash(cd:*)"
+      "Bash(cd:*)",
+      "Bash(for:*)",
+      "Bash(do echo \"Checking $file...\")",
+      "Bash(echo:*)"
     ],
     "deny": []
   },

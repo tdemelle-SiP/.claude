@@ -194,7 +194,9 @@ graph TD
 > for (const tabId of injectedTabs) {
 >     try {
 >         await chrome.tabs.sendMessage(tabId, {
->             type: 'DISPLAY_UPDATE',
+>             context: 'extension',
+            action: 'SIP_DISPLAY_UPDATE',
+            source: 'sip-printify-manager-extension',
 >             data: data
 >         });
 >     } catch (error) {
@@ -419,7 +421,7 @@ The Browser Extension Context shows the Service Worker, which is Chrome's backgr
 > 
 > | Script | Purpose | Shared Functionality |
 > |--------|---------|---------------------|
-> | **widget-error.js** | Global error handler | Provides `window.SiPWidget.showError()` for consistent error display |
+> | **widget-error.js** | Global error handler | Provides `window.showError()` for consistent error display |
 > | **widget-terminal-display.js** | Terminal display component | Receives DISPLAY_UPDATE messages and shows real-time progress |
 > | **error-capture.js** | Runtime error interceptor | Catches uncaught errors and promise rejections for logging |
 > | **widget-tabs-actions.js** | Widget UI creator | Builds the floating widget interface, manages state, includes Discovery Tool for Printify data collection (see Section 5) |
@@ -807,15 +809,20 @@ graph TD
 > ```javascript
 > // Action message (one-off status)
 > {
->     type: 'action',
->     message: 'Blueprint updated',
+>     context: 'extension',
+    action: 'SIP_TERMINAL_ACTION',
+    source: 'sip-printify-manager-extension',
+>     data: {
+        message: 'Blueprint updated',
 >     category: 'success',  // success, error, warning, info
 >     timestamp: 1634567890123  // Added by Router
 > }
 > 
 > // Operation message (progress-tracked)
 > {
->     type: 'operation', 
+>     context: 'extension',
+    action: 'SIP_TERMINAL_OPERATION',
+    source: 'sip-printify-manager-extension', 
 >     progress: 45,        // 0-100
 >     message: 'Updating mockups...',
 >     complete: false,     // true when operation finishes
@@ -957,9 +964,13 @@ Display updates are broadcast to tabs tracked in the `injectedTabs` Set, ensurin
    
    // For content scripts:
    chrome.runtime.sendMessage({
-       type: 'action',
-       message: 'Feature activated',
-       category: 'success'  // or 'error', 'warning', 'info'
+       context: 'extension',
+       action: 'SIP_TERMINAL_ACTION',
+       source: 'sip-printify-manager-extension',
+       data: {
+           message: 'Feature activated',
+           category: 'success'  // or 'error', 'warning', 'info'
+       }
    });
    ```
 
