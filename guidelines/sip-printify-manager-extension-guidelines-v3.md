@@ -122,6 +122,7 @@ graph TD
 > The Router:
 > - **Validates** incoming messages for required `context`, `action`, and `source` fields
 > - **Routes** messages to registered handlers using compound keys (`context:action`)
+> - **Preserves** `requestId` from incoming messages in all responses automatically
 > - **Stores** all events in chrome.storage for historical viewing
 > - **Forwards** display updates to all extension tabs (WordPress and Printify)
 > - **Wraps Chrome APIs** with consistent error handling
@@ -138,6 +139,7 @@ graph TD
 >     context: 'wordpress' | 'printify' | 'extension',
 >     action: 'SIP_FETCH_MOCKUPS' | 'SIP_NAVIGATE' | etc.,
 >     source: 'sip-printify-manager' | 'sip-printify-extension',
+>     requestId: 'mockup_123_1737547890123_x7k9m2p',  // Optional - preserved in responses
 >     data: { ... }  // Optional payload
 > }
 > ```
@@ -480,9 +482,17 @@ All messages follow the standardized structure:
     context: 'wordpress' | 'printify' | 'extension',
     action: 'SIP_FETCH_MOCKUPS' | 'SIP_NAVIGATE' | etc.,
     source: 'sip-printify-manager' | 'sip-printify-extension',
+    requestId: 'mockup_123_1737547890123_x7k9m2p',  // Optional - for request/response correlation
     data: { ... }  // Optional payload
 }
 ```
+
+**Request ID Correlation:**
+- WordPress plugins generate unique request IDs using `SiP.Core.utilities.generateRequestId(prefix)`
+- Format: `prefix_timestamp_random` (e.g., `mockup_123_1737547890123_x7k9m2p`)
+- The Router preserves `requestId` in responses automatically
+- Enables matching async responses to their originating requests
+- Critical for operations like concurrent mockup fetches
 
 **Action Naming Convention:**
 All actions use `SIP_` prefix with CAPS_WITH_UNDERSCORES:
@@ -719,6 +729,60 @@ graph TD
 >     console.log(`Registered handler for ${key}`);
 > }
 > ```
+
+#### 4G Request/Response Correlation
+
+> For async operations that need response matching, the extension uses request IDs:
+>
+> **Implementation Flow:**
+> 1. WordPress generates unique ID: `SiP.Core.utilities.generateRequestId('operation_123')`
+> 2. Includes `requestId` in message to extension
+> 3. Router automatically preserves `requestId` in all responses
+> 4. WordPress matches response by checking `requestId` field
+>
+> **Example: Concurrent Mockup Fetches**
+> ```javascript
+> // WordPress Plugin Side:
+> const requestId = SiP.Core.utilities.generateRequestId('mockup_' + blueprintId);
+> 
+> window.postMessage({
+>     context: 'wordpress',
+>     action: 'SIP_FETCH_MOCKUPS',
+>     source: 'sip-printify-manager',
+>     requestId: requestId,  // Will be preserved in response
+>     data: { blueprint_id: blueprintId }
+> }, '*');
+> 
+> // Listen for response with matching requestId
+> window.addEventListener('message', function(event) {
+>     if (event.data && 
+>         event.data.action === 'SIP_MOCKUP_DATA' &&
+>         event.data.requestId === requestId) {
+>         // This is our response
+>         processResponse(event.data);
+>     }
+> });
+> 
+> // Extension Handler Side:
+> function mockupFetchHandler(request, sender, sendResponse) {
+>     // Do async work...
+>     sendResponse({
+>         success: true,
+>         context: 'extension',
+>         action: 'SIP_MOCKUP_DATA',
+>         source: 'sip-printify-manager-extension',
+>         // requestId automatically preserved by router
+>         data: { mockupData: {...} }
+>     });
+>     return true; // Keep channel open for async
+> }
+> ```
+>
+> **Benefits:**
+> - Multiple operations can run concurrently without confusion
+> - Each request can have independent timeout handling
+> - Request/response pairs are easily traced in logs
+> - Stale responses from previous operations are ignored
 
 ### III. WHY
 

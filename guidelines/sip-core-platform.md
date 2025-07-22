@@ -144,7 +144,7 @@ The following core features are always available to child plugins. For details o
 | Debug | `SiP.Core.debug` | Centralized debug logging system |
 | AJAX | `SiP.Core.ajax` | Standardized AJAX handling |
 | State | `SiP.Core.state` | Client-side state management |
-| Utilities | `SiP.Core.utilities` | Common utility functions including string normalization, HTML escaping, and UI helpers |
+| Utilities | `SiP.Core.utilities` | Common utility functions including string normalization, HTML escaping, UI helpers, and request ID generation |
 
 ### Module Features
 
@@ -233,6 +233,10 @@ const safeString = SiP.Core.utilities.normalizeString(userInput);
 
 // HTML escaping
 const displayText = SiP.Core.utilities.escapeHtml(untrustedContent);
+
+// Generate unique request ID for async operations
+const requestId = SiP.Core.utilities.generateRequestId('operation_123');
+// Returns: 'operation_123_1737547890123_x7k9m2p'
 
 // Show status indicator
 SiP.Core.utilities.showSpinner();

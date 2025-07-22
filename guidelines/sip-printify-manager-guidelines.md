@@ -485,6 +485,7 @@ The browser extension enables mockup management capabilities that aren't availab
 
 #### Communication Flow
 1. **WordPress initiates**: Sends `SIP_UPDATE_PRODUCT_MOCKUPS` message with selected scenes and primary image settings
+   - Includes unique `requestId` generated via `SiP.Core.utilities.generateRequestId()` for response correlation
 2. **Extension navigates**: Opens product's mockup library page in Printify with scene parameters in URL
 3. **Scene-based selection**: Content script reads URL parameters and:
    - Navigates carousel to ALL available scenes
@@ -492,18 +493,20 @@ The browser extension enables mockup management capabilities that aren't availab
    - Deselects mockups for scenes NOT in the selection list
    - Ensures exact synchronization with WordPress selection
 4. **Internal API calls**: Uses Printify's internal endpoints to save changes
-5. **Status reporting**: Reports success/failure back to WordPress
+5. **Status reporting**: Reports success/failure back to WordPress with preserved `requestId`
 
 ### Implementation Components
 
 #### WordPress Side
 - **Trigger Function**: `showMockupUpdateProgress()` in `template-actions.js`
 - **Mockup Selection UI**: `showMockupSelectionModal()` presents scene-based selection
-- **Message Format**:
+- **Message Format** (standardized as of v1.4.0):
   ```javascript
   {
-      type: 'printify',
+      context: 'wordpress',
       action: 'SIP_UPDATE_PRODUCT_MOCKUPS',
+      source: 'sip-printify-manager',
+      requestId: 'update_mockups_123_1737547890123_x7k9m2p',  // Generated via SiP.Core.utilities.generateRequestId()
       data: {
           productId: '68534afa6ad639c0cd011c55',
           shopId: '17823150',
@@ -514,8 +517,7 @@ The browser extension enables mockup management capabilities that aren't availab
           productInfo: {
               productName: 'Product Name',
               productId: '68534afa6ad639c0cd011c55'
-          },
-          requestId: 'update_mockups_123_1704067200000'
+          }
       }
   }
   ```
@@ -605,6 +607,63 @@ The browser extension enables mockup management capabilities that aren't availab
 2. **Single product test**: Update one product before batch
 3. **Detailed logging**: Capture all API calls and responses
 4. **Visual indicators**: Highlight updated elements in DOM
+
+## Async Message Correlation System
+
+### Overview
+The SiP Printify Manager uses request IDs to correlate responses with their originating requests when communicating with the browser extension. This is critical for operations that may run concurrently or take significant time to complete.
+
+### Implementation
+
+#### Request ID Generation
+All async operations use the standardized request ID generator from SiP Core:
+
+```javascript
+// Generate unique request ID
+const requestId = SiP.Core.utilities.generateRequestId('mockup_' + blueprintId);
+// Result: 'mockup_123_1737547890123_x7k9m2p'
+```
+
+#### Message Flow with Request ID
+1. **WordPress sends request** with generated `requestId`
+2. **Extension processes** the request asynchronously
+3. **Router preserves** the `requestId` automatically in responses
+4. **WordPress matches** response to request via `requestId`
+
+#### Example: Concurrent Mockup Fetches
+```javascript
+// Fetching mockups for multiple blueprints
+blueprints.forEach(blueprint => {
+    const requestId = SiP.Core.utilities.generateRequestId('mockup_' + blueprint.id);
+    
+    // Send request
+    window.postMessage({
+        context: 'wordpress',
+        action: 'SIP_FETCH_MOCKUPS',
+        source: 'sip-printify-manager',
+        requestId: requestId,
+        data: { blueprint_id: blueprint.id }
+    }, '*');
+    
+    // Set up response listener
+    const responseHandler = (event) => {
+        if (event.data && 
+            event.data.action === 'SIP_MOCKUP_DATA' &&
+            event.data.requestId === requestId) {
+            // This response matches our request
+            processMockupData(event.data);
+            window.removeEventListener('message', responseHandler);
+        }
+    };
+    window.addEventListener('message', responseHandler);
+});
+```
+
+### Why This Architecture
+- **Concurrent Operations**: Multiple mockup fetches can run simultaneously without response confusion
+- **Timeout Handling**: Each request can have its own timeout without affecting others
+- **Debugging**: Request IDs in logs make it easy to trace request/response pairs
+- **Reliability**: Prevents processing stale responses from previous operations
 
 #### Debug Information to Capture
 - Current mockup selections before update
