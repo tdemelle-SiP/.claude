@@ -176,7 +176,7 @@ graph TD
 > 
 > **Injected Tabs Tracking:**
 > To prevent "Could not establish connection" errors, the Router maintains a Set of tab IDs where content scripts are loaded:
-> - Content scripts announce readiness via `chrome.runtime.sendMessage({ context: 'extension', action: 'SIP_CONTENT_SCRIPT_READY', source: 'sip-printify-extension' })`
+> - Content scripts announce readiness via `chrome.runtime.sendMessage({ context: 'extension', action: 'SIP_CONTENT_SCRIPT_READY', source: 'sip-printify-manager-extension' })`
 > - Router adds tabs to Set after successful script injection during `onInstalled`
 > - Tabs removed from Set when closed (`onRemoved`) or navigating (`onUpdated` with status='loading')
 > - `forwardDisplayUpdate` only sends to tabs in this Set
@@ -345,6 +345,7 @@ graph LR
   end
   
   WR -->|chrome.runtime| Router
+  Router -->|chrome.tabs| WR
   Router -.->|DISPLAY_UPDATE| WTD1
   Router -.->|DISPLAY_UPDATE| WTD2
   Router -.->|inject scripts| PrintifyPage
@@ -378,18 +379,37 @@ The Browser Extension Context shows the Service Worker, which is Chrome's backgr
 
 #### 3A wordpress-relay.js
 
-> The `wordpress-relay.js` script acts as a secure message bridge between WordPress pages and the extension. It performs minimal validation (origin and source checks) before forwarding messages to the Router, where comprehensive validation occurs.
+> The `wordpress-relay.js` script acts as a secure message bridge between WordPress pages and the extension. It uses two separate listeners to handle bidirectional communication while preventing infinite loops.
 > 
 > <details>
-> <summary>View relay functions</summary>
+> <summary>View relay architecture and functions</summary>
+> 
+> **Two-Listener Architecture:**
+> 
+> 1. **`window.addEventListener('message')`** - Receives messages FROM WordPress page
+>    - Validates origin matches `window.location.origin`
+>    - Ignores messages with `source: 'sip-printify-manager-extension'` to prevent loops
+>    - Forwards valid WordPress messages (`source: 'sip-printify-manager'` or `sip-plugins-core`) to Router via `chrome.runtime.sendMessage`
+> 
+> 2. **`chrome.runtime.onMessage.addListener`** - Receives messages FROM Router/handlers  
+>    - Listens for responses with `source: 'sip-printify-manager-extension'`
+>    - Forwards these responses back to WordPress page via `window.postMessage`
+>    - This enables handlers to send responses that reach the WordPress plugin
 > 
 > | Function | Purpose | Implementation |
 > |----------|---------|----------------|
 > | Origin validation | Security check | Only accepts messages from `window.location.origin` |
-> | Source filtering | Prevents loops | Ignores messages from `sip-printify-extension` |
+> | Source filtering | Prevents loops | Ignores messages from `sip-printify-manager-extension` |
 > | Message forwarding | WP → Router | Validates source is `sip-printify-manager` or `sip-plugins-core` |
-> | Response relay | Router → WP | Forwards responses back via `window.postMessage` |
+> | Response relay | Router → WP | Forwards responses with `source: 'sip-printify-manager-extension'` via `window.postMessage` |
 > | Terminal display | Log events | Sends action/operation messages to Router |
+> 
+> **Critical Design:**
+> The same source value (`sip-printify-manager-extension`) is used for both:
+> - Ignoring messages in the window listener (preventing loops)
+> - Forwarding messages in the chrome.runtime listener (enabling responses)
+> 
+> This ensures responses can flow back to WordPress while preventing infinite message loops.
 > 
 > </details>
 
