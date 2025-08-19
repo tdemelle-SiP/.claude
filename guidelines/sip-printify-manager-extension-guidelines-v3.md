@@ -9,8 +9,7 @@
 - [3. Content Scripts](#content-scripts)
 - [4. Message Handlers](#message-handlers)
 - [5. Widget UI & Terminal Display](#widget-ui-terminal-display)
-- [6. Development Guide](#development-guide)
-- [7. Author Checklist](#author-checklist)
+- [6. Author Checklist](#author-checklist)
 
 ---
 
@@ -132,9 +131,31 @@ graph TD
 > 
 > Message flow: Content Scripts → `chrome.runtime.sendMessage()` → Router → Handler → `chrome.tabs.sendMessage()` → Content Scripts
 > 
+> **Critical: Async Message Listener Configuration:**
+> When the Router's `handleMessage` function is async, the chrome.runtime.onMessage listener MUST return `true` to keep the message channel open:
+> ```javascript
+> // CORRECT - Returns true for async handleMessage
+> chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+>     handleMessage(message, sender, sendResponse);  // async function
+>     return true;  // CRITICAL: Keep channel open for async response
+> });
+> 
+> // WRONG - Channel closes before async handleMessage completes
+> chrome.runtime.onMessage.addListener(handleMessage);  // No return true!
+> ```
+> 
+> **Symptoms of missing `return true` in listener:**
+> - Extension detection fails (button doesn't hide despite widget showing as connected)
+> - Messages reach service worker but responses never arrive at WordPress page
+> - 43 debugging steps in circles with false symptoms from debugging artifacts
+> - "Could not establish connection" errors when testing from console
+> 
+> This is separate from handlers returning `true` (documented in Section 4) - both the listener AND async handlers must return `true`.
+> 
 > **Message Format:**
 > All messages use the standardized format:
 > ```javascript
+> // Success format:
 > {
 >     context: 'wordpress' | 'printify' | 'extension',
 >     action: 'SIP_FETCH_MOCKUPS' | 'SIP_NAVIGATE' | etc.,
@@ -142,13 +163,23 @@ graph TD
 >     requestId: 'mockup_123_1737547890123_x7k9m2p',  // Optional - preserved in responses
 >     data: { ... }  // Optional payload
 > }
+> 
+> // Error format:
+> {
+>     context: 'wordpress' | 'printify' | 'extension',
+>     action: 'SIP_FETCH_MOCKUPS' | 'SIP_NAVIGATE' | etc.,
+>     source: 'sip-printify-manager' | 'sip-printify-extension',
+>     requestId: 'mockup_123_1737547890123_x7k9m2p',  // Optional - preserved in responses
+>     error: 'Error message string'  // Error description
+> }
 > ```
 > 
 > **Field Definitions:**
 > - **context** = Origin/category (where the message comes from)
 > - **action** = Specific operation to perform (what to do)
 > - **source** = Sender identification (which plugin/extension sent it)
-> - **data** = Optional payload for the action
+> - **data** = Optional payload for the action (success cases)
+> - **error** = Error message string (error cases, mutually exclusive with data)
 > 
 > **Handler Registration Pattern:**
 > The Router implements a WordPress AJAX-style registration system that mirrors the SiP plugin pattern exactly:
@@ -167,8 +198,45 @@ graph TD
 > - Operation messages: Progress-tracked with percentage and completion status
 > 
 > These messages are:
-> 1. Stored in `sipExtensionLogs` (max 500 entries)
-> 2. Forwarded as internal `DISPLAY_UPDATE` messages to tabs tracked in `injectedTabs` Set
+> 1. Stored in `sipExtensionLogs` (max 500 entries) using internal storage format
+> 2. Forwarded to tabs via `SIP_DISPLAY_UPDATE` messages (standardized format)
+> 
+> **Internal Storage Format (sipExtensionLogs):**
+> ```javascript
+> // Action entry (one-off status)
+> {
+>     type: 'action',
+>     message: 'Blueprint updated',
+>     category: 'success',  // or 'error', 'warning', 'info'
+>     timestamp: 1634567890123
+> }
+> 
+> // Operation entry (progress-tracked)
+> {
+>     type: 'operation',
+>     progress: 45,        // 0-100
+>     message: 'Updating mockups...',
+>     complete: false,     // true when operation finishes
+>     timestamp: 1634567890123
+> }
+> ```
+> 
+> **Display Update Messages:**
+> The Router forwards display updates using standardized format:
+> ```javascript
+> {
+>     context: 'extension',
+>     action: 'SIP_DISPLAY_UPDATE',
+>     source: 'sip-printify-manager-extension',
+>     data: {
+>         type: 'action',  // or 'operation'
+>         message: '...',
+>         category: '...',  // for actions
+>         progress: 45,     // for operations
+>         complete: false   // for operations
+>     }
+> }
+> ```
 > 
 > **Critical: Async Storage Race Condition:**
 > The `storeEventLog()` function uses `chrome.storage.local.set()` which is asynchronous. When multiple log entries are written in quick succession without awaiting, a race condition occurs where later writes can overwrite earlier ones before they complete. To prevent this:
@@ -509,6 +577,13 @@ All message handlers run in the Service Worker context (same as the Router). Thi
 
 This is a common source of bugs where operation messages don't appear in the terminal display.
 
+**⚠️ CRITICAL: Async Operations Require Two `return true` Statements**
+For async message handling to work correctly:
+1. **The listener** must return `true` (see Section 2A for Router configuration)
+2. **The handler** must return `true` when calling sendResponse asynchronously
+
+Both are required - if either is missing, the message channel closes prematurely and responses are lost.
+
 ### I. WHAT
 
 **Diagram 4: Message Handlers Architecture**
@@ -659,6 +734,32 @@ graph TD
 > 3. Injects API interceptor script
 > 4. Waits for Printify API response
 > 5. Transforms data and returns to WordPress
+> 
+> **Script Injection Architecture:**
+> The handler injects two scripts into different execution contexts on the Printify page:
+> 
+> 1. **ISOLATED World Script** (`setupMessageRelay`):
+>    - Runs in Chrome's isolated context with access to chrome.runtime API
+>    - Listens for window messages from MAIN world
+>    - Forwards messages to Router via `chrome.runtime.sendMessage()`
+>    - Messages already in standardized format, forwarded as-is
+> 
+> 2. **MAIN World Script** (`interceptMockupAPI`):
+>    - Runs in page context with access to Printify's JavaScript environment
+>    - Intercepts fetch/XHR responses for mockup data
+>    - Posts messages using standardized format:
+>    ```javascript
+>    window.postMessage({
+>        context: 'printify',
+>        action: 'SIP_MOCKUP_API_RESPONSE',
+>        source: 'sip-printify-manager-extension',
+>        data: mockupData  // For success
+>        // OR
+>        error: 'Error message'  // For errors
+>    }, window.location.origin);
+>    ```
+> 
+> **Why Two Scripts:** Printify blocks chrome.runtime in content scripts, but the MAIN world can access Printify's data. The ISOLATED world bridges this gap by relaying messages to the Router.
 > 
 > **Progress Reporting:**
 > ```javascript
@@ -887,32 +988,19 @@ graph TD
 
 > The terminal display component (widget-terminal-display.js) shows real-time operation progress and action messages:
 >
+> The terminal receives display updates via `SIP_DISPLAY_UPDATE` messages from the Router.
+> See Section 2A for the internal storage format and message structure.
+>
 > <details>
-> <summary>Terminal Display Message Types</summary>
+> <summary>Terminal Display Data Processing</summary>
 > 
-> ```javascript
-> // Action message (one-off status)
-> {
->     context: 'extension',
-    action: 'SIP_TERMINAL_ACTION',
-    source: 'sip-printify-manager-extension',
->     data: {
-        message: 'Blueprint updated',
->     category: 'success',  // success, error, warning, info
->     timestamp: 1634567890123  // Added by Router
-> }
-> 
-> // Operation message (progress-tracked)
-> {
->     context: 'extension',
-    action: 'SIP_TERMINAL_OPERATION',
-    source: 'sip-printify-manager-extension', 
->     progress: 45,        // 0-100
->     message: 'Updating mockups...',
->     complete: false,     // true when operation finishes
->     timestamp: 1634567890123  // Added by Router
-> }
-> ```
+> The terminal component:
+> - Receives `SIP_DISPLAY_UPDATE` messages from the Router
+> - Extracts the `data` field which contains the terminal display information  
+> - Renders based on `type` field:
+>   - `'action'`: Shows status message with colored category indicator
+>   - `'operation'`: Shows progress bar with percentage
+> - Auto-expands widget when operations start (not on completion)
 > 
 > </details>
 >
@@ -1026,46 +1114,7 @@ Display updates are broadcast to tabs tracked in the `injectedTabs` Set, ensurin
 
 ---
 
-## 6. DEVELOPMENT GUIDE {#development-guide}
-
-### Adding a New Feature
-
-1. **Register message type** in [Section 4 message catalog](#message-handlers)
-   - Add entry to appropriate section (WordPress Commands, Internal Actions, etc.)
-   - Follow `SIP_<VERB>_<NOUN>` naming convention for WordPress commands
-   - Use `action` or `operation` types for display messages
-
-2. **Add handler** in appropriate handler file
-   - Create handler method in relevant `*-handler.js`
-   - Register in router's handler map
-   - Return `true` for async operations
-
-3. **Send display messages** for user visibility
-   ```javascript
-   // For handlers in Service Worker context:
-   router.reportAction('Feature activated', 'success');
-   router.reportOperation(50, 'Processing data...');
-   
-   // For content scripts:
-   chrome.runtime.sendMessage({
-       context: 'extension',
-       action: 'SIP_TERMINAL_ACTION',
-       source: 'sip-printify-manager-extension',
-       data: {
-           message: 'Feature activated',
-           category: 'success'  // or 'error', 'warning', 'info'
-       }
-   });
-   ```
-
-4. **Update documentation**
-   - Add feature to relevant section in this file
-   - Update message catalog if new messages added
-   - Document any new storage keys
-
----
-
-## 7. AUTHOR CHECKLIST {#author-checklist}
+## 6. AUTHOR CHECKLIST {#author-checklist}
 
 - [ ] All code in specified files is documented in WHW blocks
 - [ ] Intro sentence explains each block scope
