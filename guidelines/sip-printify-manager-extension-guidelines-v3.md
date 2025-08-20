@@ -289,6 +289,41 @@ graph TD
 > - Messages use internal format: `{ context: 'extension', action: 'SIP_RESUME_OPERATION', source: 'sip-printify-extension' }`
 > - Automatically focuses the problematic tab and displays pause status in widget
 > 
+> **⚠️ CRITICAL: Waiting Queue System for Long-Running Operations**
+> The Router provides a waiting queue mechanism that allows handlers to wait for specific messages without violating the "all messages through router" principle:
+> 
+> **Purpose:** Enables long-running operations (like mockup fetch) to wait for async responses while maintaining architectural consistency.
+> 
+> **How It Works:**
+> 1. Handler calls `router.waitForResponse(criteria, timeout)` to register what it's waiting for
+> 2. Router stores the waiting operation with its criteria and Promise callbacks
+> 3. When ANY message arrives, Router checks waiting queue BEFORE normal handler routing
+> 4. If message matches waiting criteria, Router resolves the Promise and removes from queue
+> 5. Message is marked as handled by waiting queue - no "unknown action" error
+> 
+> **Usage Example:**
+> ```javascript
+> // In handler (e.g., mockup-fetch-handler.js)
+> const response = await router.waitForResponse({
+>     context: 'printify',
+>     action: 'SIP_MOCKUP_API_RESPONSE',
+>     tabId: tabId  // Optional: match specific tab
+> }, 20000);  // 20 second timeout
+> ```
+> 
+> **Criteria Matching:**
+> - `context`: Must match exactly if specified
+> - `action`: Must match exactly if specified
+> - `tabId`: Must match sender tab ID if specified
+> - `requestId`: Must match exactly if specified (for request correlation)
+> 
+> **Why This Exists:**
+> - **Problem**: Some operations inject scripts that later send responses. Handler needs to wait.
+> - **Wrong Solution**: Direct `chrome.runtime.onMessage.addListener` in handler (violates architecture)
+> - **Right Solution**: Router's waiting queue maintains "all messages through router" principle
+> 
+> **This is the ONLY approved way for handlers to wait for async messages. DO NOT create direct listeners.**
+> 
 > **Configuration Loading:** The Router attempts to load pre-configuration from `assets/config.json`:
 > - Contains optional pre-configured settings: `wordpressUrl`, `apiKey`, `autoSync`, `configured`
 > - If `configured: true`, these settings are automatically applied on extension install
@@ -723,8 +758,9 @@ graph TD
 > | `SIP_UPDATE_STATUS` | Update operation status | Status stored |
 > | `SIP_GET_STATUS` | Get current status | Returns status object |
 > | `SIP_PRODUCT_DATA` | Product data from page | Processed and stored |
-> | `SIP_MOCKUP_API_RESPONSE` | Intercepted API response | Transforms and forwards data |
 > | `SIP_REPORT_ERROR` | Error from Printify page | Logs error |
+> 
+> **Note:** `SIP_MOCKUP_API_RESPONSE` is NOT handled here. It's caught by the waiting queue in the Router when mockup-fetch-handler is waiting for it. This is intentional - see Waiting Queue System in Section 2A.
 > 
 > **Key Implementation:**
 > - Handles all `context: 'printify'` messages
@@ -745,7 +781,7 @@ graph TD
 > 1. Receives `SIP_FETCH_MOCKUPS` from WordPress with blueprint data
 > 2. Navigates to Printify mockup library page
 > 3. Injects API interceptor script
-> 4. Waits for Printify API response
+> 4. Waits for Printify API response using `router.waitForResponse()` (NOT a direct listener)
 > 5. Transforms data and returns to WordPress
 > 
 > **Script Injection Architecture:**
