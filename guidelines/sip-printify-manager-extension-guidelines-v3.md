@@ -247,7 +247,7 @@ graph TD
 > **Injected Tabs Tracking:**
 > To prevent "Could not establish connection" errors, the Router maintains a Set of tab IDs where content scripts are loaded:
 > - Content scripts announce readiness via `chrome.runtime.sendMessage({ context: 'extension', action: 'SIP_CONTENT_SCRIPT_READY', source: 'sip-printify-manager-extension' })`
-> - Router adds tabs to Set after successful script injection during `onInstalled`
+> - Router adds tabs to Set after successful script injection during `onInstalled` and when receiving `SIP_CONTENT_SCRIPT_READY` messages via the extension handler
 > - Tabs removed from Set when closed (`onRemoved`) or navigating (`onUpdated` with status='loading')
 > - `forwardDisplayUpdate` only sends to tabs in this Set
 > 
@@ -278,9 +278,10 @@ graph TD
 > 
 > </details>
 > 
-> **Dynamic Script Injection:** The Router uses `chrome.scripting.executeScript()` in two scenarios:
+> **Dynamic Script Injection:** The Router uses `chrome.scripting.executeScript()` in three scenarios:
 > 1. **API Interception**: When Printify's restrictions prevent manifest-declared content scripts from accessing needed APIs, the Router dynamically injects scripts that can intercept XHR responses and access Printify's internal data structures.
-> 2. **Install/Update Events**: During extension install or update (`onInstalled`), the Router injects the full set of content scripts into already-open WordPress and Printify tabs, matching exactly what manifest.json declares for each context. This ensures pre-existing tabs receive complete extension functionality without requiring a page refresh.
+> 2. **Install/Update Events**: During extension install or update (`onInstalled`), the Router injects the full set of content scripts into already-open WordPress and Printify tabs.
+> 3. **Service Worker Startup**: On every service worker startup (including development reloads via `chrome.runtime.reload()`), the Router injects content scripts into existing tabs. This enables one-click reloading during development - the reload button in the widget reloads the extension and automatically refreshes content scripts without manual page refresh. Content scripts check for existing widgets before creating new ones to prevent duplicates.
 > 
 > **Pause/Resume System:** The Router includes built-in operation pausing for user intervention:
 > - `pauseOperation(tabId, issue, instructions)` - Pauses operation and shows UI with instructions
@@ -526,6 +527,17 @@ The Browser Extension Context shows the Service Worker, which is Chrome's backgr
 >   - Dark theme terminal with syntax highlighting for log entries
 >   - Listed in web_accessible_resources for cross-origin access
 
+#### 3D Content Script Ready Announcements
+
+> To prevent duplicate `SIP_CONTENT_SCRIPT_READY` messages, only ONE script per bundle announces readiness:
+> 
+> | Bundle | Announcing Script | Reason |
+> |--------|------------------|---------|
+> | WordPress | `wordpress-relay.js` | Primary relay script for the context |
+> | Printify | `widget-tabs-actions.js` | Common script present in both bundles |
+>
+> Other scripts in each bundle must NOT send `SIP_CONTENT_SCRIPT_READY` to avoid message duplication in logs.
+
 ### III. WHY
 
 Chrome's content script architecture provides security isolation between web pages and extension code. Scripts injected into web pages run in an "isolated world" with access to the DOM but not the page's JavaScript, preventing malicious sites from accessing extension APIs. The two-bundle approach reflects the different needs: WordPress pages need the relay to communicate with the plugin, while Printify pages need automation scripts to interact with the UI. The postMessage/chrome.runtime message flow bridges these isolated contexts while maintaining security boundaries.
@@ -682,6 +694,7 @@ graph TD
 > 
 > | Action | Purpose | Implementation |
 > |--------|---------|----------------|
+> | `SIP_CONTENT_SCRIPT_READY` | Tab ready announcement | Adds tab to injectedTabs Set for display updates |
 > | `SIP_SHOW_WIDGET` | Makes widget visible | Shows widget UI |
 > | `SIP_TOGGLE_WIDGET` | Toggle widget collapsed/expanded | Updates widget state |
 > | `SIP_LOG_ERROR` | Log error to extension logs | Stores in sipExtensionLogs |
@@ -978,9 +991,10 @@ graph TD
 > | Component | Purpose | Implementation |
 > |-----------|---------|----------------|
 > | **Container** | Main UI frame | Draggable, collapsible, saves position to storage |
-> | **Header** | Title & controls | "SiP Extension" with expand/collapse button |
+> | **Header** | Title & controls | "SiP Extension" with expand/collapse, reload button (development) |
 > | **Body** | Content area | Contains terminal display and controls |
 > | **State Persistence** | Remember UI state | Saves to `sipWidgetState` in chrome.storage |
+> | **Reload Button** | Development helper | Sends `SIP_RELOAD_EXTENSION` to trigger `chrome.runtime.reload()` |
 > 
 > </details>
 
