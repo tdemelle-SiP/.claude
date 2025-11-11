@@ -1,125 +1,144 @@
 ═══════════════════════════════════════════════════════════════════════════════
-                          PROCEDURAL FRAMEWORK MESSAGE REFERENCE
+                        SIP DEVELOPMENT PROCEDURAL FRAMEWORK
 ═══════════════════════════════════════════════════════════════════════════════
 
-Tasks will follow a plan->work->review procedural framework.
+This document defines the behavioral requirements for all development tasks.
+Tasks follow a strict PLAN → WORK → REVIEW framework with iteration loops.
 
-## PLAN STAGE MESSAGE
+Note: Standard messages for each stage are maintained in Claude_Process_Message_Cribsheet.txt
 
-Here is the message I will send at the beginning of a task after explaining the goals of the task and other relevant details.
+## PROCESS FLOW
 
-----
-
-Before you begin, 
-It is absolutely critical that you read the guidelines at /mnt/c/Users/tdeme/Local Sites/faux-stained-glass-panes/app/public/wp-content/plugins/.claude/Coding_Guidelines_Snapshot.txt. it contains a process overview and behavioral requirements for the three stages that all tasks will follow: the Plan Stage, the Work Stage and the Review Stage.  Again, these are behavioral requirements; this is not reference material.   All resources that you apply to this task must adhere to these behavioral requirements.  Read the entire document and carefully follow all steps.
-
-Begin by carefully reviewing the details of the task that the user is asking for your help with.   Images shared by the user will be uploaded here: /mnt/c/Users/tdeme/Documents/VSCode_Images_Repo/. If the user uploads an image, look for the most recent image in this directory.
-
-When you have reviewed the task details, create a task document in /work/ using the working-task-template found here:
-
-/mnt/c/Users/tdeme/Local Sites/faux-stained-glass-panes/app/public/wp-content/plugins/.claude/working-task-template.md.
-
-Proceed to work through the steps outlined in the Coding Guidelines Snapshot document. As you work through the steps you will fill the template out so that when you have finished the planning steps, your context will consist of an informed understanding and plan for accomplishing the specified task.
-
-----
-
-This commences the work stage. When you have implemented the solution in the code, you should announce your completion in the chat and walk through your review of the implemented code holding it to the coding standards.
-
----
-Please review all the code implemented in the course of your working task against the SiP Code Standards
-
-## CODE QUALITY PRINCIPLES
-
-Keep code simple, clean and straightforward. Do not over-complicate, over-engineer or write overly abstract or overly defensive code.
-
-Do not take shortcuts to prioritize speed. Always prioritize being thorough, careful, doing the job right and working from definitive understanding instead of speculation.
- 
-When you are addressing code issues, always be aware when you may be reactively treating symptoms instead of understanding the larger code context at the root of the problem. Stop doing the former, which will invariably lead to unnecessary complexity and technical debt, and instead focus on the latter which will result in clean elegant code that embodies robust and sustainable patterns and standards that are scalable across the plugin suite.
-
-When coding, stay focused on WHY the problem exists and solving THAT problem. Code from first principles, not from pattern matched hacks.
-
-### CODE REVIEW CHECKLIST
-
-Review your code against this checklist. If your solution involves ANY of these patterns, STOP and reconsider:
-
-**❌ Timing & Defensive Patterns**
-□ setTimeout/setInterval for waiting (vs. intentional delays)
-□ try-catch blocks for errors that shouldn't exist
-□ Defensive checks (function_exists, class_exists, isset, hasOwnProperty)
-□ Event handler workarounds
-□ State management to track framework behavior
-
-**❌ UI & Storage Patterns**
-□ Inline CSS styles (when not for dynamic values)
-□ Multiple redundant storage/recovery mechanisms
-□ Multiple truth sources for same data
-
-**❌ Implementation Standards**
-□ Parameter naming variations (e.g., action_name vs action_type)
-□ Hook timing differences from documented patterns
-□ Response format deviations from standard structures
-□ JavaScript utility usage that bypasses documented methods
-
-**📋 Pattern-Specific Checkpoints**
-□ AJAX: Parameter naming matches between PHP/JS
-□ DataTables: Proper cleanup before destroy()
-□ UI Components: Using SiP.Core utilities
-
----
-
-The completion of the work stage leads to the review stage.
-
-## REVIEW STAGE MESSAGE
-
-Here is the message I will send after reviewing the completed task.
-
-----
-
- Please look over the documentation files to make sure that they are accurate and reflect the current functioning of the code.   
- 
- Start by reviewing /mnt/c/Users/tdeme/Local Sites/faux-stained-glass-panes/app/public/wp-content/plugins/.claude/index.md to refresh yourself with the overall structure and the principles behind it.  
- 
- Then Please make sure to check on all related documentation in the /guidelines/ directory to ensure that relevant files reflect updated standards correctly where appropriate and don't retain any deprecated references.
-
- If you are adding or supplementing documentation, please make sure that you are adding it correctly according to the pattern used to document other sip plugins, core features or development tools and methods and that it is correctly referenced and linked in all expected and useful contexts.
- 
- If there were aspects of the code that were unclear to you as you worked, carefully adhering to the documentation guidelines, please update the documentation to reflect the patterns, principles and structures that were needed to correctly implement your solution.
- 
- Please review the documentation from the perspective of a developer and ensure that if faced with understanding and working with the established standards, you could confidently refer to the documentation and come away with a complete clear understanding of how to work with the principles and patterns of the codebase.  Don't forget the rules...
-
-<!-- DOCUMENTATION RULES:
-1. ARCHITECTURAL WHY - Document WHY each component exists (constraints/requirements that necessitate it)
-2. NO HISTORY - Current state only, not how we got here  
-3. NO DUPLICATION - Each fact appears exactly once
-4. EXAMPLES OVER EXPLANATIONS - Explain briefly , but emphasize showing over telling
-5. UPDATE THE RIGHT SECTION - Check if info already exists before adding
-   
-When you're done, please provide a commit message to include when I submit the changes in source control.
-
-----
+```mermaid
+graph TD
+    A[PLAN I: Requirements Analysis] --> B[PLAN II: Implementation Plan]
+    B --> C{User Approval?}
+    C -->|No| B
+    C -->|Yes: "begin coding"| D[WORK I: Implementation]
+    D --> E[User Review]
+    E --> F{Issues Found?}
+    F -->|No| G[REVIEW I: Documentation]
+    F -->|Yes| H[PLAN III: Refinement Planning]
+    H --> I[PLAN IV: Iteration Plan]
+    I --> J{User Approval?}
+    J -->|No| I
+    J -->|Yes: "begin coding"| K[WORK II: Iterate]
+    K --> E
+    G --> L[User Commits Changes]
+```
 
 ═══════════════════════════════════════════════════════════════════════════════
-                          SIP PLUGIN SUITE CODING GUIDELINES
+                                 PLAN STAGE
 ═══════════════════════════════════════════════════════════════════════════════
 
-Begin by reading this document in its entirety.
+NO CODING until this stage is complete and you receive explicit instruction.
 
-When you are done reading this document, read the main file of the documentation that describes what all the more detailed guidelines contain so that you can assess which are relevant to the current task and include that information in your working-task document.
+## PLAN I - REQUIREMENTS ANALYSIS
 
-/mnt/c/Users/tdeme/Local
-  Sites/faux-stained-glass-panes/app/public/wp-content/plugins/.claude/index.md
-  
-When you have finished reviewing the index.md and the relevant guidelines, (**Read ALL identified relevant documentation completely** - do not skim or read only first sections) look over the relevant code files. Identify the patterns that they follow and how they relate to the documentation you've read.  If there are patterns present that you haven't encountered in the documentation you've reviewed, return to the documentation to familiarize yourself with those patterns.  If there are patterns that are not documented, mention them in the questions section of your working-task document.  If documentation is unclear or incomplete, request clarification rather than making assumptions about correct implementation.
+Ia. Read Documentation Files
+    1. Read task request and if the user has referenced any uploaded images, review them in /mnt/c/Users/tdeme/Documents/VSCode_Images_Repo/
+    2. Read this entire Coding_Guidelines_Snapshot.txt document
+    3. Read index.md for documentation structure overview
+    4. Identify guideline files relevant to the task from their descriptions in the idex.md file
+    5. Read ALL relevant documentation completely (not skimmed)
+    6. Respond in chat with the completed checklist and a summary of documents read
+        □ Read Coding_Guidelines_Snapshot.txt entirely (list key principles found)
+        □ Read index.md and all relevant documentation (list all guideline files found with your briefly summarized assessment of their relevance to the task)
+        □ Read guidelines identified as relevant (summarize the main purpose of each in 1 line)
 
-## CODE ANALYSIS REQUIREMENTS
+### Documentation Review Requirements
+    - **Read COMPLETELY** - Do not skim or read only first sections
+    - Identify patterns in code and relate to documentation
+    - Note undocumented patterns in Questions section
+    - Request clarification for unclear/incomplete documentation
 
-When you are analyzing code in order to understand how it functions or to understand why a bug is occurring, please don't be satisfied basing your analysis and recommendation on what a superficial read of the immediate code suggests, what it seems like or what it "might" be; look at the actual code context when you have a theory and replace your speculation with a definitive understanding of the actual situation.  
- 
-Systematically follow through the whole code sequence in question from beginning to end without making any leaps in logic based on assumptions so that you understand the structure of the entire contextual framework before drilling into details speculatively.
+⚠️ STOP: You MUST complete Plan Ia BEFORE any code search or file exploration ⚠️
 
-BEFORE drawing conclusions from or modifying code:
+    CRITICAL: If you search for code files before completing Plan Ia, you will:
+    - Miss documented patterns and waste time rediscovering them
+    - Propose solutions that violate established architecture
+    - Require multiple iterations to fix preventable issues
+
+Ib. Review Code Files
+    1. Analyze existing code patterns and their documentation relationships
+    2. Identify WHY the work is needed in the plugin context
+    3. Respond in chat with the completed checklist and a summary of files read
+        □ Analyzed existing code patterns
+        □ Traced code sequences systematically without logical leaps
+        □ Inspected actual runtime data, DOM elements, and property names where relevant
+
+### Code Review Requirements
+When analyzing code:
+    - Replace speculation with definitive understanding
+    - Systematically trace code sequences without logical leaps
+    - Understand entire contextual framework before details
+
+## PLAN II - IMPLEMENTATION PLAN
+    1. Complete working-task-planning-template.md at:
+    /mnt/c/Users/tdeme/Local Sites/faux-stained-glass-panes/app/public/wp-content/plugins/.claude/working-task-planning-template.md
+    2. Post plan in chat for user collaboration
+    3. Make zero assumptions - list all uncertainties in Questions section
+    4. Wait for explicit instruction to begin coding
+        □ Completed working-task-planning-template.md
+        □ Identified architectural WHY
+        □ Made zero assumptions
+        □ All proposed changes follow documented patterns OR have explicit justification
+
+═══════════════════════════════════════════════════════════════════════════════
+                                 WORK STAGE
+═══════════════════════════════════════════════════════════════════════════════
+
+Begin ONLY after explicit user instruction: "begin coding" or similar.
+
+## WORK I - IMPLEMENTATION
+
+### AI Tool Guidelines
+AI assistants must handle all coding tasks directly without delegating to secondary agents or tools. This ensures:
+- Full conversation context is preserved
+- Project-specific requirements maintained
+- Coding style consistently applied
+- Direct accountability for all changes
+
+### Implementation Requirements
+1. Use file tools directly (no Task agent delegation)
+2. Verify search strings against actual code (not saved context)
+3. Use Edit/MultiEdit for updates (never Write for existing files)
+4. Stay within specified scope - no unauthorized changes
+5. Follow documented patterns OR get explicit approval for deviations
+6. Prioritize simple, scalable, release quality work over speed
+
+### Scope Management
+- Only implement changes in the working task file
+- If new approach needed: STOP, explain in chat, await approval
+- If issues/ideas discovered: STOP, mention in chat, await direction
+
+## ITERATION LOOP
+
+When user identifies issues:
+
+### PLAN III - WORK REFINEMENT PLANNING
+1. Collaborate on best method to address issues
+2. Keep answers brief and practical for rapid communication
+3. Stay within WORK DETAILS constraints
+
+### PLAN IV - ITERATION PLAN SUMMARY  
+1. Complete iteration planning template
+2. Collaborate with user to refine plan
+3. Wait for explicit instruction before coding
+
+### WORK II - ITERATE
+1. Implement iteration plan according to WORK principles
+2. Review work against WORK DETAILS
+3. Confirm completion in chat
+
+→ Returns to User Review, repeating until complete
+
+## VERIFICATION REQUIREMENT
+
+Before ANY code modification:
+```
 REQUIRE verification = {
-    data_structure: INSPECT actual runtime data,        
+    data_structure: INSPECT actual runtime data,
     css_classes: INSPECT actual DOM elements,
     field_names: MATCH exact property names,
     assumptions: COUNT must equal 0
@@ -130,368 +149,113 @@ IF assumption_needed THEN {
     ASK user for verification;
     WAIT for response;
 }
+```
 
-When you have finished the document and code review steps and completed the working-task file, post its contents in the chat and we will discuss your proposed approach. When we've agreed on a final approach, I will explicitly intruct you to begin coding.
-
-## WORK STAGE
-
-Execute the task following your plan and adhering to the Coding Guidelines outlined below.
-
-When you've finished the work, please confirm that you're work is done in the chat and conduct a methodical assessement of the completed work against the coding guidelines outlined below.  Conclude by assessing how well your work adhered to the coding guidelines. Would a seasoned senior enterprise developer approve of this clean, simple solution that makes the right thing automatic and the wrong thing difficult if not impossible?
-
-## REVIEW STAGE
-
-At this point I will review the output of the work stage as described above in the post work message. 
-
-That will lead to potential revision, documentation updates and commit message creation.
-
-If the commit checks out, I will let you know that the task is complete at which timeoutId
-**Move the working file** to `/work/archived_tasks/` folder
-   - Keep the same filename for reference
-   - This preserves task history and decisions made
+MANDATORY: Refer to Code Rules here:  /mnt/c/Users/tdeme/Local Sites/faux-stained-glass-panes/app/public/wp-content/plugins/.claude\guidelines/sip-development-code-guidelines.md
 
 ═══════════════════════════════════════════════════════════════════════════════
-                               WORK REQUIREMENTS
+                                REVIEW STAGE
 ═══════════════════════════════════════════════════════════════════════════════
 
- Do not code without explicit direction to do so.  Do not make changes beyond those clearly stated in the working task file.
+## REVIEW I - DOCUMENTATION
 
-  Update the working-task-template throughout the task to track progress - This file serves as your external memory for the task
+The documentation serves as a critical bridge between human and AI collaborators, preserving context that would otherwise be lost between sessions.
 
-If there is cause to code using methods or standards that are not detailed in the documentation or in the task goals themselves, stop what you are doing and explain the situation in chat so that the new approach can be discussed and validated before you implement it with explicit direction to do so.
+1. Re-read index.md at:
+   /mnt/c/Users/tdeme/Local Sites/faux-stained-glass-panes/app/public/wp-content/plugins/.claude/index.md
+2. Check /guidelines/ directory for affected documentation
+3. Update to reflect current functionality (not past/future)
+4. Document architectural WHY (not history)
+5. Ensure single source of truth (each fact appears exactly once)
 
-If in the course of review or implementation you have ideas for additions or alternate approaches, stop what you're doing and mention them in a chat message so that we can discuss them, decide upon the best path forward and you can proceed with coding with explicit direction.
+### When to Update Documentation
+- Architectural changes that alter existing docs
+- New coding patterns or conventions
+- Changed development requirements
+- Recurring issues needing specific handling
 
-## CRITICAL DIRECTIVES
+Do NOT update for:
+- Routine code changes
+- Bug fixes
+- Implementation details not affecting structure
 
-Critical non-negotiable directive: No Task Agent Delegation
+### Documentation Rules
 
-  When working with AI assistants on this codebase, the AI must handle all coding tasks directly without delegating to secondary agents or tools. This ensures:
+1. **NO FUTURE OR HISTORY** - Current state only
+   - No TODO lists, roadmaps, or plans in guidelines
+   - No troubleshooting sections
+2. **ARCHITECTURAL WHY** - Constraints that necessitate each component
+3. **EXAMPLES OVER EXPLANATIONS** - Show, don't tell
+4. **DIAGRAM BEFORE PROSE** - Visual first for complex flows
+5. **CODE LIMITS** - Max 20 lines per example
+   - Link to full code: `// Full code: path/to/file.js:42`
+6. **SINGLE SOURCE OF TRUTH** - Each fact appears exactly once
+   - Use anchors: `[See Debug Levels](#debug-levels)`
+7. **STRUCTURED HIERARCHY** - Max 3 heading levels
+8. **CONCISE HEADERS** - "Debug Configuration" not "How to Configure Debug"
+9. **ACTIVE VOICE** - "The handler processes" not "is processed by"
+10. **CONSISTENT TERMINOLOGY** - One term per concept throughout
 
-  - Full conversation context is preserved
-  - Project-specific requirements and nuances are maintained
-  - Coding style and guidelines are consistently applied
-  - Direct accountability for all code changes       
+### Documentation Compliance Checklist
 
-  Use file reading, editing, and searching tools directly rather than invoking any "Task" agents or similar delegation mechanisms.
+**PREPARATION**
+□ Re-read /mnt/c/Users/tdeme/Local Sites/faux-stained-glass-panes/app/public/wp-content/plugins/.claude/index.md
+□ Identify which /guidelines/ files relate to your changes
 
-### DETAILED ANTI-PATTERN GUIDANCE
+**ACCURACY CHECK**
+□ Documentation reflects current code functionality (not past or future state)
+□ All code references use correct file paths and line numbers
+□ Message types, handler names, and API calls match implementation
+□ No orphaned documentation for removed features
 
-## SYMPTOM VS ROOT CAUSE DISTINCTION
+**CLARITY CHECK**
+□ Would a new developer understand the WHY behind each design decision?
+□ Are complex flows explained with diagrams first, prose second?
+□ Do code examples show the essential pattern in <20 lines?
+□ Is each concept explained exactly once with cross-references elsewhere?
 
-Symptom vs. Root Cause: A Critical Distinction
+**CONSISTENCY CHECK**
+□ Headers are concise and front-loaded (e.g., "Debug Configuration" not "How to Configure Debug")
+□ Terminology is consistent throughout (picked one term per concept)
+□ Documentation follows established SiP patterns for similar features
+□ Maximum 3 heading levels (##, ###, ####)
 
-  The Problem Pattern:
-  When encountering an error, there are two paths:
-  1. Symptom Treatment: Adding defensive code around the error point
-  2. Root Cause Resolution: Understanding WHY the error occurs and fixing the underlying issue      
+**FINAL REVIEW**
+□ No TODO lists, roadmaps, or troubleshooting sections
+□ No duplication - used search to verify single source of truth
+□ All cross-references work: `[See Section](#anchor)`
+□ Documentation answers "why it exists" not "how we got here"
 
-  Example of Symptom Treatment (WRONG):
-  // Error: Call to undefined function sip_plugin_storage()
-  // Symptom treatment: Add defensive check
-  if (function_exists('sip_plugin_storage')) {
-      sip_plugin_storage()->register_plugin(...);
-  }
-  This "fixes" the error but creates technical debt:
-  - The defensive check will exist forever
-  - Every usage requires this check
-  - The real problem remains hidden
-  - Code becomes cluttered with defensive patterns
+## COMMIT MESSAGE FORMAT
 
-  Example of Root Cause Resolution (CORRECT):
-  // Error: Call to undefined function sip_plugin_storage()
-  // Investigation: When is this code running vs. when is the function available?
-  // Discovery: Running at plugin load, but function available at 'init'
-  // Root cause fix: Align timing
-  add_action('init', function() {
-      sip_plugin_storage()->register_plugin(...);
-  }, 5);
-  This fixes the actual problem:
-  - No defensive code needed
-  - Clean, simple implementation
-  - Problem solved permanently
-  - Code expresses proper dependencies
+When complete, provide a commit message that:
+□ Summarizes the functional change (not the documentation update)
+□ Uses present tense ("Add" not "Added", "Fix" not "Fixed")
+□ Keeps first line under 50 characters
+□ Includes blank line before extended description (if needed)
 
-  How to Identify You're Treating Symptoms
+Example:
+```
+Fix debug sync between WordPress and extension
 
-  Warning Signs:
-  - Adding if (function_exists()), if (class_exists()), try/catch blocks reactively
-  - Adding isset() checks for variables that "should" exist
-  - Creating workarounds for "edge cases" that keep appearing
-  - Defensive coding that protects against "what if" scenarios
-  - Multiple layers of error handling for the same issue
-
-  The Correct Approach:
-  1. Ask "Why?" - Why is this function undefined? Why is this variable missing?
-  2. Trace the Execution - When does my code run? When is the dependency available?
-  3. Find the Mismatch - There's always a logical reason for the error
-  4. Fix the Root Cause - Align timing, fix initialization order, correct dependencies
-
-  Key Principle
-
-  If you're adding defensive code to prevent an error, STOP.
-  You're treating a symptom. Instead:
-  - Understand the execution flow
-  - Identify the timing/dependency mismatch
-  - Fix the structural problem
-  - The error should become impossible, not defended against
-
-  Real-World Application
-
-  In the WordPress plugin context:
-  - Symptom: Function undefined errors → Adding function_exists() checks
-  - Root Cause: Wrong hook timing → Move code to appropriate hook
-  - Symptom: Missing array keys → Adding isset() checks everywhere
-  - Root Cause: Incomplete initialization → Fix initialization logic
-  - Symptom: Null object errors → Adding null checks before every usage
-  - Root Cause: Object not created when expected → Fix creation timing
-
-  The goal is code that CAN'T fail because it's structurally correct, not code that's defended against failure.
-
-## LEGITIMATE setTimeout USAGE
-
-When setTimeout IS Appropriate (Industry Standard Patterns)
-
-  setTimeout is NOT always a symptom. There are legitimate, industry-standard uses where it's the correct solution:
-
-  1. Browser Extension Content Script Announcement
-  CORRECT USE:
-  // Content scripts announcing to host page
-  setTimeout(() => {
-      window.postMessage({ type: 'EXTENSION_READY' }, '*');
-  }, 100);
-  
-  WHY IT'S CORRECT:
-  - Known browser behavior: content scripts inject asynchronously
-  - Industry standard: Used by major extensions (Grammarly, 1Password, AdBlock)
-  - Not masking an error: The timing variance is inherent to the platform
-  - Simple and reliable: More complex solutions add unnecessary state management
-
-  2. Yielding to Browser Event Loop
-  CORRECT USE:
-  // After DOM manipulation, let browser recalculate
-  element.style.display = 'block';
-  setTimeout(() => {
-      element.classList.add('animate-in');
-  }, 0);
-  
-  WHY IT'S CORRECT:
-  - Forces style recalculation between property changes
-  - Allows browser to process pending UI updates
-  - Standard pattern for CSS transitions/animations
-
-  3. Debouncing User Input
-  CORRECT USE:
-  let timeoutId;
-  searchInput.addEventListener('input', (e) => {
-      clearTimeout(timeoutId);
-      timeoutId = setTimeout(() => {
-          performSearch(e.target.value);
-      }, 300);
-  });
-  
-  WHY IT'S CORRECT:
-  - Intentional delay to improve performance
-  - Prevents excessive API calls
-  - Standard UX pattern
-
-  INCORRECT setTimeout Usage (Symptom Treatment)
-
-  1. Waiting for Elements to Exist
-  WRONG:
-  setTimeout(() => {
-      const button = document.getElementById('submit-button');
-      button.addEventListener('click', handler);
-  }, 1000);
-  
-  CORRECT:
-  // Use proper lifecycle hooks or MutationObserver
-  document.addEventListener('DOMContentLoaded', () => {
-      const button = document.getElementById('submit-button');
-      button.addEventListener('click', handler);
-  });
-
-  2. Waiting for Variables to Initialize
-  WRONG:
-  setTimeout(() => {
-      if (window.myApp) {
-          window.myApp.init();
-      }
-  }, 500);
-  
-  CORRECT:
-  // Fix initialization order or use proper events
-  window.addEventListener('myAppReady', () => {
-      window.myApp.init();
-  });
-
-  3. Fixing Race Conditions
-  WRONG:
-  saveData();
-  setTimeout(() => {
-      loadData(); // Hope save is done...
-  }, 200);
-  
-  CORRECT:
-  // Use promises or callbacks
-  saveData().then(() => {
-      loadData();
-  });
-
-  Key Distinction:
-  - LEGITIMATE: When delay is intentional for platform/UX reasons
-  - SYMPTOM: When delay is hoping something else happens first
-
-  Ask yourself: "Am I using setTimeout because I WANT a delay, or because I'm HOPING something 
-  will be ready?" If it's hope, fix the root cause.
-
-## MULTIPLE REDUNDANT STORAGE ("Belt and Suspenders")
-  
-The Problem Pattern:
-Creating multiple ways to store/recover the same data "just in case" something fails.
-  
-  Example of Multiple Redundant Storage (WRONG):
-  // Shop authorization - creating multiple recovery paths
-  // PHP: Store in database
-  update_option('shop_name', $shop_name);
-  
-  // JavaScript: Also store in localStorage "just in case"
-  localStorage.setItem('shop_name', shopName);
-  
-  // PHP: Add fallback to re-fetch if missing
-  if (empty($shop_name)) {
-      $shop_name = fetch_shop_details($token)['shop_name'];
-  }
-  
-  This creates technical debt:
-  - Confusion about which source is authoritative
-  - Sync issues between storage locations  
-  - False sense of robustness
-  - Hides the real bug (why is shop_name empty?)
-  
-  Example of Single Source of Truth (CORRECT):
-  // PHP: Store once in the authoritative location
-  update_option('shop_name', $shop_name);
-  
-  // JavaScript: Display what server returns
-  if (response.data.shop_name) {
-      $('.shop-name').text(response.data.shop_name);
-  }
-  
-  // Trust that WordPress options work correctly
-  // Fix any bugs at the source, not with recovery layers
-  
-  Key Principle:
-  If you're creating multiple ways to recover the same data, STOP.
-  You're treating a symptom. Instead:
-  - Find out why the primary storage isn't working
-  - Fix that root cause
-  - Trust your data flow
-
-## SPECIFIC PATTERN COMPLIANCE
-
-**AJAX IMPLEMENTATION:**
-- Read sip-plugin-ajax.md completely before any AJAX work
-- Verify parameter naming: $_POST[$action_type] matches JavaScript createFormData() second parameter
-- Test AJAX call with browser dev tools before considering complete
-- Check that response routing follows documented three-level structure
-
-**DATATABLES IMPLEMENTATION:**
-- Read sip-feature-datatables.md for table patterns
-- Follow client-side processing standards
-- Implement proper cleanup before destroy()
-
-**UI COMPONENTS:**
-- Read sip-feature-ui-components.md for UI patterns
-- Use SiP.Core utilities for all UI operations
-- Follow the three-layer visibility structure for tables
-
-## CODE ANALYSIS REQUIREMENTS
-
-When searching and replacing to update code, do not rely on your saved context for your search string; check the actual code to ensure your search string is accurate.
-
-Never use write to file to make code updates.
-
-BEFORE drawing conclusions from or modifying code:
-REQUIRE verification = {
-    data_structure: INSPECT actual runtime data,        
-    css_classes: INSPECT actual DOM elements,
-    field_names: MATCH exact property names,
-    assumptions: COUNT must equal 0
-}
-
-IF assumption_needed THEN {
-    STOP;
-    ASK user for verification;
-    WAIT for response;
-}
-
-## No Legacy Code
- 
-Do not preserve legacy code.  Clean up all remnants of unused or deprecated code thoroughly.  Do not implement backward compatibility code. Backward combatibility is unnecessary complexity that creates confusion and masks errors that should be fixed.  If we're in transition, we don't handle that with backward compatibility code. We handle that by letting the code throw errors and using those errors as cues to get all the code up to the correct standard.
-
-Do not create custom test tools or instructions unless explicitly asked to do so.  Testing will take place in the actual code.
-
-## WORK COMPLETION REQUIREMENT
-
-Before reporting that implementation is complete:
-1. **Update the Task Working File** - Mark all completed items in the Work Checkpoint section
-2. **Verify all planned tasks are complete** - Check that nothing was missed
-3. **Run through the Standards Compliance Verification** checklist
-4. **Report completion status** referencing the working file
+Ensure debug level is included in every message from WordPress
+to extension. Remove race conditions in initialization.
+```
 
 ═══════════════════════════════════════════════════════════════════════════════
-                           CODE TRACING METHODOLOGY
+                              CRITICAL REMINDERS
 ═══════════════════════════════════════════════════════════════════════════════
 
-## CODE TRACING METHODOLOGY
+1. **NO CODING** until explicitly instructed
+2. **ZERO ASSUMPTIONS** - verify everything
+3. **FIX ROOT CAUSES** not symptoms
+4. **SINGLE SOURCE OF TRUTH** always
+5. **STAY IN SCOPE** - no unauthorized changes
+6. **DOCUMENT WHY** not what or how
+7. **CODE MUST BE SIMPLE** enough for senior review
+8. **NEVER USE Write** for existing files
+9. **NO BACKWARD COMPATIBILITY** - let errors guide updates
 
- Please trace the logical sequence of events that the code follows incremental step by incremental logical step through all paths that extend from the user executing the Load Into Creation Table action in the template table in /plugins/sip-printify-manager/. Follow the logic making no leaps other than those explicitly described in the actual code all the way through to their conclusion when the events following the Load Into Creation Table action conclude. This is a complex multi-step process that spans nearly all the sip printify manager plugin files and all elements of the dashboard. The files that you must refer to will be in the /plugins/sip-printify-manager/ directory and may also be in the plugins/sip-plugins-core/ directory. I am asking you to follow the logic of the code uncompromisingly taking no leap that is not explicit in the actual code.
+When in doubt, STOP and ASK rather than assume.
 
-For each step in the process please add a single concise line to the audit file located at /plugins/.claude/audits/creation-table-load-execution-audit.md citing the step taken, the file and line number.
-
-The purpose of this exercise is to have a complete and accurate accounting of the entire Load into Creation Table code sequence with NO assumptions so that we can assess it for whether it adheres to all platform standards, identify elements of the code that are not in use or not compliant with standards and remove them and update the documentation so that it clearly and completely documents all standards and patterns in a well-structured, accessible and intuitive manner according to the principles and documentation framework outlined in the /plugins/.claude/index.md file 
-
-   TASK: Trace "Load Into Creation Table" execution path
-
-  CONSTRAINTS: {
-      assumptions_allowed: 0,
-      file_scope: ["/plugins/sip-printify-manager/", "/plugins/sip-plugins-core/"],
-      output_file: "/plugins/.claude/audits/creation-table-load-execution-audit.md"
-  }
-
-  AUDIT_FORMAT: {
-      max_words_per_step: 10,
-      template: "N. [action_verb] [what] (file.ext:line)",
-      examples: [
-          "47. Calls handleSubmit() (template-actions.js:236)",
-          "48. Gets formData value (ajax.js:73)",
-          "49. Validates nonce exists (handler.php:89)"
-      ]
-  }
-
-  FOR each execution step DO {
-      IF can_read_exact_code THEN {
-          READ file at specific line;
-          RECORD "Step N: [exact_code_action] (filename:line_number)";
-          CONTINUE to next explicit code instruction;
-      }
-      ELSE IF cannot_find_next_step THEN {
-          RECORD "Step N: BLOCKED - Cannot trace beyond [current_file:line] without opening
-  [required_file]";
-          STOP;
-          REPORT: "Need to open [specific_file] to continue trace";
-      }
-      ELSE IF would_require_assumption THEN {
-          RECORD "Step N: BLOCKED - Would require assumption about [specific_detail]";
-          STOP;
-          ASK: "Please clarify: [specific question]";
-      }
-  }
-
-  FORBIDDEN_ACTIONS: {
-      - Writing steps without reading actual code
-      - Continuing past file boundaries without opening next file  
-      - Assuming function behavior without reading function body
-      - Guessing at WordPress core behavior
-  }
+**Remember:** The goal is code that CAN'T fail because it's structurally correct, not code that's defended against failure.

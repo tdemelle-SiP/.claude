@@ -34,6 +34,10 @@ Start with a solid base that works everywhere, then enhance for modern browsers.
 
 ## File Organization
 
+**Important**: Before creating CSS files, understand the division between Core-provided styles and plugin-specific styles. See:
+- [Plugin Architecture - CSS Architecture](./sip-plugin-architecture.md#css-architecture) - What CSS is provided by Core
+- [UI Components](./sip-core-feature-ui-components.md) - Which UI patterns have Core CSS support
+
 ### Directory Structure
 ```
 assets/
@@ -517,8 +521,28 @@ input[type="checkbox"],
 }
 
 /* States and pseudo-elements */
-/* See sip-feature-ui-components.md#checkbox-selection-patterns for complete implementation */
+/* See sip-core-feature-ui-components.md#checkbox-selection-patterns for complete implementation */
 ```
+
+## Core-Provided Styles vs Plugin Styles
+
+### Understanding the Division
+
+**Core Provides** (via `sip_core_load_platform()`):
+- Base modal styles (`.sip-modal` pattern)
+- Progress dialog styles (`.sip-dialog.progress-dialog`)
+- Toast notification styles
+- Spinner/overlay styles
+- CSS variables for theming
+- Standard header components
+
+**Plugins Provide**:
+- Custom component styles
+- Plugin-specific variations
+- Layout adjustments
+- Feature-specific styles
+
+**Critical**: Never duplicate Core styles in your plugin. Always check [Plugin Architecture - Core-Provided CSS](./sip-plugin-architecture.md#core-provided-css) before adding styles.
 
 ## Component Architecture
 
@@ -707,6 +731,37 @@ IMAGE TABLE
 
 ## Responsive Design
 
+### Dashboard Layout Responsiveness
+
+The dashboard wrapper automatically adapts to WordPress admin sidebar states using simple percentage-based widths instead of fixed calculations:
+
+```css
+/* ✅ CORRECT: Responsive dashboard layout */
+.sip-dashboard-wrapper {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+/* ❌ AVOID: Fixed viewport calculations */
+/* These break when sidebar state changes */
+.sip-dashboard-wrapper {
+    width: calc(100vw - 216px); /* Don't do this */
+}
+```
+
+**Why this works**: WordPress admin creates containers that automatically adjust based on sidebar state. Using `width: 100%` fills the available space naturally.
+
+**WordPress Admin Layout Hierarchy**:
+```
+#wpwrap
+  └── #adminmenuwrap (sidebar - variable width)
+  └── #wpcontent 
+      └── #wpbody-content (automatically sized)
+          └── .wrap
+              └── .sip-dashboard-wrapper (fills 100% of available space)
+```
+
 ### Mobile-First Approach
 ```css
 /* Base styles (mobile) */
@@ -875,6 +930,78 @@ For hover effects that preserve existing colors, use overlays instead of replaci
     pointer-events: none;
 }
 ```
+
+### Instant Tooltips
+
+Browser native `title` attributes have a built-in delay. For instant tooltips, use CSS with `data-tooltip`:
+
+```css
+/* Base tooltip setup */
+[data-tooltip] {
+    position: relative;
+}
+
+[data-tooltip]:hover::before,
+[data-tooltip]:hover::after {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+/* Tooltip content */
+[data-tooltip]::before {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%) translateY(5px);
+    background-color: #333;
+    color: #fff;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    z-index: var(--z-modal-super);
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.1s ease-in-out, transform 0.1s ease-in-out;
+}
+
+/* Tooltip arrow */
+[data-tooltip]::after {
+    content: '';
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%) translateY(10px);
+    border: 5px solid transparent;
+    border-top-color: #333;
+    z-index: var(--z-modal-super);
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.1s ease-in-out, transform 0.1s ease-in-out;
+}
+```
+
+**Usage:**
+```html
+<!-- Instead of title attribute -->
+<span data-tooltip="Select mockups">Hover me</span>
+
+<!-- Dynamic tooltips need JavaScript -->
+<input type="radio" class="my-radio">
+<span class="radio-wrapper" data-tooltip="Make default">
+    <!-- Radio button here -->
+</span>
+```
+
+**Why This Pattern:**
+- **Instant feedback**: No browser delay
+- **Consistent styling**: Works the same across all browsers
+- **Dynamic content**: Can be updated via JavaScript
+- **No interference**: Using wrapper elements prevents conflicts with form controls
 
 ## Legacy Code Migration
 
@@ -1229,10 +1356,16 @@ Following SiP CSS Standards
 - Minimize redundant declarations
 - Consider critical CSS for above-fold content
 
+## jQuery UI Compatibility
+
+For CSS requirements when using jQuery UI draggable/resizable components, see [UI Components - jQuery UI Positioning Requirements](sip-core-feature-ui-components.md#jquery-ui-positioning-requirements).
+
+**Key Rule**: Never use CSS `transform` on jQuery UI draggable/resizable elements.
+
 ## Related Documentation
 
-- [UI Components](sip-feature-ui-components.md) - Component library including checkbox patterns
-- [DataTables](sip-feature-datatables.md) - DataTables implementation guide
-- [Plugin Architecture](sip-plugin-platform.md) - Overall plugin structure
+- [UI Components](sip-core-feature-ui-components.md) - Component library including checkbox patterns and jQuery UI positioning
+- [DataTables](sip-core-feature-datatables.md) - DataTables implementation guide
+- [Plugin Architecture](sip-core-platform.md) - Overall plugin structure
 
 This standards document should be reviewed and updated as the codebase evolves and new patterns emerge. Last updated: 2024

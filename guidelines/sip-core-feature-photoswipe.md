@@ -1,6 +1,6 @@
 # PhotoSwipe Integration
 
-This feature integrates with [DataTables](./sip-feature-datatables.md#thumbnail-integration) for image galleries.
+This feature integrates with [DataTables](./sip-core-feature-datatables.md#thumbnail-integration) for image galleries.
 
 Image lightbox implementation in SiP plugins using PhotoSwipe v5.3.0.
 

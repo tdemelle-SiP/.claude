@@ -1,6 +1,6 @@
 # CodeMirror Integration
 
-This feature builds on the [SiP Plugins Platform](./sip-plugin-platform.md) architecture.
+This feature builds on the [SiP Plugins Platform](./sip-core-platform.md) architecture.
 
 Code editor implementation in SiP plugins using CodeMirror v5.65.13.
 

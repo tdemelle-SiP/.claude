@@ -1,0 +1,660 @@
+{
+    "groups": [
+        {
+            "group_key": "521",
+            "label": "White",
+            "variant_ids": [
+                12102,
+                12103,
+                12100,
+                12101,
+                12104
+            ],
+            "mockup_ids": [
+                "68534afa6ad639c0cd011c55_12100_102005_front-2"
+            ],
+            "limits": {
+                "min": null,
+                "max": null
+            }
+        },
+        {
+            "group_key": "418",
+            "label": "Black",
+            "variant_ids": [
+                12125,
+                12126,
+                12124,
+                12127,
+                12128
+            ],
+            "mockup_ids": [
+                "68534afa6ad639c0cd011c55_12124_92570_front",
+                "68534afa6ad639c0cd011c55_12124_92571_back",
+                "68534afa6ad639c0cd011c55_12124_102005_front-2",
+                "68534afa6ad639c0cd011c55_12124_102006_back-2"
+            ],
+            "limits": {
+                "min": null,
+                "max": null
+            }
+        },
+        {
+            "group_key": "421",
+            "label": "Sand",
+            "variant_ids": [
+                12055,
+                12053,
+                12052,
+                12054,
+                12056
+            ],
+            "mockup_ids": [
+                "68534afa6ad639c0cd011c55_12052_92570_front",
+                "68534afa6ad639c0cd011c55_12052_92571_back",
+                "68534afa6ad639c0cd011c55_12052_102005_front-2",
+                "68534afa6ad639c0cd011c55_12052_102006_back-2"
+            ],
+            "limits": {
+                "min": null,
+                "max": null
+            }
+        },
+        {
+            "group_key": "438",
+            "label": "Gold",
+            "variant_ids": [
+                12150,
+                12149,
+                12151,
+                12148,
+                12152
+            ],
+            "mockup_ids": [
+                "68534afa6ad639c0cd011c55_12148_92570_front",
+                "68534afa6ad639c0cd011c55_12148_92571_back",
+                "68534afa6ad639c0cd011c55_12148_102005_front-2",
+                "68534afa6ad639c0cd011c55_12148_102006_back-2"
+            ],
+            "limits": {
+                "min": null,
+                "max": null
+            }
+        },
+        {
+            "group_key": "420",
+            "label": "Orange",
+            "variant_ids": [
+                12010,
+                12013,
+                12012,
+                12011,
+                12014
+            ],
+            "mockup_ids": [
+                "68534afa6ad639c0cd011c55_12010_92570_front",
+                "68534afa6ad639c0cd011c55_12010_92571_back",
+                "68534afa6ad639c0cd011c55_12010_102005_front-2",
+                "68534afa6ad639c0cd011c55_12010_102006_back-2"
+            ],
+            "limits": {
+                "min": null,
+                "max": null
+            }
+        },
+        {
+            "group_key": "364",
+            "label": "Military Green",
+            "variant_ids": [
+                12191,
+                12193,
+                12192,
+                12190,
+                12194
+            ],
+            "mockup_ids": [
+                "68534afa6ad639c0cd011c55_12190_92570_front",
+                "68534afa6ad639c0cd011c55_12190_92571_back",
+                "68534afa6ad639c0cd011c55_12190_102005_front-2",
+                "68534afa6ad639c0cd011c55_12190_102006_back-2"
+            ],
+            "limits": {
+                "min": null,
+                "max": null
+            }
+        },
+        {
+            "group_key": "416",
+            "label": "Forest Green",
+            "variant_ids": [
+                12142,
+                12143,
+                12145,
+                12144,
+                12146
+            ],
+            "mockup_ids": [
+                "68534afa6ad639c0cd011c55_12142_92570_front",
+                "68534afa6ad639c0cd011c55_12142_92571_back",
+                "68534afa6ad639c0cd011c55_12142_102005_front-2",
+                "68534afa6ad639c0cd011c55_12142_102006_back-2"
+            ],
+            "limits": {
+                "min": null,
+                "max": null
+            }
+        },
+        {
+            "group_key": "412",
+            "label": "Gravel",
+            "variant_ids": [
+                11922,
+                11920,
+                11921,
+                11923,
+                11924
+            ],
+            "mockup_ids": [
+                "68534afa6ad639c0cd011c55_11920_92570_front",
+                "68534afa6ad639c0cd011c55_11920_92571_back",
+                "68534afa6ad639c0cd011c55_11920_102005_front-2",
+                "68534afa6ad639c0cd011c55_11920_102006_back-2"
+            ],
+            "limits": {
+                "min": null,
+                "max": null
+            }
+        },
+        {
+            "group_key": "369",
+            "label": "Irish Green",
+            "variant_ids": [
+                11952,
+                11951,
+                11953,
+                11950,
+                11954
+            ],
+            "mockup_ids": [
+                "68534afa6ad639c0cd011c55_11950_92570_front",
+                "68534afa6ad639c0cd011c55_11950_92571_back",
+                "68534afa6ad639c0cd011c55_11950_102005_front-2",
+                "68534afa6ad639c0cd011c55_11950_102006_back-2"
+            ],
+            "limits": {
+                "min": null,
+                "max": null
+            }
+        },
+        {
+            "group_key": "551",
+            "label": "Sky",
+            "variant_ids": [
+                12064,
+                12066,
+                12067,
+                12065,
+                12068
+            ],
+            "mockup_ids": [
+                "68534afa6ad639c0cd011c55_12064_92570_front",
+                "68534afa6ad639c0cd011c55_12064_92571_back",
+                "68534afa6ad639c0cd011c55_12064_102005_front-2",
+                "68534afa6ad639c0cd011c55_12064_102006_back-2"
+            ],
+            "limits": {
+                "min": null,
+                "max": null
+            }
+        },
+        {
+            "group_key": "424",
+            "label": "Charcoal",
+            "variant_ids": [
+                11873,
+                11872,
+                11875,
+                11874,
+                11876
+            ],
+            "mockup_ids": [
+                "68534afa6ad639c0cd011c55_11872_92570_front",
+                "68534afa6ad639c0cd011c55_11872_92571_back",
+                "68534afa6ad639c0cd011c55_11872_102005_front-2",
+                "68534afa6ad639c0cd011c55_11872_102006_back-2"
+            ],
+            "limits": {
+                "min": null,
+                "max": null
+            }
+        },
+        {
+            "group_key": "425",
+            "label": "Royal",
+            "variant_ids": [
+                12029,
+                12030,
+                12028,
+                12031
+            ],
+            "mockup_ids": [
+                "68534afa6ad639c0cd011c55_12028_92570_front",
+                "68534afa6ad639c0cd011c55_12028_92571_back",
+                "68534afa6ad639c0cd011c55_12028_102005_front-2",
+                "68534afa6ad639c0cd011c55_12028_102006_back-2"
+            ],
+            "limits": {
+                "min": null,
+                "max": null
+            }
+        },
+        {
+            "group_key": "511",
+            "label": "Navy",
+            "variant_ids": [
+                11989,
+                11986,
+                11987,
+                11988,
+                11990,
+                11991
+            ],
+            "mockup_ids": [
+                "68534afa6ad639c0cd011c55_11986_92570_front",
+                "68534afa6ad639c0cd011c55_11986_92571_back",
+                "68534afa6ad639c0cd011c55_11986_102005_front-2",
+                "68534afa6ad639c0cd011c55_11986_102006_back-2"
+            ],
+            "limits": {
+                "min": null,
+                "max": null
+            }
+        },
+        {
+            "group_key": "398",
+            "label": "Purple",
+            "variant_ids": [
+                12018,
+                12016,
+                12019,
+                12017,
+                12020,
+                12021
+            ],
+            "mockup_ids": [
+                "68534afa6ad639c0cd011c55_12016_92570_front",
+                "68534afa6ad639c0cd011c55_12016_92571_back",
+                "68534afa6ad639c0cd011c55_12016_102005_front-2",
+                "68534afa6ad639c0cd011c55_12016_102006_back-2"
+            ],
+            "limits": {
+                "min": null,
+                "max": null
+            }
+        },
+        {
+            "group_key": "429",
+            "label": "Heliconia",
+            "variant_ids": [
+                11944,
+                11946,
+                11947,
+                11945,
+                11948,
+                11949
+            ],
+            "mockup_ids": [
+                "68534afa6ad639c0cd011c55_11944_92570_front",
+                "68534afa6ad639c0cd011c55_11944_92571_back",
+                "68534afa6ad639c0cd011c55_11944_102005_front-2",
+                "68534afa6ad639c0cd011c55_11944_102006_back-2"
+            ],
+            "limits": {
+                "min": null,
+                "max": null
+            }
+        },
+        {
+            "group_key": "430",
+            "label": "Cardinal Red",
+            "variant_ids": [
+                12130,
+                12133,
+                12131,
+                12132,
+                12134
+            ],
+            "mockup_ids": [
+                "68534afa6ad639c0cd011c55_12130_92570_front",
+                "68534afa6ad639c0cd011c55_12130_92571_back",
+                "68534afa6ad639c0cd011c55_12130_102005_front-2",
+                "68534afa6ad639c0cd011c55_12130_102006_back-2"
+            ],
+            "limits": {
+                "min": null,
+                "max": null
+            }
+        },
+        {
+            "group_key": "not_linked",
+            "label": "Unlinked mockups",
+            "variant_ids": [],
+            "mockup_ids": [],
+            "limits": {
+                "min": null,
+                "max": null
+            }
+        }
+    ],
+    "selected_mockups": {
+        "68534afa6ad639c0cd011c55_12100_102005_front-2": {
+            "id": "68534afa6ad639c0cd011c55_12100_102005_front-2",
+            "src": "https:\/\/images.printify.com\/mockup\/68534afa6ad639c0cd011c55\/12100\/102005\/fsgp-abstract-flower-01-tee.jpg?camera_label=front-2",
+            "type": "GENERATED"
+        },
+        "68534afa6ad639c0cd011c55_12124_92570_front": {
+            "id": "68534afa6ad639c0cd011c55_12124_92570_front",
+            "src": "https:\/\/images.printify.com\/mockup\/68534afa6ad639c0cd011c55\/12124\/92570\/fsgp-abstract-flower-01-tee.jpg?camera_label=front",
+            "type": "GENERATED"
+        },
+        "68534afa6ad639c0cd011c55_12124_92571_back": {
+            "id": "68534afa6ad639c0cd011c55_12124_92571_back",
+            "src": "https:\/\/images.printify.com\/mockup\/68534afa6ad639c0cd011c55\/12124\/92571\/fsgp-abstract-flower-01-tee.jpg?camera_label=back",
+            "type": "GENERATED"
+        },
+        "68534afa6ad639c0cd011c55_12124_102005_front-2": {
+            "id": "68534afa6ad639c0cd011c55_12124_102005_front-2",
+            "src": "https:\/\/images.printify.com\/mockup\/68534afa6ad639c0cd011c55\/12124\/102005\/fsgp-abstract-flower-01-tee.jpg?camera_label=front-2",
+            "type": "GENERATED"
+        },
+        "68534afa6ad639c0cd011c55_12124_102006_back-2": {
+            "id": "68534afa6ad639c0cd011c55_12124_102006_back-2",
+            "src": "https:\/\/images.printify.com\/mockup\/68534afa6ad639c0cd011c55\/12124\/102006\/fsgp-abstract-flower-01-tee.jpg?camera_label=back-2",
+            "type": "GENERATED"
+        },
+        "68534afa6ad639c0cd011c55_12052_92570_front": {
+            "id": "68534afa6ad639c0cd011c55_12052_92570_front",
+            "src": "https:\/\/images.printify.com\/mockup\/68534afa6ad639c0cd011c55\/12052\/92570\/fsgp-abstract-flower-01-tee.jpg?camera_label=front",
+            "type": "GENERATED"
+        },
+        "68534afa6ad639c0cd011c55_12052_92571_back": {
+            "id": "68534afa6ad639c0cd011c55_12052_92571_back",
+            "src": "https:\/\/images.printify.com\/mockup\/68534afa6ad639c0cd011c55\/12052\/92571\/fsgp-abstract-flower-01-tee.jpg?camera_label=back",
+            "type": "GENERATED"
+        },
+        "68534afa6ad639c0cd011c55_12052_102005_front-2": {
+            "id": "68534afa6ad639c0cd011c55_12052_102005_front-2",
+            "src": "https:\/\/images.printify.com\/mockup\/68534afa6ad639c0cd011c55\/12052\/102005\/fsgp-abstract-flower-01-tee.jpg?camera_label=front-2",
+            "type": "GENERATED"
+        },
+        "68534afa6ad639c0cd011c55_12052_102006_back-2": {
+            "id": "68534afa6ad639c0cd011c55_12052_102006_back-2",
+            "src": "https:\/\/images.printify.com\/mockup\/68534afa6ad639c0cd011c55\/12052\/102006\/fsgp-abstract-flower-01-tee.jpg?camera_label=back-2",
+            "type": "GENERATED"
+        },
+        "68534afa6ad639c0cd011c55_12148_92570_front": {
+            "id": "68534afa6ad639c0cd011c55_12148_92570_front",
+            "src": "https:\/\/images.printify.com\/mockup\/68534afa6ad639c0cd011c55\/12148\/92570\/fsgp-abstract-flower-01-tee.jpg?camera_label=front",
+            "type": "GENERATED"
+        },
+        "68534afa6ad639c0cd011c55_12148_92571_back": {
+            "id": "68534afa6ad639c0cd011c55_12148_92571_back",
+            "src": "https:\/\/images.printify.com\/mockup\/68534afa6ad639c0cd011c55\/12148\/92571\/fsgp-abstract-flower-01-tee.jpg?camera_label=back",
+            "type": "GENERATED"
+        },
+        "68534afa6ad639c0cd011c55_12148_102005_front-2": {
+            "id": "68534afa6ad639c0cd011c55_12148_102005_front-2",
+            "src": "https:\/\/images.printify.com\/mockup\/68534afa6ad639c0cd011c55\/12148\/102005\/fsgp-abstract-flower-01-tee.jpg?camera_label=front-2",
+            "type": "GENERATED"
+        },
+        "68534afa6ad639c0cd011c55_12148_102006_back-2": {
+            "id": "68534afa6ad639c0cd011c55_12148_102006_back-2",
+            "src": "https:\/\/images.printify.com\/mockup\/68534afa6ad639c0cd011c55\/12148\/102006\/fsgp-abstract-flower-01-tee.jpg?camera_label=back-2",
+            "type": "GENERATED"
+        },
+        "68534afa6ad639c0cd011c55_12010_92570_front": {
+            "id": "68534afa6ad639c0cd011c55_12010_92570_front",
+            "src": "https:\/\/images.printify.com\/mockup\/68534afa6ad639c0cd011c55\/12010\/92570\/fsgp-abstract-flower-01-tee.jpg?camera_label=front",
+            "type": "GENERATED"
+        },
+        "68534afa6ad639c0cd011c55_12010_92571_back": {
+            "id": "68534afa6ad639c0cd011c55_12010_92571_back",
+            "src": "https:\/\/images.printify.com\/mockup\/68534afa6ad639c0cd011c55\/12010\/92571\/fsgp-abstract-flower-01-tee.jpg?camera_label=back",
+            "type": "GENERATED"
+        },
+        "68534afa6ad639c0cd011c55_12010_102005_front-2": {
+            "id": "68534afa6ad639c0cd011c55_12010_102005_front-2",
+            "src": "https:\/\/images.printify.com\/mockup\/68534afa6ad639c0cd011c55\/12010\/102005\/fsgp-abstract-flower-01-tee.jpg?camera_label=front-2",
+            "type": "GENERATED"
+        },
+        "68534afa6ad639c0cd011c55_12010_102006_back-2": {
+            "id": "68534afa6ad639c0cd011c55_12010_102006_back-2",
+            "src": "https:\/\/images.printify.com\/mockup\/68534afa6ad639c0cd011c55\/12010\/102006\/fsgp-abstract-flower-01-tee.jpg?camera_label=back-2",
+            "type": "GENERATED"
+        },
+        "68534afa6ad639c0cd011c55_12190_92570_front": {
+            "id": "68534afa6ad639c0cd011c55_12190_92570_front",
+            "src": "https:\/\/images.printify.com\/mockup\/68534afa6ad639c0cd011c55\/12190\/92570\/fsgp-abstract-flower-01-tee.jpg?camera_label=front",
+            "type": "GENERATED"
+        },
+        "68534afa6ad639c0cd011c55_12190_92571_back": {
+            "id": "68534afa6ad639c0cd011c55_12190_92571_back",
+            "src": "https:\/\/images.printify.com\/mockup\/68534afa6ad639c0cd011c55\/12190\/92571\/fsgp-abstract-flower-01-tee.jpg?camera_label=back",
+            "type": "GENERATED"
+        },
+        "68534afa6ad639c0cd011c55_12190_102005_front-2": {
+            "id": "68534afa6ad639c0cd011c55_12190_102005_front-2",
+            "src": "https:\/\/images.printify.com\/mockup\/68534afa6ad639c0cd011c55\/12190\/102005\/fsgp-abstract-flower-01-tee.jpg?camera_label=front-2",
+            "type": "GENERATED"
+        },
+        "68534afa6ad639c0cd011c55_12190_102006_back-2": {
+            "id": "68534afa6ad639c0cd011c55_12190_102006_back-2",
+            "src": "https:\/\/images.printify.com\/mockup\/68534afa6ad639c0cd011c55\/12190\/102006\/fsgp-abstract-flower-01-tee.jpg?camera_label=back-2",
+            "type": "GENERATED"
+        },
+        "68534afa6ad639c0cd011c55_12142_92570_front": {
+            "id": "68534afa6ad639c0cd011c55_12142_92570_front",
+            "src": "https:\/\/images.printify.com\/mockup\/68534afa6ad639c0cd011c55\/12142\/92570\/fsgp-abstract-flower-01-tee.jpg?camera_label=front",
+            "type": "GENERATED"
+        },
+        "68534afa6ad639c0cd011c55_12142_92571_back": {
+            "id": "68534afa6ad639c0cd011c55_12142_92571_back",
+            "src": "https:\/\/images.printify.com\/mockup\/68534afa6ad639c0cd011c55\/12142\/92571\/fsgp-abstract-flower-01-tee.jpg?camera_label=back",
+            "type": "GENERATED"
+        },
+        "68534afa6ad639c0cd011c55_12142_102005_front-2": {
+            "id": "68534afa6ad639c0cd011c55_12142_102005_front-2",
+            "src": "https:\/\/images.printify.com\/mockup\/68534afa6ad639c0cd011c55\/12142\/102005\/fsgp-abstract-flower-01-tee.jpg?camera_label=front-2",
+            "type": "GENERATED"
+        },
+        "68534afa6ad639c0cd011c55_12142_102006_back-2": {
+            "id": "68534afa6ad639c0cd011c55_12142_102006_back-2",
+            "src": "https:\/\/images.printify.com\/mockup\/68534afa6ad639c0cd011c55\/12142\/102006\/fsgp-abstract-flower-01-tee.jpg?camera_label=back-2",
+            "type": "GENERATED"
+        },
+        "68534afa6ad639c0cd011c55_11920_92570_front": {
+            "id": "68534afa6ad639c0cd011c55_11920_92570_front",
+            "src": "https:\/\/images.printify.com\/mockup\/68534afa6ad639c0cd011c55\/11920\/92570\/fsgp-abstract-flower-01-tee.jpg?camera_label=front",
+            "type": "GENERATED"
+        },
+        "68534afa6ad639c0cd011c55_11920_92571_back": {
+            "id": "68534afa6ad639c0cd011c55_11920_92571_back",
+            "src": "https:\/\/images.printify.com\/mockup\/68534afa6ad639c0cd011c55\/11920\/92571\/fsgp-abstract-flower-01-tee.jpg?camera_label=back",
+            "type": "GENERATED"
+        },
+        "68534afa6ad639c0cd011c55_11920_102005_front-2": {
+            "id": "68534afa6ad639c0cd011c55_11920_102005_front-2",
+            "src": "https:\/\/images.printify.com\/mockup\/68534afa6ad639c0cd011c55\/11920\/102005\/fsgp-abstract-flower-01-tee.jpg?camera_label=front-2",
+            "type": "GENERATED"
+        },
+        "68534afa6ad639c0cd011c55_11920_102006_back-2": {
+            "id": "68534afa6ad639c0cd011c55_11920_102006_back-2",
+            "src": "https:\/\/images.printify.com\/mockup\/68534afa6ad639c0cd011c55\/11920\/102006\/fsgp-abstract-flower-01-tee.jpg?camera_label=back-2",
+            "type": "GENERATED"
+        },
+        "68534afa6ad639c0cd011c55_11950_92570_front": {
+            "id": "68534afa6ad639c0cd011c55_11950_92570_front",
+            "src": "https:\/\/images.printify.com\/mockup\/68534afa6ad639c0cd011c55\/11950\/92570\/fsgp-abstract-flower-01-tee.jpg?camera_label=front",
+            "type": "GENERATED"
+        },
+        "68534afa6ad639c0cd011c55_11950_92571_back": {
+            "id": "68534afa6ad639c0cd011c55_11950_92571_back",
+            "src": "https:\/\/images.printify.com\/mockup\/68534afa6ad639c0cd011c55\/11950\/92571\/fsgp-abstract-flower-01-tee.jpg?camera_label=back",
+            "type": "GENERATED"
+        },
+        "68534afa6ad639c0cd011c55_11950_102005_front-2": {
+            "id": "68534afa6ad639c0cd011c55_11950_102005_front-2",
+            "src": "https:\/\/images.printify.com\/mockup\/68534afa6ad639c0cd011c55\/11950\/102005\/fsgp-abstract-flower-01-tee.jpg?camera_label=front-2",
+            "type": "GENERATED"
+        },
+        "68534afa6ad639c0cd011c55_11950_102006_back-2": {
+            "id": "68534afa6ad639c0cd011c55_11950_102006_back-2",
+            "src": "https:\/\/images.printify.com\/mockup\/68534afa6ad639c0cd011c55\/11950\/102006\/fsgp-abstract-flower-01-tee.jpg?camera_label=back-2",
+            "type": "GENERATED"
+        },
+        "68534afa6ad639c0cd011c55_12064_92570_front": {
+            "id": "68534afa6ad639c0cd011c55_12064_92570_front",
+            "src": "https:\/\/images.printify.com\/mockup\/68534afa6ad639c0cd011c55\/12064\/92570\/fsgp-abstract-flower-01-tee.jpg?camera_label=front",
+            "type": "GENERATED"
+        },
+        "68534afa6ad639c0cd011c55_12064_92571_back": {
+            "id": "68534afa6ad639c0cd011c55_12064_92571_back",
+            "src": "https:\/\/images.printify.com\/mockup\/68534afa6ad639c0cd011c55\/12064\/92571\/fsgp-abstract-flower-01-tee.jpg?camera_label=back",
+            "type": "GENERATED"
+        },
+        "68534afa6ad639c0cd011c55_12064_102005_front-2": {
+            "id": "68534afa6ad639c0cd011c55_12064_102005_front-2",
+            "src": "https:\/\/images.printify.com\/mockup\/68534afa6ad639c0cd011c55\/12064\/102005\/fsgp-abstract-flower-01-tee.jpg?camera_label=front-2",
+            "type": "GENERATED"
+        },
+        "68534afa6ad639c0cd011c55_12064_102006_back-2": {
+            "id": "68534afa6ad639c0cd011c55_12064_102006_back-2",
+            "src": "https:\/\/images.printify.com\/mockup\/68534afa6ad639c0cd011c55\/12064\/102006\/fsgp-abstract-flower-01-tee.jpg?camera_label=back-2",
+            "type": "GENERATED"
+        },
+        "68534afa6ad639c0cd011c55_11872_92570_front": {
+            "id": "68534afa6ad639c0cd011c55_11872_92570_front",
+            "src": "https:\/\/images.printify.com\/mockup\/68534afa6ad639c0cd011c55\/11872\/92570\/fsgp-abstract-flower-01-tee.jpg?camera_label=front",
+            "type": "GENERATED"
+        },
+        "68534afa6ad639c0cd011c55_11872_92571_back": {
+            "id": "68534afa6ad639c0cd011c55_11872_92571_back",
+            "src": "https:\/\/images.printify.com\/mockup\/68534afa6ad639c0cd011c55\/11872\/92571\/fsgp-abstract-flower-01-tee.jpg?camera_label=back",
+            "type": "GENERATED"
+        },
+        "68534afa6ad639c0cd011c55_11872_102005_front-2": {
+            "id": "68534afa6ad639c0cd011c55_11872_102005_front-2",
+            "src": "https:\/\/images.printify.com\/mockup\/68534afa6ad639c0cd011c55\/11872\/102005\/fsgp-abstract-flower-01-tee.jpg?camera_label=front-2",
+            "type": "GENERATED"
+        },
+        "68534afa6ad639c0cd011c55_11872_102006_back-2": {
+            "id": "68534afa6ad639c0cd011c55_11872_102006_back-2",
+            "src": "https:\/\/images.printify.com\/mockup\/68534afa6ad639c0cd011c55\/11872\/102006\/fsgp-abstract-flower-01-tee.jpg?camera_label=back-2",
+            "type": "GENERATED"
+        },
+        "68534afa6ad639c0cd011c55_12028_92570_front": {
+            "id": "68534afa6ad639c0cd011c55_12028_92570_front",
+            "src": "https:\/\/images.printify.com\/mockup\/68534afa6ad639c0cd011c55\/12028\/92570\/fsgp-abstract-flower-01-tee.jpg?camera_label=front",
+            "type": "GENERATED"
+        },
+        "68534afa6ad639c0cd011c55_12028_92571_back": {
+            "id": "68534afa6ad639c0cd011c55_12028_92571_back",
+            "src": "https:\/\/images.printify.com\/mockup\/68534afa6ad639c0cd011c55\/12028\/92571\/fsgp-abstract-flower-01-tee.jpg?camera_label=back",
+            "type": "GENERATED"
+        },
+        "68534afa6ad639c0cd011c55_12028_102005_front-2": {
+            "id": "68534afa6ad639c0cd011c55_12028_102005_front-2",
+            "src": "https:\/\/images.printify.com\/mockup\/68534afa6ad639c0cd011c55\/12028\/102005\/fsgp-abstract-flower-01-tee.jpg?camera_label=front-2",
+            "type": "GENERATED"
+        },
+        "68534afa6ad639c0cd011c55_12028_102006_back-2": {
+            "id": "68534afa6ad639c0cd011c55_12028_102006_back-2",
+            "src": "https:\/\/images.printify.com\/mockup\/68534afa6ad639c0cd011c55\/12028\/102006\/fsgp-abstract-flower-01-tee.jpg?camera_label=back-2",
+            "type": "GENERATED"
+        },
+        "68534afa6ad639c0cd011c55_11986_92570_front": {
+            "id": "68534afa6ad639c0cd011c55_11986_92570_front",
+            "src": "https:\/\/images.printify.com\/mockup\/68534afa6ad639c0cd011c55\/11986\/92570\/fsgp-abstract-flower-01-tee.jpg?camera_label=front",
+            "type": "GENERATED"
+        },
+        "68534afa6ad639c0cd011c55_11986_92571_back": {
+            "id": "68534afa6ad639c0cd011c55_11986_92571_back",
+            "src": "https:\/\/images.printify.com\/mockup\/68534afa6ad639c0cd011c55\/11986\/92571\/fsgp-abstract-flower-01-tee.jpg?camera_label=back",
+            "type": "GENERATED"
+        },
+        "68534afa6ad639c0cd011c55_11986_102005_front-2": {
+            "id": "68534afa6ad639c0cd011c55_11986_102005_front-2",
+            "src": "https:\/\/images.printify.com\/mockup\/68534afa6ad639c0cd011c55\/11986\/102005\/fsgp-abstract-flower-01-tee.jpg?camera_label=front-2",
+            "type": "GENERATED"
+        },
+        "68534afa6ad639c0cd011c55_11986_102006_back-2": {
+            "id": "68534afa6ad639c0cd011c55_11986_102006_back-2",
+            "src": "https:\/\/images.printify.com\/mockup\/68534afa6ad639c0cd011c55\/11986\/102006\/fsgp-abstract-flower-01-tee.jpg?camera_label=back-2",
+            "type": "GENERATED"
+        },
+        "68534afa6ad639c0cd011c55_12016_92570_front": {
+            "id": "68534afa6ad639c0cd011c55_12016_92570_front",
+            "src": "https:\/\/images.printify.com\/mockup\/68534afa6ad639c0cd011c55\/12016\/92570\/fsgp-abstract-flower-01-tee.jpg?camera_label=front",
+            "type": "GENERATED"
+        },
+        "68534afa6ad639c0cd011c55_12016_92571_back": {
+            "id": "68534afa6ad639c0cd011c55_12016_92571_back",
+            "src": "https:\/\/images.printify.com\/mockup\/68534afa6ad639c0cd011c55\/12016\/92571\/fsgp-abstract-flower-01-tee.jpg?camera_label=back",
+            "type": "GENERATED"
+        },
+        "68534afa6ad639c0cd011c55_12016_102005_front-2": {
+            "id": "68534afa6ad639c0cd011c55_12016_102005_front-2",
+            "src": "https:\/\/images.printify.com\/mockup\/68534afa6ad639c0cd011c55\/12016\/102005\/fsgp-abstract-flower-01-tee.jpg?camera_label=front-2",
+            "type": "GENERATED"
+        },
+        "68534afa6ad639c0cd011c55_12016_102006_back-2": {
+            "id": "68534afa6ad639c0cd011c55_12016_102006_back-2",
+            "src": "https:\/\/images.printify.com\/mockup\/68534afa6ad639c0cd011c55\/12016\/102006\/fsgp-abstract-flower-01-tee.jpg?camera_label=back-2",
+            "type": "GENERATED"
+        },
+        "68534afa6ad639c0cd011c55_11944_92570_front": {
+            "id": "68534afa6ad639c0cd011c55_11944_92570_front",
+            "src": "https:\/\/images.printify.com\/mockup\/68534afa6ad639c0cd011c55\/11944\/92570\/fsgp-abstract-flower-01-tee.jpg?camera_label=front",
+            "type": "GENERATED"
+        },
+        "68534afa6ad639c0cd011c55_11944_92571_back": {
+            "id": "68534afa6ad639c0cd011c55_11944_92571_back",
+            "src": "https:\/\/images.printify.com\/mockup\/68534afa6ad639c0cd011c55\/11944\/92571\/fsgp-abstract-flower-01-tee.jpg?camera_label=back",
+            "type": "GENERATED"
+        },
+        "68534afa6ad639c0cd011c55_11944_102005_front-2": {
+            "id": "68534afa6ad639c0cd011c55_11944_102005_front-2",
+            "src": "https:\/\/images.printify.com\/mockup\/68534afa6ad639c0cd011c55\/11944\/102005\/fsgp-abstract-flower-01-tee.jpg?camera_label=front-2",
+            "type": "GENERATED"
+        },
+        "68534afa6ad639c0cd011c55_11944_102006_back-2": {
+            "id": "68534afa6ad639c0cd011c55_11944_102006_back-2",
+            "src": "https:\/\/images.printify.com\/mockup\/68534afa6ad639c0cd011c55\/11944\/102006\/fsgp-abstract-flower-01-tee.jpg?camera_label=back-2",
+            "type": "GENERATED"
+        },
+        "68534afa6ad639c0cd011c55_12130_92570_front": {
+            "id": "68534afa6ad639c0cd011c55_12130_92570_front",
+            "src": "https:\/\/images.printify.com\/mockup\/68534afa6ad639c0cd011c55\/12130\/92570\/fsgp-abstract-flower-01-tee.jpg?camera_label=front",
+            "type": "GENERATED"
+        },
+        "68534afa6ad639c0cd011c55_12130_92571_back": {
+            "id": "68534afa6ad639c0cd011c55_12130_92571_back",
+            "src": "https:\/\/images.printify.com\/mockup\/68534afa6ad639c0cd011c55\/12130\/92571\/fsgp-abstract-flower-01-tee.jpg?camera_label=back",
+            "type": "GENERATED"
+        },
+        "68534afa6ad639c0cd011c55_12130_102005_front-2": {
+            "id": "68534afa6ad639c0cd011c55_12130_102005_front-2",
+            "src": "https:\/\/images.printify.com\/mockup\/68534afa6ad639c0cd011c55\/12130\/102005\/fsgp-abstract-flower-01-tee.jpg?camera_label=front-2",
+            "type": "GENERATED"
+        },
+        "68534afa6ad639c0cd011c55_12130_102006_back-2": {
+            "id": "68534afa6ad639c0cd011c55_12130_102006_back-2",
+            "src": "https:\/\/images.printify.com\/mockup\/68534afa6ad639c0cd011c55\/12130\/102006\/fsgp-abstract-flower-01-tee.jpg?camera_label=back-2",
+            "type": "GENERATED"
+        }
+    },
+    "limits": {
+        "min": 1,
+        "max": 250
+    }
+}

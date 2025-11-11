@@ -2,11 +2,58 @@
 
 The standard pattern for initializing DataTables in SiP plugins. For AJAX integration with DataTables, see the [AJAX Guide](./sip-plugin-ajax.md#datatables-integration).
 
-DataTables implementation in SiP plugins follows specific patterns for different table types. All tables use client-side processing with local data management.
+## DataTables Architecture
 
-For simple tables that don't require DataTables functionality, see [Non-DataTables Table Refresh](./sip-feature-ui-components.md#non-datatables-table-refresh).
+```mermaid
+graph TB
+    subgraph Client["Client-Side Processing"]
+        LocalData[Local Data Array<br/>window.productData]
+        DT[DataTables Instance]
+        DOM[DOM Table Element]
+        
+        LocalData --> DT
+        DT --> DOM
+    end
+    
+    subgraph Events["Event Flow"]
+        UserAction[User Action<br/>Sort/Filter/Select]
+        DTEvent[DataTable Event]
+        CustomHandler[Custom Handler]
+        UIUpdate[UI Update]
+        
+        UserAction --> DTEvent
+        DTEvent --> CustomHandler
+        CustomHandler --> UIUpdate
+    end
+    
+    subgraph Server["Server Communication"]
+        AjaxLoad[Initial AJAX Load]
+        AjaxUpdate[Update via AJAX]
+        Response[JSON Response]
+        
+        AjaxLoad --> Response
+        Response --> LocalData
+        AjaxUpdate --> Response
+    end
+    
+    style Client fill:#e6f3ff
+    style Events fill:#fff0e6
+    style Server fill:#ffe6e6
+```
 
-For complex hierarchical data relationships (like parent-child product relationships), see the [SiP Printify Manager Architecture Guide](./sip-printify-manager-architecture.md).
+## Why Client-Side Processing
+
+DataTables implementation in SiP plugins uses **client-side processing only** for these reasons:
+
+1. **Data Volume**: Product counts rarely exceed 10,000 items, well within client-side limits
+2. **Performance**: Instant sorting/filtering without server round-trips
+3. **Offline Capability**: Tables remain functional during connection issues
+4. **Simplicity**: No server-side pagination/sorting logic needed
+5. **State Management**: Easy to maintain selection state across operations
+
+For simple tables that don't require DataTables functionality, see [Non-DataTables Table Refresh](./sip-core-feature-ui-components.md#non-datatables-table-refresh).
+
+For complex hierarchical data relationships (like parent-child product relationships), see the [SiP Printify Manager Architecture Guide](./sip-printify-manager-guidelines.md).
 
 ## DataTable Initialization Patterns
 
@@ -616,20 +663,60 @@ templateTable = new DataTable("#template-table", {
 
 ## Product Creation Table
 
-The creation table implements complex rowGroup functionality with template and variant management. 
+### Hybrid Architecture Overview
 
-**Note**: The creation table underwent a column reorganization to improve alignment across different row types. For detailed architecture information, see the [Creation Table System section](./sip-printify-manager-architecture.md#creation-table-system) in the SiP Printify Manager Architecture guide.
+```mermaid
+graph TB
+    subgraph DataTable["DataTables Layer"]
+        DTConfig[DataTable Configuration]
+        DTRows[Standard Data Rows]
+        DTEvents[DataTable Events]
+    end
+    
+    subgraph CustomLayer["Custom Injection Layer"]
+        RowGroup[rowGroup.startRender]
+        DrawCallback[drawCallback]
+        SummaryRows[Summary Rows<br/>Template & Child Product]
+    end
+    
+    subgraph DataStructure["Data Structure"]
+        Templates[Template Groups]
+        ChildProducts[Child Product Groups]
+        Variants[Variant Rows]
+    end
+    
+    DTConfig --> RowGroup
+    RowGroup --> SummaryRows
+    DrawCallback --> SummaryRows
+    
+    Templates --> SummaryRows
+    ChildProducts --> SummaryRows
+    Variants --> DTRows
+    
+    style DataTable fill:#e6f3ff
+    style CustomLayer fill:#fff0e6
+    style DataStructure fill:#e6ffe6
+```
 
-### Creation Table Configuration (After Column Reorganization)
+The creation table implements a **hybrid architecture** that combines:
+1. **DataTables**: For sorting, filtering, and managing variant rows
+2. **Custom Row Injection**: For summary rows that aggregate variant data
+3. **Dynamic Grouping**: Based on template or child product relationships
+
+**Note**: The creation table underwent a column reorganization to improve alignment across different row types. For detailed architecture information, see the [Creation Table System section](./sip-printify-manager-guidelines.md#creation-table-system) in the SiP Printify Manager Architecture guide.
+
+### Base Configuration
 
 ```javascript
 creationTable = new DataTable("#creation-table", {
     serverSide: false,
     processing: false,
     
-    order: [[5, "asc"], [3, "asc"]], // Order by row_type column then title column
-    orderFixed: [4, "asc"], // Fixed ordering on row_type column (now column 4)
+    // Ordering configuration
+    order: [[5, "asc"], [3, "asc"]], // Order by row_type then title
+    orderFixed: [4, "asc"], // Fixed ordering on row_type column
     
+    // Performance optimization
     deferRender: true,
     bAutoWidth: false,
     tableLayout: "fixed",
@@ -637,6 +724,7 @@ creationTable = new DataTable("#creation-table", {
     autoWidth: false,
     fixedHeader: true,
     
+    // Layout configuration
     layout: {
         topStart: "select",
         topEnd: "info"
@@ -644,202 +732,260 @@ creationTable = new DataTable("#creation-table", {
     
     data: [],  // Data populated dynamically
     
+    // Selection configuration
     select: {
         style: "multi",
         selector: "td.select-column",
         headerCheckbox: true
     },
-    
-    columns: [
-        {
-            data: "row_number",
-            name: "row_number",
-            defaultContent: "",
-            className: "row-number-column",
-            orderable: false,
-            visible: true
-        },
-        {
-            data: "selector",
-            name: "checkbox",
-            defaultContent: "",
-            className: "select-column"
-        },
-        {
-            data: "visibility",
-            name: "visibility",
-            defaultContent: "",
-            className: "visibility-column",
-            orderable: false
-        },
-        {
-            data: "variant_title",
-            name: "title",
-            className: "title-column"
-        },
-        {
-            data: "row_type",
-            name: "row_type",
-            className: "row-type-column"
-        },
-        {
-            data: "status",
-            name: "status",
-            className: "status-column",
-            orderable: false
-        },
-        {
-            data: "print_area",
-            className: "print-area-column"
-        },
-        {
-            data: "colors",
-            className: "colors-column"
-        },
-        {
-            data: "sizes",
-            className: "sizes-column"
-        },
-        {
-            data: "tags",
-            name: "tags",
-            className: "tags-column"
-        },
-        {
-            data: "description",
-            className: "description-column"
-        },
-        {
-            data: "price",
-            className: "price-column"
-        }
-    ],
-    
-    columnDefs: [
-        {
-            orderable: false,
-            targets: [0, 2]  // Row number and visibility columns
-        },
-        {
-            orderable: false,
-            render: DataTable.render.select(),
-            targets: 1  // Checkbox column is now index 1
-        },
-        {
-            orderSequence: ['asc', 'desc'],
-            targets: '_all'  // Applies to all columns
-        }
-    ],
-    
-    rowGroup: {
-        dataSrc: function(row) {
-            return row.is_template ? "template" : row.child_product_id;
-        },
-        emptyDataGroup: null,
-        startRender: function(rows, group) {
-            let rowData = rows.data()[0];
-            let isTemplate = rowData.is_template === true;
-            
-            if (isTemplate) {
-                // Template summary row
-                return `<tr class="template-summary-row" data-template="true">
-                    <td class="row-number-column"></td>
-                    <td class="select-column"></td>
-                    <td class="visibility-column toggle-group" data-template="true">▶</td>
-                    <td class="title-column">${rowData.template_title || rowData.variant_title.split(" - Variant")[0]}</td>
-                    <td class="row-type-column">Template Summary</td>
-                    <td class="status-column">Template</td>
-                    <td class="print-area-column"></td>
-                    <td class="colors-column"></td>
-                    <td class="sizes-column"></td>
-                    <td class="tags-column"></td>
-                    <td class="description-column"></td>
-                    <td class="price-column"></td>
-                </tr>`;
-            } else {
-                // Child product summary row with row number
-                let childProductTitle = rowData.variant_title.split(" - Variant")[0];
-                
-                return `<tr class="child-product-summary-row" data-child_product_id="${rowData.child_product_id}">
-                    <td class="row-number-column"><span class="row-number"></span></td>
-                    <td class="select-column"><input type="checkbox" class="child-product-group-select"></td>
-                    <td class="visibility-column toggle-group" data-child_product_id="${rowData.child_product_id}" style="cursor: pointer;">▶</td>
-                    <td class="title-column">${childProductTitle}</td>
-                    <td class="row-type-column">Child Product Summary</td>
-                    <td class="status-column">${rowData.status}</td>
-                    <td class="print-area-column"></td>
-                    <td class="colors-column"></td>
-                    <td class="sizes-column"></td>
-                    <td class="tags-column"></td>
-                    <td class="description-column"></td>
-                    <td class="price-column"></td>
-                </tr>`;
-            }
-        }
-    },
-    
-    stateSave: true,
-    stateDuration: -1,
-    
-    stateLoadCallback: function(settings) {
-        let savedState = localStorage.getItem("Creation_DataTables_" + settings.sInstance);
-        return savedState ? JSON.parse(savedState) : {};
-    },
-    
-    stateSaveCallback: function(settings, data) {
-        localStorage.setItem("Creation_DataTables_" + settings.sInstance, JSON.stringify(data));
-    },
-    
-    createdRow: function(row, data, dataIndex) {
-        $(row).addClass('invisible-row');
-        
-        if (data.is_template) {
-            $(row).addClass('template-row');
-            $(row).attr('data-template-id', data.template_id);
-        } else if (data.child_product_id) {
-            $(row).addClass('child-product-row');
-            $(row).attr('data-child-product-id', data.child_product_id);
-        }
-        
-        if (data.row_type === 'variant') {
-            $(row).addClass('variant-row');
-            if (data.is_template) {
-                $(row).attr('data-template-variant', 'true');
-            } else {
-                $(row).attr('data-child_product_id', data.child_product_id);
-            }
-        }
-    },
-    
-    drawCallback: function(settings) {
-        const api = this.api();
-        
-        // Inject data into summary rows
-        const templateWipData = window.creationTemplateWipData?.data;
-        const isTemplateLoaded = templateWipData;
-        
-        if (isTemplateLoaded) {
-            // Call template summary builder
-            SiP.PrintifyManager.creationTableSetupActions.utils.buildTemplateSummaryCells();
-            
-            // Call variant cell builders
-            SiP.PrintifyManager.creationTableSetupActions.utils.buildTemplateVariantCells();
-            
-            // Build child product summary cells
-            SiP.PrintifyManager.creationTableSetupActions.utils.buildChildProductSummaryCells();
-            
-            // Build child product variant cells
-            SiP.PrintifyManager.creationTableSetupActions.utils.buildChildProductVariantCells();
-        }
-        
-        // Reattach event listeners for expansion/collapse
-        attachGroupToggleListeners();
-        
-        // Update PhotoSwipe dimensions
-        SiP.PrintifyManager.utilities.ui.updatePhotoSwipeDimensions();
-    }
+    // ... other configuration
 });
 ```
+
+### Column Configuration
+
+```javascript
+// Column definitions for creation table
+columns: [
+    {
+        data: "row_number",
+        name: "row_number",
+        defaultContent: "",
+        className: "row-number-column",
+        orderable: false,
+        visible: true
+    },
+    {
+        data: "selector",
+        name: "checkbox",
+        defaultContent: "",
+        className: "select-column"
+    },
+    {
+        data: "visibility",
+        name: "visibility",
+        defaultContent: "",
+        className: "visibility-column",
+        orderable: false
+    },
+    {
+        data: "variant_title",
+        name: "title",
+        className: "title-column"
+    },
+    {
+        data: "row_type",
+        name: "row_type",
+        className: "row-type-column"
+    },
+    {
+        data: "status",
+        name: "status",
+        className: "status-column",
+        orderable: false
+    },
+    {
+        data: "print_area",
+        className: "print-area-column"
+    },
+    {
+        data: "colors",
+        className: "colors-column"
+    },
+    {
+        data: "sizes",
+        className: "sizes-column"
+    },
+    {
+        data: "tags",
+        name: "tags",
+        className: "tags-column"
+    },
+    {
+        data: "description",
+        className: "description-column"
+    },
+    {
+        data: "price",
+        className: "price-column"
+    }
+]
+```
+
+### Column Definitions and Ordering
+
+```javascript
+columnDefs: [
+    {
+        orderable: false,
+        targets: [0, 2]  // Row number and visibility columns
+    },
+    {
+        orderable: false,
+        render: DataTable.render.select(),
+        targets: 1  // Checkbox column is now index 1
+    },
+    {
+        orderSequence: ['asc', 'desc'],
+        targets: '_all'  // Applies to all columns
+    }
+]
+```
+
+### Row Grouping with Summary Rows
+
+```javascript
+rowGroup: {
+    dataSrc: function(row) {
+        return row.is_template ? "template" : row.child_product_id;
+    },
+    emptyDataGroup: null,
+    startRender: function(rows, group) {
+        let rowData = rows.data()[0];
+        let isTemplate = rowData.is_template === true;
+        
+        if (isTemplate) {
+            // Template summary row
+            return buildTemplateSummaryRow(rowData);
+        } else {
+            // Child product summary row
+            return buildChildProductSummaryRow(rowData);
+        }
+    }
+}
+```
+
+### Summary Row Builders
+
+```javascript
+function buildTemplateSummaryRow(rowData) {
+    const title = rowData.template_title || 
+                  rowData.variant_title.split(" - Variant")[0];
+    
+    return `<tr class="template-summary-row" data-template="true">
+        <td class="row-number-column"></td>
+        <td class="select-column"></td>
+        <td class="visibility-column toggle-group" data-template="true">▶</td>
+        <td class="title-column">${title}</td>
+        <td class="row-type-column">Template Summary</td>
+        <td class="status-column">Template</td>
+        <td class="print-area-column"></td>
+        <td class="colors-column"></td>
+        <td class="sizes-column"></td>
+        <td class="tags-column"></td>
+        <td class="description-column"></td>
+        <td class="price-column"></td>
+    </tr>`;
+}
+
+function buildChildProductSummaryRow(rowData) {
+    const title = rowData.variant_title.split(" - Variant")[0];
+    const id = rowData.child_product_id;
+    
+    return `<tr class="child-product-summary-row" data-child_product_id="${id}">
+        <td class="row-number-column"><span class="row-number"></span></td>
+        <td class="select-column">
+            <input type="checkbox" class="child-product-group-select">
+        </td>
+        <td class="visibility-column toggle-group" 
+            data-child_product_id="${id}" style="cursor: pointer;">▶</td>
+        <td class="title-column">${title}</td>
+        <td class="row-type-column">Child Product Summary</td>
+        <td class="status-column">${rowData.status}</td>
+        <td class="print-area-column"></td>
+        <td class="colors-column"></td>
+        <td class="sizes-column"></td>
+        <td class="tags-column"></td>
+        <td class="description-column"></td>
+        <td class="price-column"></td>
+    </tr>`;
+}
+```
+
+### State Management
+
+```javascript
+stateSave: true,
+stateDuration: -1,
+
+stateLoadCallback: function(settings) {
+    let savedState = localStorage.getItem(
+        "Creation_DataTables_" + settings.sInstance
+    );
+    return savedState ? JSON.parse(savedState) : {};
+},
+
+stateSaveCallback: function(settings, data) {
+    localStorage.setItem(
+        "Creation_DataTables_" + settings.sInstance, 
+        JSON.stringify(data)
+    );
+}
+```
+
+### Row Creation Handler
+
+```javascript
+createdRow: function(row, data, dataIndex) {
+    $(row).addClass('invisible-row');
+    
+    if (data.is_template) {
+        $(row).addClass('template-row');
+        $(row).attr('data-template-id', data.template_id);
+    } else if (data.child_product_id) {
+        $(row).addClass('child-product-row');
+        $(row).attr('data-child-product-id', data.child_product_id);
+    }
+    
+    if (data.row_type === 'variant') {
+        $(row).addClass('variant-row');
+        if (data.is_template) {
+            $(row).attr('data-template-variant', 'true');
+        } else {
+            $(row).attr('data-child_product_id', data.child_product_id);
+        }
+    }
+}
+```
+
+### Draw Callback for Summary Row Data Injection
+
+```javascript
+drawCallback: function(settings) {
+    const api = this.api();
+    const templateWipData = window.creationTemplateWipData?.data;
+    const isTemplateLoaded = templateWipData;
+    
+    if (isTemplateLoaded) {
+        // Inject data into summary rows
+        const utils = SiP.PrintifyManager.creationTableSetupActions.utils;
+        
+        // Build all summary and variant cells
+        utils.buildTemplateSummaryCells();
+        utils.buildTemplateVariantCells();
+        utils.buildChildProductSummaryCells();
+        utils.buildChildProductVariantCells();
+    }
+    
+    // Reattach event listeners for expansion/collapse
+    attachGroupToggleListeners();
+    
+    // Update PhotoSwipe dimensions
+    SiP.PrintifyManager.utilities.ui.updatePhotoSwipeDimensions();
+}
+```
+
+### How Creation Table Components Work Together
+
+1. **Base Configuration**: Sets up client-side processing with deferred rendering
+2. **Column Configuration**: Defines 12 columns with specific data mappings
+3. **Row Grouping**: Dynamically groups by template or child product ID
+4. **Summary Row Builders**: Inject custom HTML rows that aggregate variant data
+5. **State Management**: Persists user preferences (sort, filter) to localStorage
+6. **Row Creation**: Adds CSS classes and data attributes for styling and selection
+7. **Draw Callback**: Post-processing that injects aggregated data into summary rows
+
+This hybrid approach allows DataTables to handle sorting/filtering of variant rows while custom code manages the hierarchical parent-child relationships.
 
 ## Common Patterns
 
@@ -863,7 +1009,7 @@ stateSaveCallback: function(settings, data) {
 
 ### Thumbnail Integration
 
-Tables use the standardized thumbnail utility. For complete PhotoSwipe implementation, refer to the [PhotoSwipe Guide](./sip-feature-photoswipe.md):
+Tables use the standardized thumbnail utility. For complete PhotoSwipe implementation, refer to the [PhotoSwipe Guide](./sip-core-feature-photoswipe.md):
 
 ```javascript
 const thumbnail = SiP.PrintifyManager.utilities.createThumbnail({

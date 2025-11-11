@@ -1,0 +1,68 @@
+Below is one streamlined develop → release flow that combines the npm-based steps I outlined with the proprietary SiP Development Tools release panel you already use. Nothing here depends on CI; everything can run from VS Code on your workstation, but it leaves hooks for CI later.
+
+1 · Daily coding loop (development branch)
+Action	Command / tool	Goal
+Hot-reload build	npm run watch	Get instant re-build into dist/ while you code.
+Spot-check in Chrome	Extensions → Reload	See the change immediately.
+(Optional) Run unit tests	npm run test	Catch regressions early.
+Lint & auto-fix	npm run lint	Keep style consistent; fails fast on obvious errors.
+Commit	Conventional-commit message to dev branch	Keeps release notes automatic.
+
+(If you skip tests, the lint & build steps still ensure the code compiles before release.)
+
+2 · Local Pre-release build (still on dev)
+bash
+Copy
+Edit
+npm run build        # one-shot production bundle → dist/
+npm run analyze       # optional size check
+Result: a clean, minified dist/ folder ready for zipping.
+
+3 · SiP Development Tools → “Promote Dev to Master”
+Open the Release Tool panel in VS Code.
+
+Click Promote → the tool:
+
+merges dev → master
+
+bumps version in manifest.json (MAJOR.MINOR.PATCH)
+
+zips dist/ as sip-printify-manager-extension-<ver>.zip
+
+(At this point you can still side-load to Chrome and validate the minified build.)
+
+4 · Upload & publish
+Channel	Action
+Chrome Web Store	Go to the private listing → Upload new version → select the ZIP → Publish (or Submit for review if moving from private to unlisted/public).
+WordPress plugin dashboard (optional)	The extension auto-reports its new version to the WP admin once the browser updates.
+
+5 · Tag & push
+bash
+Copy
+Edit
+git tag v1.4.0          # same version set by the release tool
+git push origin master --tags
+Why push after the manual release? Anyone pulling the repo (or future CI) can match source to the exact Web-Store version.
+
+How npm scripts fit the proprietary tool
+npm run watch remains your live-coding loop.
+
+npm run build is what the release tool calls internally before zipping (you can wire that in its settings).
+
+npm run lint / npm run test can be optional pre-commit Git hooks or a one-button task in the tool; they don’t have to block a release but make errors visible sooner.
+
+If you later add CI
+Push tags can trigger GitHub Actions that repeat npm run build && npm run validate:m3; but since the Web Store upload is manual (or via the proprietary tool), CI is purely a safety net.
+
+Minimal changes required
+Configure the release tool to run npm run build before zipping.
+
+Add a small bash/batch wrapper the tool can call:
+
+bash
+Copy
+Edit
+npm run lint && npm run build || { echo 'Fix lint/build errors'; exit 1; }
+Keep unit tests optional until you grow coverage.
+
+That way the workflow you already trust stays, but every build that reaches the Web Store has at least passed lint and a clean production bundle.

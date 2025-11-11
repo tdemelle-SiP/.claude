@@ -4,55 +4,268 @@
 
 The SiP plugin suite uses an automated release system that handles version updates, Git operations, and package creation. The system supports both WordPress plugins and browser extensions through a flexible repository management interface. The process follows a specific Git workflow with `develop` and `master` branches, automated versioning, and centralized release distribution.
 
-## System Architecture
+## Dual Lifecycle Architecture
 
-### Components
-- **SiP Development Tools Admin UI**: Web interface for managing repositories and triggering releases
-- **Repository Manager**: Flexible system for adding and managing both plugin and extension repositories
-- **PHP Backend** (`release-functions.php`): Handles AJAX requests and launches PowerShell script
-- **PowerShell Script** (`release-plugin.ps1` / `release-extension.ps1`): Executes release process
-- **JavaScript Frontend** (`release-actions.js`): Real-time status monitoring and UI updates
-- **Repository Manager Module** (`repository-manager.js`): Handles client-side repository management
+The release system recognizes two distinct contexts with different requirements:
+
+### Development Context (Local Environment)
+- **Purpose**: Create and manage releases
+- **Source of Truth**: Repository files (plugin headers, manifest.json)
+- **Users**: Developers creating releases
+- **Data Flow**: Repositories → Release Manager → ZIP Creation → Update Server
+
+### Production Context (Deployed Sites)
+- **Purpose**: Check for and install updates
+- **Source of Truth**: Update server releases.json (distribution catalog)
+- **Users**: Site administrators checking for updates
+- **Data Flow**: Update Server releases.json → Plugin Dashboard (JSON decode) → Update Installation
+
+## Core Principles
+
+1. **Repository Files as Source of Truth**
+   - Version data comes from plugin headers or manifest.json
+   - No parsing of external files for repository metadata
+   - Dynamic reading ensures always-current information
+
+2. **No String Concatenation for Data**
+   - Data structures built as arrays/objects
+   - Content assembled in single operations
+   - Eliminates performance issues and complexity
+
+3. **Type-Specific Lifecycles**
+   - Plugins and extensions follow different paths
+   - Clear distinction maintained throughout process
+   - Type determines file structure and versioning
+
+4. **Minimal Data Storage**
+   - Store only what can't be read from files
+   - Track release history separately
+   - Reduce synchronization issues
+
+## Release Lifecycle Visualization
+
+### ASCII Flow Diagram
+```
+DEVELOPMENT CONTEXT                           PRODUCTION CONTEXT
+===================                           ==================
+
+┌─────────────────┐                          ┌──────────────────┐
+│  Repository     │                          │  Deployed Site   │
+│  Source Files   │                          │  (WordPress)     │
+├─────────────────┤                          ├──────────────────┤
+│ • plugin.php    │                          │ • Checks JSON   │
+│ • manifest.json │                          │ • Shows updates  │
+└────────┬────────┘                          └────────▲─────────┘
+         │                                              │
+         │ Read metadata                                │ HTTP Request
+         ▼                                              │
+┌─────────────────┐                          ┌──────────────────┐
+│ Release Manager │                          │  Update Server   │
+│    Table UI     │                          │ (stuffisparts)   │
+├─────────────────┤                          ├──────────────────┤
+│ • Shows version │                          │ • Hosts ZIPs     │
+│ • Release date  │                          │ • Serves JSON   │
+└────────┬────────┘                          └────────▲─────────┘
+         │                                              │
+         │ Create Release                               │ Upload
+         ▼                                              │
+┌─────────────────┐     ┌──────────────┐    ┌──────────────────┐
+│   PowerShell    │────▶│ Local ZIPs   │───▶│ releases.json    │
+│    Scripts      │     │ Repository   │    │  Generated       │
+└─────────────────┘     └──────────────┘    └──────────────────┘
+
+Plugin Path:  .php → Table → PS1 → ZIP → JSON → Server → Sites
+Extension Path: manifest.json → Table → PS1 → ZIP → JSON → Server → Sites
+```
+
+### Mermaid Flow Diagram
+```mermaid
+graph TB
+    subgraph "Development Context"
+        RF[Repository Files<br/>plugin.php / manifest.json] 
+        RM[Release Manager<br/>Table UI]
+        PS[PowerShell Scripts<br/>release-plugin/extension.ps1]
+        LZ[Local ZIP Archive<br/>sip-plugin-suite-zips/]
+        RG[JSON Generation<br/>From Repository Data]
+        
+        RF -->|Read Metadata| RM
+        RM -->|Create Release| PS
+        PS -->|Build Package| LZ
+        PS -->|Update Release Info| RM
+        LZ -->|Generate from Data| RG
+    end
+    
+    subgraph "Production Context"
+        US[Update Server<br/>updates.stuffisparts.com]
+        RC[JSON Catalog<br/>Available Versions]
+        DS[Deployed Sites<br/>WordPress Installations]
+        PD[Plugin Dashboard<br/>Update Checker]
+        
+        RG -->|Upload| US
+        US -->|Serve| RC
+        RC -->|Check Updates| DS
+        DS -->|Display| PD
+    end
+    
+    style RF fill:#e1f5fe
+    style RM fill:#b3e5fc
+    style PS fill:#81d4fa
+    style LZ fill:#4fc3f7
+    style RG fill:#29b6f6
+    style US fill:#fff3e0
+    style RC fill:#ffe0b2
+    style DS fill:#ffcc80
+    style PD fill:#ffb74d
+```
+
+## Component Responsibilities
+
+### 1. Repository Registration (Entry Point)
+- **Input**: File path to repository
+- **Process**: Validate Git repo, detect type, extract metadata
+- **Storage**: Path, type, and last_release only
+- **Output**: Repository added to management table
+
+### 2. Release Manager Table (Display & Control)
+- **Data Source**: Fresh read from repository files + stored release info
+- **Shows**: Current version, last release date, branch status
+- **Actions**: Create release, manage repositories
+- **Updates**: Real-time from AJAX calls
+
+### 3. PowerShell Release Scripts (Execution)
+- **Plugin Script**: `release-plugin.ps1`
+- **Extension Script**: `release-extension.ps1`
+- **Process**: 16-step automated release
+- **Updates**: Calls PHP to update release info on completion
+
+### 4. JSON Generation (Distribution Catalog)
+- **Trigger**: After successful release
+- **Source**: Repository Manager data
+- **Method**: PHP arrays to structured JSON
+- **Purpose**: Catalog for production sites
+
+### 5. Update Server (Distribution Point)
+- **Hosts**: ZIP files and releases.json catalog
+- **Access**: Public HTTP endpoint
+- **Used By**: All deployed WordPress sites
+
+## Implementation Files
+
+### PHP Files
+```
+sip-development-tools/
+├── includes/
+│   ├── repository-manager.php          # Core repository management class
+│   ├── repository-ajax-handlers.php    # AJAX endpoints for repository operations
+│   └── release-functions.php           # Release process functions
+```
+
+### JavaScript Files
+```
+sip-development-tools/
+├── assets/js/modules/
+│   ├── repository-manager.js    # Client-side repository management
+│   └── release-actions.js       # Release UI and status monitoring
+```
+
+### PowerShell Scripts and Modules
+```
+sip-development-tools/
+├── tools/
+│   ├── release-plugin.ps1         # WordPress plugin release automation
+│   ├── release-extension.ps1      # Chrome extension release automation
+│   ├── SiP-ChromeWebStore.psm1    # Chrome Web Store API functions
+│   └── SiP-ReleaseUtilities.psm1  # Shared release utilities and Get-ApiKey
+```
+
+#### Module Structure
+- **SiP-ReleaseUtilities.psm1**: Common functions for all release scripts
+  - `Get-ApiKey`: Reads API keys from .env files
+  - `Get-RepositoryData`: Gathers repository information
+  - `New-JsonContent`: Generates releases.json content
+  - `Update-ReleasesJson`: Updates central repository releases.json
+  - `Upload-JsonToServer`: Uploads releases.json to update server
+
+- **SiP-ChromeWebStore.psm1**: Chrome Web Store API integration
+  - `Test-ChromeStoreConfig`: Validates Chrome Store configuration
+  - `Get-ChromeAccessToken`: OAuth token exchange
+  - `Upload-ToChromeWebStore`: Uploads extension ZIP via API
+  - `Publish-ChromeExtension`: Publishes or saves as draft
+  - `Get-ChromeExtensionStatus`: Checks extension status
+
+#### Module Loading Pattern
+All modules are imported at the top of the release scripts using PowerShell best practices:
+```powershell
+# Import the SiP modules
+Import-Module (Join-Path -Path $PSScriptRoot -ChildPath "SiP-ChromeWebStore.psm1") -Force
+Import-Module (Join-Path -Path $PSScriptRoot -ChildPath "SiP-ReleaseUtilities.psm1") -Force
+```
+
+### Key Classes and Functions
+
+#### PHP (Server-Side)
+- `SiP_Repository_Manager::get_repositories()` - Get all repos with status
+- `SiP_Repository_Manager::get_fresh_repository_info()` - Read current file data
+- `SiP_Repository_Manager::update_repository_release()` - Update release tracking
+- `SiP_Repository_Manager::generate_releases_json()` - Create releases.json from data
+- `sip_check_release_status()` - Monitor release and update on completion
+
+#### JavaScript (Client-Side)
+- `updateRepositoryTable()` - Refresh table display via AJAX
+- `handleAddRepository()` - UI for adding new repositories
+- `startStatusPolling()` - Monitor release progress
+- `checkReleaseStatus()` - Poll for completion and trigger updates
 
 ## Repository Management
 
 ### Overview
 The release manager uses a flexible repository registration system that allows management of repositories located anywhere on the file system. This replaces the previous auto-detection system that was limited to the WordPress plugins directory.
 
-### Key Features
-- **Manual Repository Addition**: Users explicitly add repositories via UI using text input
-- **Flexible Locations**: Supports repositories anywhere on the file system
-- **Multiple Types**: Handles both WordPress plugins and browser extensions
-- **Persistent Storage**: Repository paths stored in WordPress options
-- **Cross-Platform**: Works on Windows, Mac, and Linux
-- **Path-Based Operations**: All Git and file operations use actual repository paths from Repository Manager
+### Data Architecture
 
-### Repository Storage Structure
-Repository information is stored in WordPress options following SiP data storage standards:
-
+#### What Gets Stored
 ```php
-// Option name: sip_development_tools_repositories
+// WordPress Option: sip_development_tools_repositories
 [
-    [
-        'path' => 'C:/Users/tdeme/Local Sites/.../plugins/sip-plugins-core',
-        'type' => 'plugin',
-        'name' => 'SiP Plugins Core',
-        'slug' => 'sip-plugins-core',
-        'main_file' => 'sip-plugins-core.php',
-        'version' => '2.3.0'
-    ],
-    [
-        'path' => 'C:/Users/tdeme/Repositories/sip-printify-manager-extension',
-        'type' => 'extension',
-        'name' => 'SiP Printify Manager Extension',
-        'slug' => 'sip-printify-manager-extension',
-        'main_file' => 'manifest.json',
-        'version' => '1.0.0'
+    'md5-hash-of-path' => [
+        'path' => '/absolute/path/to/repository',
+        'type' => 'plugin|extension',
+        'last_release' => [
+            'version' => '2.3.0',
+            'date' => '2024-03-15 14:30:00'
+        ]
     ]
 ]
 ```
 
-Note: The `get_release_repositories()` method adds computed fields like `release_date` from the central repository README for display purposes.
+#### What Gets Read Dynamically
+- **From Plugin Files**: Name, version, text domain, description
+- **From manifest.json**: Name, version, permissions, Chrome ID
+- **From Git**: Branch status, uncommitted changes, remote sync
+
+#### Data Flow Sequence
+```
+1. User adds repository path
+   └─> Validate Git repo
+   └─> Detect type (plugin/extension)
+   └─> Store minimal data
+
+2. Table displays repository
+   └─> Read fresh metadata from files
+   └─> Merge with stored release info
+   └─> Show in UI
+
+3. User creates release
+   └─> PowerShell updates version
+   └─> Creates ZIP package
+   └─> Updates last_release in storage
+   └─> Generates releases.json from all repos
+
+4. Production site checks updates
+   └─> Fetches releases.json from server
+   └─> Compares versions
+   └─> Shows available updates
+```
 
 ### Repository Validation
 Minimal validation ensures only essential requirements:
@@ -146,9 +359,37 @@ checkCurrentBranch(pluginSlug).then(response => {
 });
 ```
 
-### 16-Step Release Process
-The PowerShell script executes these steps for both plugins and extensions:
+## Type-Specific Release Lifecycles
 
+### Plugin Release Lifecycle
+1. **Repository Add**: Detect WordPress plugin via PHP headers
+2. **Version Source**: Read from main PHP file header
+3. **Release Process**: 
+   - Update version in PHP file
+   - Create ZIP with plugin folder structure
+   - File naming: `plugin-name-X.Y.Z.zip`
+4. **Distribution**: Upload to plugins section of update server
+5. **Update Check**: WordPress sites check via SiP Plugins Core
+
+### Extension Release Lifecycle  
+1. **Repository Add**: Detect Chrome extension via manifest.json
+2. **Version Source**: Read from manifest.json
+3. **Release Process**:
+   - Update version in manifest.json
+   - Create ZIP with direct file structure (no wrapper folder)
+   - File naming: `extension-name-X.Y.Z.zip`
+4. **Distribution**: 
+   - Primary: Upload to update server for manual installation
+   - Secondary: Chrome Web Store publishing (optional, controlled by per-extension toggle)
+5. **Chrome Web Store**: 
+   - Automated publishing via API integration
+   - Per-extension toggle in Development Tools dashboard
+   - Toggle state persisted in localStorage
+
+### 16-Step Release Process
+The PowerShell script executes these steps:
+
+**For both plugins and extensions:**
 1. **Safety Checks**: Verify Git branch and uncommitted changes
 2. **Update Version**: Update version in main plugin file (or manifest.json for extensions)
 3. **Update Dependencies**: Automatically set core dependency requirements for child plugins
@@ -161,10 +402,14 @@ The PowerShell script executes these steps for both plugins and extensions:
 10. **Ensure Directories**: Create `previous_releases` folder
 11. **Archive Old ZIPs**: Move existing ZIPs to previous releases
 12. **Build Package**: Create clean release ZIP using 7-Zip via PHP
-13. **Update README**: Create/update central repository README
-14. **Commit Central**: Commit changes to central repository
-15. **Push Central**: Push central repository to GitHub
-16. **Return to Develop**: Checkout `develop` branch
+13. **Update releases.json**: Generate from PowerShell repository scanning
+14. **Upload to Server**: Upload ZIP to update server and commit central repository
+
+**For extensions only:**
+15. **Chrome Web Store**: Upload to Chrome Web Store (if configured and enabled via dashboard toggle)
+
+**Final step:**
+16. **Sync Branches**: Merge `master` back to `develop` and return to `develop` branch
 
 ## Version Numbering
 
@@ -190,18 +435,27 @@ The PowerShell script executes these steps for both plugins and extensions:
 }
 ```
 
-#### Central Repository README.md
-```markdown
-### sip-plugins-core
-- Version: 2.3.0
-- File: sip-plugins-core-2.3.0.zip
-- Last updated: 2024-03-15 14:30:00
-
-### sip-printify-manager-extension
-- Version: 1.0.0
-- File: extensions/sip-printify-manager-extension-v1.0.0.zip
-- Last updated: 2024-03-15 14:35:00
-```
+#### Central Repository releases.json
+```json
+{
+  "plugins": [
+    {
+      "slug": "sip-plugins-core",
+      "name": "SiP Plugins Core",
+      "version": "2.3.0",
+      "downloadUrl": "https://updates.stuffisparts.com/sip-plugins-core-2.3.0.zip"
+    }
+  ],
+  "extensions": [
+    {
+      "slug": "sip-printify-manager-extension", 
+      "name": "SiP Printify Manager Extension",
+      "version": "1.0.0",
+      "downloadUrl": "https://updates.stuffisparts.com/extensions/sip-printify-manager-extension-1.0.0.zip",
+      "chromeStoreUrl": "https://chrome.google.com/webstore/detail/..."
+    }
+  ]
+}
 
 ## Git Workflow
 
@@ -249,14 +503,54 @@ git merge develop
 git tag -a "v2.3.0" -m "Version 2.3.0"
 git push origin master --tags
 
-# Return to develop
+# CRITICAL: Sync master back to develop (Step 16)
 git checkout develop
+git merge master
+git push origin develop
+
+# Both branches now identical
+```
+
+## Branch Synchronization (Step 16)
+
+**Why**: Release process creates commits/tags on `master` during merge. Without syncing back to `develop`, branches diverge and cause merge conflicts in future releases.
+
+**The Fix**: Step 16 automatically merges `master` back to `develop` after each release.
+
+**Verification**: 
+```bash
+git rev-list --left-right --count master...develop
+# Should show: 0	0 (branches identical)
 ```
 
 ### Git Identity
 Default identity if not configured:
 - Name: `SiP Development Tools`
 - Email: `support@stuffisparts.com`
+
+## Chrome Web Store Publishing Control
+
+### Overview
+Extensions have a toggle in the Development Tools dashboard to control whether releases are published to the Chrome Web Store. This prevents flooding the review queue during rapid development iterations.
+
+### Implementation
+- **UI**: Toggle switch in the "Chrome Store" column for each extension
+- **Default**: Enabled (checked) for backward compatibility
+- **Persistence**: Toggle state saved in localStorage using SiP Core state management
+- **PowerShell Parameter**: `-SkipChromeStore` flag passed when toggle is unchecked
+
+### Usage
+```javascript
+// Toggle state is automatically loaded on page initialization
+// State persists across page reloads and browser sessions
+// Stored in: localStorage['sip-core']['sip-development-tools']['chrome-store-toggles'][extension-slug]
+```
+
+### Benefits
+- Prevents queuing multiple versions during development
+- Allows testing via update server without Chrome Store delays
+- Toggle state persists between sessions
+- Per-extension control for different development phases
 
 ## ZIP Creation Process
 
@@ -269,6 +563,25 @@ The release process creates ZIP files using 7-Zip through a PHP function that ca
 - **ABSPATH Calculation**: Dynamically calculates ABSPATH from script location to support repositories anywhere on the filesystem
 - **Temp Directory**: Uses temporary directory structure for building packages
 - **Compression**: Uses store method (no compression) for faster processing
+
+### Extension vs Plugin ZIP Structure
+**WordPress Plugins** - Include wrapper directory:
+```
+plugin-name-1.0.0.zip
+└── plugin-name/
+    ├── plugin-name.php
+    └── ... other files
+```
+
+**Browser Extensions** - Files at root level:
+```
+extension-name-1.0.0.zip
+├── manifest.json
+├── background.js
+└── ... other files
+```
+
+The `sip_create_zip_archive()` function automatically detects extensions (by `-extension` suffix) and creates the appropriate structure.
 
 ### ABSPATH Calculation
 **Why**: Repository Manager allows repositories anywhere on filesystem, but PHP ZIP creation function requires WordPress constants. Script location provides reliable reference point for calculation.
@@ -384,6 +697,14 @@ pclose(popen($command, 'r'));
 exec($command, $output, $return_var);
 ```
 
+#### JSON Generation and Consumption
+
+**No Parsing Principle**: The releases.json approach eliminates parsing entirely:
+
+- **Generation (Development)**: JSON is generated from repository data as structured data
+- **Consumption (Production)**: Production sites decode JSON, no parsing required
+- **Why This Works**: JSON provides native structured data format, eliminating regex and parsing complexity
+
 ### PowerShell Script Output
 **Why**: PowerShell's default behavior outputs return values to console, which pollutes logs when redirected to file.
 
@@ -424,47 +745,158 @@ Write-LogEntry "[COMPLETE] Release process finished" "INFO"
 ### Structure
 ```
 sip-plugin-suite-zips/
-├── README.md               # Auto-updated plugin & extension manifest
+├── releases.json           # Auto-updated plugin & extension manifest
 ├── sip-plugins-core-2.3.0.zip
 ├── sip-printify-manager-3.1.0.zip
-├── extensions/             # Browser extensions directory
-│   └── sip-printify-manager-extension-v1.0.0.zip
+├── sip-printify-manager-extension-1.0.0.zip  # Extensions now in root directory
 └── previous_releases/
     ├── sip-plugins-core-2.2.0.zip
-    └── sip-printify-manager-3.0.0.zip
+    ├── sip-printify-manager-3.0.0.zip
+    └── sip-printify-manager-extension-0.9.0.zip
 ```
 
-### README.md Format
-```markdown
-# SiP Plugin & Extension Releases
-
-This directory contains the latest releases of all SiP plugins and extensions.
-
-Last updated: 2024-03-15 14:30:00
-
-## Available Plugins
-
-### sip-plugins-core
-- Version: 2.3.0
-- File: sip-plugins-core-2.3.0.zip
-- Last updated: 2024-03-15 14:30:00
-
-### sip-printify-manager
-- Version: 3.1.0
-- File: sip-printify-manager-3.1.0.zip
-- Last updated: 2024-03-14 10:15:00
-
-## Available Extensions
-
-### sip-printify-manager-extension
-- Version: 1.0.0
-- File: extensions/sip-printify-manager-extension-v1.0.0.zip
-- Chrome Web Store ID: ikgbhdaibkmehpeipbcooebkgpfegdbg
-- Last updated: 2024-03-15 14:35:00
+### releases.json Format
+```json
+{
+    "generated": "2024-03-15T14:30:00Z",
+    "plugins": [
+        {
+            "slug": "sip-plugins-core",
+            "name": "SiP Plugins Core",
+            "version": "2.3.0",
+            "downloadUrl": "https://updates.stuffisparts.com/download/sip-plugins-core-2.3.0.zip",
+            "lastUpdated": "2024-03-15T14:30:00Z"
+        },
+        {
+            "slug": "sip-printify-manager",
+            "name": "SiP Printify Manager",
+            "version": "3.1.0",
+            "downloadUrl": "https://updates.stuffisparts.com/download/sip-printify-manager-3.1.0.zip",
+            "lastUpdated": "2024-03-14T10:15:00Z"
+        }
+    ],
+    "extensions": [
+        {
+            "slug": "sip-printify-manager-extension",
+            "name": "SiP Printify Manager Extension",
+            "version": "1.0.0",
+            "downloadUrl": "https://updates.stuffisparts.com/download/sip-printify-manager-extension-1.0.0.zip",
+            "chromeStoreUrl": "https://chrome.google.com/webstore/detail/ikgbhdaibkmehpeipbcooebkgpfegdbg",
+            "lastUpdated": "2024-03-15T14:35:00Z"
+        }
+    ]
+}
 ```
+
+### JSON Generation
+
+**Why**: The central repository releases.json serves as a distribution catalog for deployed sites to check for updates. It's generated by scanning repositories and existing ZIP files.
+
+#### Generation Process
+
+1. **Data Source**: PowerShell scripts scan repository directories and ZIP files
+2. **Generation Trigger**: JSON is regenerated after each successful release
+3. **PowerShell Functions**: Both release scripts generate complete releases.json with all repositories
+4. **No Parsing**: JSON is write-only, generated fresh each time as structured data
+
+#### JSON Structure
+```json
+{
+    "generated": "2024-03-15T14:30:00Z",
+    "plugins": [
+        {
+            "slug": "sip-plugins-core",
+            "name": "SiP Plugins Core",
+            "version": "2.3.0",
+            "downloadUrl": "https://updates.stuffisparts.com/download/sip-plugins-core-2.3.0.zip",
+            "lastUpdated": "2024-03-15T14:30:00Z"
+        }
+    ],
+    "extensions": [
+        {
+            "slug": "sip-printify-manager-extension",
+            "name": "SiP Printify Manager Extension",
+            "version": "1.0.0",
+            "downloadUrl": "https://updates.stuffisparts.com/download/sip-printify-manager-extension-1.0.0.zip",
+            "chromeStoreUrl": "https://chrome.google.com/webstore/detail/ikgbhdaibkmehpeipbcooebkgpfegdbg",
+            "lastUpdated": "2024-03-15T14:35:00Z"
+        }
+    ]
+}
+```
+
+### PowerShell String Building Best Practices
+
+**Why**: String concatenation in PowerShell creates new string objects repeatedly, leading to memory inefficiency and performance degradation. Building content all at once is cleaner and more maintainable.
+
+The PowerShell scripts use a two-phase approach to avoid concatenation:
+
+1. **Data Collection Phase**
+```powershell
+# Gather all repository data into structured objects
+function Get-PluginReleaseData {
+    $pluginData = @()
+    foreach ($plugin in $sipPlugins) {
+        $pluginInfo = @{
+            Name = $plugin.Name
+            Version = ""
+            FileName = ""
+            LastUpdated = ""
+            HasRelease = $false
+        }
+        # Populate data...
+        $pluginData += $pluginInfo
+    }
+    return $pluginData
+}
+```
+
+2. **Content Generation Phase**
+```powershell
+# Generate complete JSON from data structure
+function New-JsonContent {
+    param ([array]$PluginData, [array]$ExtensionData)
+    
+    $releaseData = @{
+        generated = (Get-Date).ToUniversalTime().ToString("yyyy-MM-dd'T'HH:mm:ss'Z'")
+        plugins = @()
+        extensions = @()
+    }
+    
+    foreach ($plugin in $PluginData) {
+        $releaseData.plugins += @{
+            slug = $plugin.Slug
+            name = $plugin.Name
+            version = $plugin.Version
+            downloadUrl = "https://updates.stuffisparts.com/download/$($plugin.FileName)"
+            lastUpdated = $plugin.LastUpdated
+        }
+    }
+    
+    foreach ($extension in $ExtensionData) {
+        $releaseData.extensions += @{
+            slug = $extension.Slug
+            name = $extension.Name
+            version = $extension.Version
+            downloadUrl = "https://updates.stuffisparts.com/download/$($extension.FileName)"
+            chromeStoreUrl = $extension.ChromeStoreUrl
+            lastUpdated = $extension.LastUpdated
+        }
+    }
+    
+    return $releaseData | ConvertTo-Json -Depth 10
+}
+```
+
+**Key Points**:
+- No string concatenation (`+=` on strings)
+- Data gathered first, then formatted
+- Sections collected in arrays, joined once
+- PowerShell here-strings for clean multi-line content
+- Same approach used in both `release-plugin.ps1` and `release-extension.ps1`
 
 ### Update Server Integration
-The README.md is automatically uploaded to `https://updates.stuffisparts.com/` after each release, allowing other systems to check for available updates.
+The releases.json is automatically uploaded to `https://updates.stuffisparts.com/` after each release, allowing other systems to check for available updates.
 
 ### Extension Upload API
 The update server API accepts both 'plugin_zip' and 'extension_zip' parameters to provide flexibility for different asset types.
@@ -480,6 +912,44 @@ curl -X POST \
 ```
 
 **Note**: The server accepts both 'plugin_zip' and 'extension_zip' parameters, automatically detecting the file type from either parameter name.
+
+## Chrome Web Store Integration
+
+### Overview
+Extensions can optionally be published to the Chrome Web Store as part of the release process. This provides users with automatic updates and easier installation through the Chrome Web Store.
+
+### Configuration
+Chrome Web Store publishing requires OAuth 2.0 credentials stored in `.env` file in the tools directory:
+
+**Location**: `/sip-development-tools/tools/.env`
+
+```env
+CHROME_CLIENT_ID=your-client-id
+CHROME_CLIENT_SECRET=your-client-secret  
+CHROME_REFRESH_TOKEN=your-refresh-token
+CHROME_EXTENSION_ID=your-extension-id
+```
+
+**Note**: The script looks for the .env file in its own directory (`$PSScriptRoot`), not the extension directory
+
+### Features
+- **Automatic Detection**: Script checks for credentials and skips if not configured
+- **Non-Blocking**: Chrome Web Store failures don't stop the release process
+- **Draft Support**: Use `-ChromeStoreDraft` parameter to upload without publishing
+- **Status Reporting**: Reports upload and publication status in logs
+
+### Module Architecture
+The `SiP-ChromeWebStore.psm1` module provides:
+- `Test-ChromeStoreConfig`: Validates configuration
+- `Get-ChromeAccessToken`: OAuth token exchange
+- `Upload-ToChromeWebStore`: ZIP upload via API
+- `Publish-ChromeExtension`: Publication control
+- `Get-ChromeExtensionStatus`: Status checking
+
+### Distribution Strategy
+1. **Update Server**: Primary distribution for manual installation
+2. **Chrome Web Store**: Secondary distribution for automatic updates
+3. **User Choice**: Dashboard shows install button (Chrome Store) and download button (manual)
 
 ## Logging
 
@@ -610,29 +1080,37 @@ $timeoutSeconds = 20;  // Git add/commit
      git pull origin develop
      ```
 
-3. **Authentication Failures**
+3. **Branch Divergence After Release**
+   - **Cause**: Step 16 (branch sync) failed during previous release
+   - **Solution**: `git checkout develop && git reset --hard master && git push origin develop --force-with-lease`
+
+4. **Merge Conflicts During Release**
+   - **Cause**: Conflicting changes between master and develop during sync
+   - **Solution**: `git checkout develop && git merge master` (resolve conflicts manually)
+
+5. **Authentication Failures**
    - Configure Git credentials
    - Use SSH keys or credential store
 
-4. **Central Repository Missing**
+6. **Central Repository Missing**
    - Ensure `sip-plugin-suite-zips` exists
    - Check directory permissions
 
 ### Debug Commands
 ```bash
+# Check branch divergence
+git rev-list --left-right --count master...develop
+
+# Verify branch sync (should be identical)
+git log --oneline -1 master
+git log --oneline -1 develop
+
 # Check Git identity
 git config user.name
 git config user.email
 
-# View branch status
-git branch -vv
-git status
-
-# Test Git connectivity
+# Test connectivity
 git ls-remote origin
-
-# Check PowerShell
-powershell -Command "Get-ExecutionPolicy"
 ```
 
 ## Security Considerations
@@ -665,7 +1143,7 @@ powershell -Command "Get-ExecutionPolicy"
    - PATCH: Bug fixes
 
 3. **Release Notes**:
-   - Update README/changelog
+   - Update changelog
    - Document breaking changes
    - Include migration guides
 
@@ -674,20 +1152,106 @@ powershell -Command "Get-ExecutionPolicy"
    - Test auto-update system
    - Monitor error logs
 
-## Code Standards Compliance
+### Key Functions for Debugging
 
-When implementing release management features, ensure compliance with SiP standards:
+```php
+// Get raw stored repository data
+$repos = get_option('sip_development_tools_repositories');
 
-1. **User Notifications**: Use `SiP.Core.utilities.toast` instead of `alert()`
-   - ✅ Toast notifications for user feedback
-   - ❌ Browser alerts (poor UX and styling)
+// Get repository with fresh file data
+$fresh = SiP_Repository_Manager::get_fresh_repository_info($repo);
 
-2. **Modal Dialogs**: Use SiP modal patterns
-   - ✅ Custom sip-modal class structure
-   - ✅ jQuery UI dialogs with sip-dialog class
-   - ❌ Native browser confirm/prompt dialogs
+// Check release history
+$history = get_option('sip_development_tools_release_history');
 
-3. **Error Handling**: Provide clear, actionable error messages
-   - ✅ Specific error context and recovery steps
-   - ✅ Modal dialogs for user choices
-   - ❌ Generic error messages
+// Force JSON regeneration
+$json = SiP_Repository_Manager::generate_releases_json();
+```
+
+### Data Flow Debugging
+
+1. **Add Repository**: Check `extract_repository_info()` detects type
+2. **Display Table**: Verify `get_release_repositories()` merges data correctly  
+3. **Create Release**: Ensure `sip_check_release_status()` updates on completion
+4. **View Updates**: Confirm JSON generation includes all active repos
+
+#### Extension Version Not Updating After Release
+**Symptom**: Extension version shows blank in table after AJAX refresh but appears on page reload
+**Cause**: Duplicate file reading without proper UTF-8 BOM handling
+**Solution**: `sip_get_plugin_data` now reuses data from `get_fresh_repository_info()` instead of re-reading manifest.json
+
+### PowerShell Script Best Practices
+
+#### Git Command Execution
+**Pattern**: Use `git -C <path>` for commands in different directories
+```powershell
+# Correct - works reliably through cmd /c
+$isRepo = Invoke-GitCommandWithTimeout -Command "git -C `"$RepoPath`" rev-parse --is-inside-work-tree"
+
+# Incorrect - fails with cmd /c execution
+$isRepo = Invoke-GitCommandWithTimeout -Command "Set-Location '$RepoPath'; git rev-parse --is-inside-work-tree"
+```
+
+#### Clean Logging
+**Pattern**: Use exit codes for success/failure determination
+```powershell
+function Invoke-GitCommandWithTimeout {
+    # Run command and capture output
+    $output = & cmd /c "$Command 2>&1"
+    $exitCode = $LASTEXITCODE
+    
+    if ($exitCode -eq 0) {
+        Write-LogEntry "$Description completed successfully" "INFO" -Timing
+        return $output  # Return actual output on success
+    } else {
+        Write-LogEntry "$Description failed with exit code $exitCode" "ERROR"
+        return $false   # Return false on failure
+    }
+}
+```
+
+**Why**: Git uses stderr for informational messages, not just errors. Exit codes provide reliable success/failure indication.
+
+#### Suppress Progress Output
+**Pattern**: Add `-s` flag to curl commands
+```powershell
+$curlArgs = @(
+    "-s",  # Silent mode - no progress meter
+    "-k",  # Skip SSL verification
+    "-X", "POST",
+    # ... rest of arguments
+)
+```
+
+#### Shared Functions in Modules
+**Pattern**: Common functions belong in shared modules
+```powershell
+# In SiP-ReleaseUtilities.psm1
+function Invoke-GitCommandWithTimeout {
+    # Shared implementation
+}
+Export-ModuleMember -Function Invoke-GitCommandWithTimeout
+
+# In release scripts
+Import-Module (Join-Path -Path $PSScriptRoot -ChildPath "SiP-ReleaseUtilities.psm1") -Force
+# Function is now available without duplication
+```
+
+**Why**: Prevents code duplication and ensures consistent behavior across scripts
+
+#### Variable Scoping
+**Pattern**: Define shared resources at script level
+```powershell
+# Script-level variables for resources used across functions
+$script:startTime = Get-Date
+$script:envFilePath = Join-Path -Path $PSScriptRoot -ChildPath ".env"
+
+# Access from anywhere in the script
+function SomeFunction {
+    Write-LogEntry "Using .env at: $script:envFilePath" "INFO"
+    $apiKey = Get-ApiKey -KeyName "API_KEY" -EnvFilePath $script:envFilePath
+}
+```
+
+**Why**: Prevents variable scope issues and provides single source of truth for shared resources
+

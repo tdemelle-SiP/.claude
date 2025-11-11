@@ -11,6 +11,7 @@ This guide documents the UI components and browser storage patterns used in SiP 
 - [Spinner and Overlay](#spinner-and-overlay)
 - [Modals and Dialogs](#modals-and-dialogs)
 - [Progress Indicators](#progress-indicators)
+- [Extension Installer](#extension-installer)
 - [Buttons and Controls](#buttons-and-controls)
 - [Form Elements](#form-elements)
   - [Enhanced Select](#enhanced-select)
@@ -460,333 +461,247 @@ function riskyOperation() {
 
 ## Modals and Dialogs
 
-For dashboard integration examples, see the [Dashboards Guide](./sip-plugin-dashboards.md#step-6-add-modal-dialogs).
+The SiP platform provides two primary dialog systems:
 
-### jQuery UI Dialog
+1. **SiP Modal System** - For general purpose modals with state persistence
+2. **Progress Dialog System** - For batch operations with progress tracking
 
-#### Basic Modal
+For progress dialog implementation, see the [Progress Dialog Guide](./sip-core-feature-progress-dialog.md).
+
+### SiP Modal System
+
+**Why**: WordPress admin needs consistent, feature-rich modals that maintain state across sessions. The SiP modal system provides draggable, resizable modals with automatic position/size persistence.
+
+**Related Documentation**:
+- [CSS Architecture](./sip-development-css.md#modal-styles) - Modal CSS organization
+- [Data Storage](./sip-plugin-data-storage.md#modal-state-management) - State persistence patterns
+- [Z-Index Management](./sip-development-css.md#z-index-management) - Modal stacking order
+
+#### Modal API
+
+SiP Core provides a unified modal utility with full feature set:
+
 ```javascript
-const $dialog = $('<div>Content</div>').dialog({
-    modal: true,
-    width: 400,
-    title: 'Dialog Title',
-    dialogClass: 'sip-dialog',
-    buttons: {
-        'OK': function() { $(this).dialog('close'); },
-        'Cancel': function() { $(this).dialog('close'); }
+// Create a modal with full features
+const modal = SiP.Core.modal.create({
+    id: 'my-modal',                    // Unique identifier
+    title: 'Modal Title',              // Modal title
+    content: '<p>Modal content</p>',   // HTML content
+    draggable: true,                   // Enable dragging (default: true)
+    resizable: true,                   // Enable resizing (default: true)
+    saveState: true,                   // Save position/size (default: true)
+    stateKey: 'my-modal-state',        // Custom storage key (optional)
+    width: 600,                        // Initial width (default: 600)
+    height: 'auto',                    // Initial height (default: 'auto')
+    minWidth: 300,                     // Minimum width (default: 300)
+    minHeight: 200,                    // Minimum height (default: 200)
+    confirmText: 'Save',               // Primary button text
+    cancelText: 'Cancel',              // Cancel button text
+    showFooter: true,                  // Show footer buttons (default: true)
+    onConfirm: function(controller) {  // Confirm callback
+        // Handle confirmation
+        controller.destroy();
     },
-    close: function() { $(this).dialog('destroy').remove(); }
+    onCancel: function(controller) {   // Cancel callback
+        // Handle cancellation
+        controller.destroy();
+    }
+});
+
+// Modal controller methods
+modal.show();                          // Show modal
+modal.hide();                          // Hide modal
+modal.updateContent(html);             // Update content
+modal.updateTitle(text);               // Update title
+modal.center();                        // Center on screen
+modal.destroy();                       // Destroy and cleanup
+```
+
+#### State Persistence
+
+Modal position and size are automatically saved to localStorage under the `sip-core` namespace:
+
+```javascript
+{
+  "sip-core": {
+    "sip-modal-states": {
+      "my-modal-state": {
+        "position": { "top": 100, "left": 200 },
+        "size": { "width": 800, "height": 600 },
+        "timestamp": 1234567890
+      }
+    }
+  }
+}
+```
+
+#### Simple Modal Example
+
+```javascript
+// Basic confirmation modal
+SiP.Core.modal.create({
+    title: 'Confirm Action',
+    content: '<p>Are you sure you want to proceed?</p>',
+    onConfirm: function(modal) {
+        performAction();
+        modal.destroy();
+    }
 });
 ```
 
-#### Standard Classes
-- `sip-dialog` - Base class (required)
-- `progress-dialog` - For progress dialogs
-- `log-dialog` - For log viewers
+#### Complex Modal Example
 
-### Progress Dialog Pattern
-
-For complete progress dialog implementation, see the [Progress Dialog Guide](./sip-feature-progress-dialog.md).
-
-#### Structure
 ```javascript
-const dialogContent = `
-    <div class="sip-dialog progress-dialog">
-        <div class="initial-message">
-            <p>Ready to proceed?</p>
-            <div class="dialog-buttons">
-                <button class="continue-button">Continue</button>
-                <button class="cancel-button">Cancel</button>
-            </div>
-        </div>
-        <div class="progress-content" style="display: none;">
-            <div class="progress-bar">
-                <div class="progress-fill" style="width: 0%"></div>
-            </div>
-            <div class="current-step">Starting...</div>
-            <div class="status-log"></div>
-        </div>
+// Feature-rich modal with custom content
+const content = `
+    <div class="my-feature">
+        <p>Select options:</p>
+        <label><input type="checkbox" id="option1"> Option 1</label>
+        <label><input type="checkbox" id="option2"> Option 2</label>
     </div>
 `;
-```
 
-#### Controller Pattern
-```javascript
-function createProgressDialog() {
-    const $dialog = $(dialogContent).dialog({
-        modal: false,
-        width: 600,
-        dialogClass: 'sip-dialog progress-dialog',
-        closeOnEscape: false
-    });
-    
-    const controller = {
-        onContinue: (callback) => { /* store callback */ },
-        onCancel: (callback) => { /* store callback */ },
-        startProcess: () => {
-            $dialog.find('.initial-message').hide();
-            $dialog.find('.progress-content').show();
-        },
-        updateProgress: (percent) => {
-            $dialog.find('.progress-fill').css('width', `${percent}%`);
-        },
-        updateStatus: (message) => {
-            $dialog.find('.current-step').text(message);
-            $dialog.find('.status-log').append(`<div>${message}</div>`);
-        },
-        showError: (message) => {
-            $dialog.find('.status-log').append(
-                `<div class="error-message">${message}</div>`
-            );
-        },
-        close: () => $dialog.dialog('destroy').remove()
-    };
-    
-    return controller;
-}
-```
-
-### Custom SiP Modal Pattern
-
-**Why**: jQuery UI dialogs have limited styling options and don't match WordPress admin aesthetics. Custom modals provide consistent branding and better mobile responsiveness.
-
-#### Structure
-```html
-<div id="custom-modal" class="sip-modal">
-    <div class="sip-modal-content">
-        <div class="sip-modal-header">
-            <span class="sip-modal-close">&times;</span>
-            <h2>Modal Title</h2>
-        </div>
-        <div class="sip-modal-body">
-            <!-- Content goes here -->
-        </div>
-        <div class="sip-modal-footer">
-            <button class="button button-primary">Primary Action</button>
-            <button class="button button-secondary">Cancel</button>
-        </div>
-    </div>
-</div>
-```
-
-#### Implementation Example
-```javascript
-// Create and show custom modal
-function showCustomModal(title, content, onConfirm, onCancel) {
-    var modalHtml = `
-        <div class="sip-modal-content">
-            <div class="sip-modal-header">
-                <span class="sip-modal-close">&times;</span>
-                <h2>${title}</h2>
-            </div>
-            <div class="sip-modal-body">
-                ${content}
-            </div>
-            <div class="sip-modal-footer">
-                <button id="modal-confirm" class="button button-primary">Confirm</button>
-                <button id="modal-cancel" class="button button-secondary">Cancel</button>
-            </div>
-        </div>
-    `;
-    
-    // Check if modal container exists, create if not
-    var $modal = $('#sip-custom-modal');
-    if ($modal.length === 0) {
-        $modal = $('<div id="sip-custom-modal" class="sip-modal"></div>');
-        $('body').append($modal);
+const modal = SiP.Core.modal.create({
+    id: 'feature-modal',
+    title: 'Feature Configuration',
+    content: content,
+    width: 800,
+    minWidth: 600,
+    minHeight: 400,
+    stateKey: 'feature-config-modal',
+    onConfirm: function(controller) {
+        const option1 = $('#option1').is(':checked');
+        const option2 = $('#option2').is(':checked');
+        saveConfiguration(option1, option2);
+        controller.destroy();
     }
-    
-    // Set content and show
-    $modal.html(modalHtml).show();
-    
-    // Attach event handlers
-    $('#modal-confirm').on('click', function() {
-        $modal.hide();
-        if (onConfirm) onConfirm();
-    });
-    
-    $('#modal-cancel, .sip-modal-close').on('click', function() {
-        $modal.hide();
-        if (onCancel) onCancel();
-    });
-    
-    // Close on outside click
-    $(window).on('click.sipModal', function(e) {
-        if ($(e.target).is('#sip-custom-modal')) {
-            $modal.hide();
-            $(window).off('click.sipModal');
-            if (onCancel) onCancel();
-        }
-    });
-}
+});
+```
+
+#### Utility Methods
+
+```javascript
+// Get all active modals
+const activeModals = SiP.Core.modal.getActiveModals();
+
+// Close all modals
+SiP.Core.modal.closeAll();
+
+// Clear all saved modal states
+SiP.Core.modal.clearAllStates();
 ```
 
 #### CSS Requirements
+
+The base CSS for the sip-modal pattern is provided by SiP Plugins Core and loaded automatically when using `sip_core_load_platform()`. The styles are defined in `/sip-plugins-core/assets/css/modals.css`.
+
+**Key CSS Classes Provided:**
+- `.sip-modal` - Modal backdrop with z-index: var(--z-modal, 10000)
+- `.sip-modal-content` - Modal container with max-width: 700px
+- `.sip-modal-header` - Header with primary color background
+- `.sip-modal-body` - Scrollable content area (fills available space in resizable modals)
+- `.sip-modal-footer` - Footer with right-aligned buttons
+- `.sip-modal-close` - Close button positioned in header
+- `.sip-modal-dragging` - Applied during drag operations for performance
+- `.sip-modal-resizing` - Applied during resize operations for performance
+
+**Important Architecture Notes:**
+- See [CSS Development - Z-Index Management](./sip-development-css.md#z-index-management) for the complete z-index scale
+- See [CSS Development - Component Architecture](./sip-development-css.md#component-architecture) for BEM naming patterns
+- See [Plugin Architecture - CSS Architecture](./sip-plugin-architecture.md#css-architecture) for understanding Core vs. plugin CSS
+
+**Note**: Individual plugins should not duplicate these base styles. If custom styling is needed, extend the base classes with plugin-specific modifiers following BEM methodology (e.g., `.sip-modal--large`, `.sip-modal-header--warning`).
+
+#### Modal Behavior
+
+**Resizable Modals:**
+- No maximum size limits - users can resize as large as needed
+- Modal body automatically adjusts to fill available space
+- Content scrolls within modal body (single scrollbar)
+- Footer positioned absolutely at bottom to ensure button accessibility
+- Body height accounts for footer to prevent overlap
+
+**Performance Optimizations:**
+- GPU acceleration enabled for smooth dragging/resizing
+- Performance classes added during drag/resize operations
+- Images use optimized rendering during movement
+- No animations during resize for snappier response
+
+**Interaction:**
+- Modals close only via close button (×) or action buttons
+- Click-outside-to-close disabled to prevent accidental closure during resize
+- Escape key closes modal (can be disabled with `closeOnEscape: false`)
+
+#### jQuery UI Positioning Requirements
+
+**Why**: jQuery UI's draggable and resizable components calculate positions based on the element's actual CSS position properties (`top`, `left`). CSS transforms interfere with these calculations, causing offset issues during drag/resize operations.
+
+**Critical Rule**: Never use CSS `transform` for centering jQuery UI draggable/resizable elements.
+
+**❌ Incorrect Pattern - CSS Transform Centering:**
 ```css
-.sip-modal {
-    display: none;
+/* This breaks jQuery UI positioning */
+.modal-content {
     position: fixed;
-    z-index: var(--sip-pm-z-modal, 2000); /* Use CSS variable, fallback to 2000 */
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    overflow: auto;
-    background-color: rgba(0,0,0,0.4);
-}
-
-.sip-modal-content {
-    background-color: #fefefe;
-    margin: 10% auto;
-    padding: 0;
-    border: 1px solid #888;
-    width: 80%;
-    max-width: 600px;
-    border-radius: 5px;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-}
-
-.sip-modal-header {
-    padding: 15px 20px;
-    background-color: #f1f1f1;
-    border-bottom: 1px solid #ddd;
-    position: relative;
-}
-
-.sip-modal-close {
-    color: #aaa;
-    float: right;
-    font-size: 28px;
-    font-weight: bold;
-    cursor: pointer;
-    line-height: 20px;
-}
-
-.sip-modal-close:hover,
-.sip-modal-close:focus {
-    color: #000;
-}
-
-.sip-modal-body {
-    padding: 20px;
-}
-
-.sip-modal-footer {
-    padding: 15px 20px;
-    background-color: #f1f1f1;
-    border-top: 1px solid #ddd;
-    text-align: right;
-}
-
-.sip-modal-footer button {
-    margin-left: 10px;
-}
-```
-
-### Common Modal Patterns
-
-#### Confirmation Dialog
-```javascript
-const $dialog = $('<div>Are you sure?</div>').dialog({
-    modal: true,
-    title: 'Confirm',
-    dialogClass: 'sip-dialog',
-    buttons: {
-        'Yes': function() {
-            performAction();
-            $(this).dialog('close');
-        },
-        'No': function() {
-            $(this).dialog('close');
-        }
-    }
-});
-```
-
-#### Save Dialog with Options
-```javascript
-const content = `
-    <div class="sip-dialog">
-        <p>Save changes?</p>
-        <div class="dialog-buttons">
-            <button class="push-close">Save & Close</button>
-            <div class="button-group">
-                <button class="save-button">Save</button>
-                <button class="cancel-button">Cancel</button>
-            </div>
-        </div>
-    </div>
-`;
-
-const $dialog = $(content).dialog({
-    modal: true,
-    dialogClass: 'sip-dialog',
-    create: function() {
-        $(this).find('.save-button').on('click', () => {
-            save();
-            $dialog.dialog('close');
-        });
-    }
-});
-```
-
-### Key CSS
-
-#### Dialog Z-Index
-```css
-:root {
-    --z-overlay: 9998;
-    --z-spinner: 9999;
-    --z-dialog: 10000;
-    --z-toast: 10001;
-}
-```
-
-#### Toast Container
-```css
-#toast-container {
-    position: fixed;
-    top: 35%;
+    top: 50%;
     left: 50%;
-    transform: translate(-50%, -50%);
-    z-index: var(--z-toast);
+    transform: translate(-50%, -50%); /* Breaks drag/resize calculations */
 }
 ```
 
-### Required Actions
-
-#### Always Clean Up Dialogs
+**✅ Correct Pattern - Calculated Position:**
 ```javascript
-close: function() {
-    $(this).dialog('destroy').remove();
+function centerModalWithoutTransform($modalContent) {
+    const windowWidth = $(window).width();
+    const windowHeight = $(window).height();
+    const modalWidth = $modalContent.outerWidth();
+    const modalHeight = $modalContent.outerHeight();
+    
+    // Calculate center position
+    const top = Math.max(20, (windowHeight - modalHeight) / 2);
+    const left = Math.max(20, (windowWidth - modalWidth) / 2);
+    
+    $modalContent.css({
+        position: 'fixed',
+        top: top,
+        left: left,
+        transform: 'none', // Explicitly remove any transforms
+        margin: 0
+    });
 }
 ```
 
-#### Use Custom Overlay
+**Key Points:**
+- Use calculated `top` and `left` values for positioning
+- Remove all CSS transforms from draggable/resizable elements
+- Add viewport constraints to prevent modals from being positioned off-screen
+- Set `will-change: top, left, width, height` instead of `will-change: transform`
+
+**Example Implementation:**
 ```javascript
-$('#overlay').show();  // Instead of jQuery UI modal overlay
+// Initialize jQuery UI with proper positioning
+$('.modal-content').draggable({
+    handle: '.modal-header',
+    start: function(event, ui) {
+        // Ensure no transforms during drag
+        $(this).css('transform', 'none');
+    }
+}).resizable({
+    minWidth: 300,
+    minHeight: 200,
+    handles: 'all'
+});
+
+// Center without transforms
+centerModalWithoutTransform($('.modal-content'));
 ```
 
-#### Error Handling
-```javascript
-dialog.showError(error.message);
-SiP.Core.utilities.toast.show('Error: ' + error.message, 5000);
-```
-
-### Modal Checklist
-
-- [ ] Use `sip-dialog` class on all dialogs
-- [ ] Clean up with `destroy().remove()` 
-- [ ] Use `SiP.Core.utilities.toast.show()` for notifications
-- [ ] Progress dialogs follow controller pattern
-- [ ] Custom overlay for non-modal dialogs
-- [ ] Error messages longer duration (5000ms)
-- [ ] Success messages standard duration (3000ms)
+This pattern ensures smooth dragging and resizing without the offset issues caused by CSS transforms.
 
 ## Progress Indicators
 
 ### Progress Dialog
-See [Progress Dialog Guide](sip-feature-progress-dialog.md) for batch processing with progress tracking.
+See [Progress Dialog Guide](sip-core-feature-progress-dialog.md) for batch processing with progress tracking.
 
 ### Simple Progress Bar
 ```javascript
@@ -801,6 +716,51 @@ function updateProgress(current, total) {
     $('.progress-bar').css('width', percentage + '%');
 }
 ```
+
+## Extension Installer
+
+The centralized browser extension installer provides a consistent installation experience across all SiP plugins.
+
+### Usage
+```javascript
+// Basic usage - opens installation wizard
+SiP.Core.extensionInstaller.showWizard({
+    name: 'Extension Name',
+    slug: 'extension-slug',
+    extensionPath: '/path/to/extension'  // For manual install
+});
+
+// Chrome Web Store installation
+SiP.Core.extensionInstaller.showWizard({
+    name: 'Extension Name',
+    chromeStoreUrl: 'https://chrome.google.com/webstore/detail/...'
+});
+```
+
+### Features
+- **Step-by-step wizard**: Guides users through manual installation process
+- **Chrome Web Store support**: Direct link to store when available
+- **Cross-browser detection**: Adapts instructions for different browsers
+- **Automatic fallback**: Manual instructions when store not available
+
+### Implementation Details
+The extension installer is part of SiP Plugins Core and loaded automatically via the platform loader. It uses the SiP Core modal system for the wizard interface with custom styling to match WordPress admin.
+
+### Integration Pattern
+```javascript
+// In plugin dashboard or button handler
+if (window.SiP.Core.extensionInstaller) {
+    // Use core installer
+    window.SiP.Core.extensionInstaller.showWizard(options);
+} else if (window.SiP.PluginName?.browserExtension) {
+    // Fallback to plugin-specific installer
+    window.SiP.PluginName.browserExtension.showInstallationWizard();
+} else {
+    // No installer available
+    SiP.Core.utilities.toast.show('Extension installer not available', 'error');
+}
+```
+
 
 ## Buttons and Controls
 
@@ -1243,7 +1203,7 @@ function updateGroupCheckboxState(groupId) {
 
 ### Non-DataTables Table Refresh
 
-For simple tables that don't use DataTables (see [DataTables Integration](sip-feature-datatables.md) for complex data tables), use server-side rendering for clean updates:
+For simple tables that don't use DataTables (see [DataTables Integration](sip-core-feature-datatables.md) for complex data tables), use server-side rendering for clean updates:
 
 #### Why This Pattern Exists
 - **Avoids duplication**: HTML structure exists only in PHP

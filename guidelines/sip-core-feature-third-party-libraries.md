@@ -188,7 +188,7 @@ This includes:
   - `mode/` (syntax highlighting for XML, JS, CSS, HTML)
 - **Dependencies**: jQuery
 - **Size**: ~230KB total
-- **Documentation**: See [CodeMirror Integration Guide](./sip-feature-codemirror.md)
+- **Documentation**: See [CodeMirror Integration Guide](./sip-core-feature-codemirror.md)
 
 ## Best Practices
 

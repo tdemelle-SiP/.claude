@@ -1,0 +1,45 @@
+SIP PLUGINS CORE DASHBOARD - PLUGIN AND EXTENSION TABLE VISION DOC
+
+When the sip plug-ins core dashboard first loads... 
+  
+	We should see the spinner spinning while it works
+	
+	Storage with available installers and their status should be purged
+	
+	Data from the readme file on the update server should be retrieved - getAvailableInstallers should be created and should get the entire contents of the readme and parse it into a Json array that can be used to create the Plugins and the Extensions Tables in the sip plugins core dashboard - installationsTablesData
+	
+	installation status of available plugins referenced in the readme should be retrieved from wordpress and installed plugin status should be appended to the json array
+
+	A request should go out for installed extensions to announce their presence and status. (It probably makes sense to remove the announcement from the extension on page load in this context and rely on the response to the request for presence).  installed extension responses should be appended to the json array.
+
+ Once this data is all assembled the plugins table and the extensions table should be created together showing all available installers and their status . renderInstallersTables  
+ 
+ The installationsTablesData json should be stored according to the appropriate documented sip data storage conventions
+ 
+ This should happen whenever the page is loaded/reloaded.
+ 
+ If there is an event that changes the status of an installer on the page like if a plugin is installed, activated or deactivated, that status change should be appended to the stored json data and then the stored data should be retrieved and the tables refreshed.  refreshInstallersTables
+ 
+ The only event that could happen that would update the status of an installer that the page wouldn't necessarily detect would be the removal of a chrome extension.  If this happens, unless there's a way to detect a chrome extension has been removed and trigger a page refresh, the user will just have to reload the page to see the extension status updated
+ 
+ This is it.  Just this simple.  Unless there'a s hole in this architecture, this should be implemented and all the old implementation removed from code, comments and documentation.
+ 
+ -------
+ 
+ Earlier proto-notes...
+ 
+ since get_available_plugins gets both plugins and extensions, let's rename it to get_available_installers and rename the storage variable from availablePlugins to availableInstallers.
+
+if loadPluginsTable also includes both plugins and extensions, it should be renamed loadInstallersTables
+
+is there a reason at that point that we're calling two functions to render the Plugins and Extensions tables separately?  Could we combine them into a renderInstallersTables?
+
+I don't see any reason why the plugin update sequence can't just refresh the whole installers table if that means we can just keep things simple and use the same code for the refresh.
+
+So the question I ask you is... why not just use renderInstallersTables to draw both tables at once and refreshInstallersTables to refresh both tables at once?
+
+can the message received in setupExtensionDetection be stored in window.sipInstallerState?
+
+and then renderInstallersTables(availableInstallers || {}) or something? I may be butchering that, I'm not a coder.
+ 
+ 

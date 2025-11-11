@@ -60,21 +60,36 @@ When a template is loaded, related rows are highlighted:
 
 #### Blueprint Mockups
 Blueprint rows can display mockup buttons that allow users to:
-- View existing mockups in a PhotoSwipe gallery with thumbnail index
+- View existing mockups in a draggable/resizable modal gallery
+- Gallery displays mockup thumbnails at 100px height in a grid layout
+- Click thumbnails to open full-size images in PhotoSwipe lightbox
 - Fetch mockups from Printify via the browser extension (requires extension v4.3.0+)
+
+**Template Preview Row:**
+- Location: Dashboard beneath shop name header
+- Display: Horizontal scrollable row of 128x128 template preview images
+- Content: 
+  - Blueprint name above image
+  - First mockup image from template's parent product
+  - Child product count below image
+  - 128px x 3px status meter showing work progress proportions
+- Interaction: Click to load template into creation table
+- Styling: 20px spacing between items, centered layout
 
 **Mockup Storage:**
 - Location: `/wp-content/uploads/sip-printify-manager/mockups/{blueprint_id}/`
 - Files: Individual `.jpg` images and `metadata.json`
 - Detection: Only blueprints with actual image files are considered to have mockups
 - Cleanup: Incomplete folders (metadata without images) are automatically cleaned
+- Optimization: Blueprint names are stored in metadata.json (v1.3.0+) to avoid database lookups during display
+- Caching: Blueprint data uses request-level caching via `sip_get_cached_blueprints()`
 
 **Mockup Button States:**
 - No button: Blueprint has no mockup images
 - Gallery icon: Mockup images available for viewing
 - Button appears in 4th TD cell of blueprint summary rows
 
-**Implementation:**
+**Mockup Implementation:**
 - Module: `mockup-actions.js`
 - Detection: `sip_get_existing_blueprint_mockups()` checks for `.jpg` files
 - Button creation: `createMockupButtonHtml()` - icon-only button
@@ -82,6 +97,17 @@ Blueprint rows can display mockup buttons that allow users to:
 - Gallery display: `displayMockupGallery()` - hybrid thumbnail grid + PhotoSwipe
 - Cleanup utility: `cleanupIncompleteMockups()` - removes incomplete downloads
 - Extension integration: Requires `mockupFetching` capability
+- Frontend optimization: Blueprint names pass through from DOM data, avoiding redundant database lookups
+- Functions updated for efficiency:
+  - `fetchMockupsForBlueprint(blueprintId, blueprintName, dialog)` - accepts name parameter
+  - `getProductForBlueprint(blueprintId, blueprintName)` - uses passed name when available
+
+**Template Preview Implementation:**
+- Module: `template-actions.js`
+- Data function: `sip_get_template_preview_data()` - uses `sip_load_templates()` to get complete template data with parent product images
+- Render function: `renderTemplatePreviewRow()` - builds preview items dynamically
+- Click handler: `handleTemplatePreviewClick()` - loads template into creation table
+- Status meter: `createStatusMeter()` - visual representation of child product statuses using the status field from each child product
 
 #### Implementation
 - Main file: `product-actions.js`
@@ -97,18 +123,127 @@ Manages templates that define product structures for creation.
 ### Architecture
 - Standard DataTables implementation
 - Single-level table (no grouping)
-- Server-side data loading
+- Client-side data processing
 
 ### Data Structure
-Templates use a standardized data structure:
+Templates are loaded using `sip_load_templates()` which returns complete template data including all child products:
 ```javascript
 {
     'basename': 'template_name',        // Identifier without extension
     'filename': 'template_name.json',   // Full filename
     'title': 'Display Title',           // User-friendly name
-    'template_title': 'Display Title'   // Legacy field
+    'template_title': 'Display Title',  // Legacy field
+    'source_product_id': '...',         // Parent product ID
+    'child_products': [                 // ALL child products
+        {
+            'child_product_id': '...',
+            'child_product_title': '...',
+            'printify_product_id': '...', // May be empty for WIP
+            'status': 'wip|unpublished|published'
+        }
+    ]
 }
 ```
+
+### Template Data Loading
+**Single Source Function**: `sip_load_templates()`
+- Loads complete template JSON files without filtering
+- Returns all child products regardless of status
+- Used by template table, template preview row, and all other template data needs
+- Child product filtering for product table highlighting happens client-side in JavaScript
+
+### Template Data Forms and Flow
+
+The template system uses different data structures for different purposes:
+
+#### 1. Full Template Data (`masterTemplateData.templates`)
+- **Source**: `sip_load_templates()` PHP function
+- **Contains**: Complete template data including all child products
+- **Used for**: DataTable display, accessing child products for operations
+- **Available via**: `window.masterTemplateData.templates`
+- **Structure**: Array of template objects with full data
+
+#### 2. Template Row Data (`rowData`)
+- **Source**: DataTable row selection
+- **Contains**: Single template's data from DataTable
+- **Used for**: Identifying which template was clicked/selected
+- **Available in**: Event handlers only
+- **Structure**: Same as full template but scoped to one template
+
+#### 3. Minimal Template Data (`templateData` parameter)
+- **Source**: Extracted from rowData in event handlers
+- **Contains**: Usually just `basename` and `title`
+- **Used for**: Passing template identity to functions
+- **Structure**: `{ basename: "name", title: "Title" }`
+
+#### 4. Template Preview Row Data (`templatePreviewRowData`)
+- **Source**: `sip_get_template_preview_row_data()` PHP function
+- **Contains**: Summary data for visual preview display ONLY
+- **Used for**: Rendering the template preview row above dashboard
+- **Available via**: `window.sipPrintifyManagerData.templatePreviewRowData`
+- **Structure**: 
+  ```javascript
+  {
+      template_basename: "name",
+      template_title: "Title",
+      preview_image: "url",
+      blueprint_name: "Blueprint",
+      child_product_stats: {
+          total: 10,
+          wip: 3,
+          unpublished: 5,
+          published: 2
+      }
+  }
+  ```
+- **Important**: Does NOT contain child_products array
+
+#### Data Flow Best Practices
+1. Always use `masterTemplateData.templates` as the source of truth for full template data
+2. Use minimal templateData parameters for function calls (just basename/title)
+3. Look up full data when needed using basename as the key
+4. Never use templatePreviewRowData for anything except the preview row display
+
+### Template Mockup Selection
+
+Templates store mockup preferences using Printify's native images array format:
+
+#### Data Structure
+Templates use Printify's images array for mockup selection:
+```javascript
+{
+    'basename': 'template_name',
+    'filename': 'template_name.json',
+    'title': 'Display Title',
+    'template_title': 'Display Title',
+    'source_product_id': '...',
+    'blueprint_id': '...',
+    'images': [  // Printify's native format
+        {
+            'src': 'https://images.printify.com/mockup/{blueprint_id}/{variant_id}/{design_id}/filename.jpg?camera_label=front',
+            'variant_ids': [12100, 12101, 12102], // Size variants for this color only
+            'position': 'other',
+            'is_default': true,  // Only one per product
+            'is_selected_for_publishing': true,
+            'order': null
+        }
+        // One entry per color/mockup combination
+    ],
+    'child_products': [...]
+}
+```
+
+**Variant ID Grouping:**
+- Each mockup entry represents one color/mockup combination
+- `variant_ids` contains only the size variants for that specific color
+- URL uses the numerically lowest variant ID from the group
+- System automatically expands single mockup selection to multiple color entries
+
+#### Why This Architecture
+- **Native format**: Uses Printify's exact structure, no transformation needed
+- **Single source of truth**: Images array is preserved from source products and maintained throughout
+- **Template-level control**: Mockup preferences apply to all products created from template
+- **Printify API limitation**: Public API doesn't support mockup management, requires browser extension
 
 ### Special Features
 
@@ -116,6 +251,31 @@ Templates use a standardized data structure:
 - Load into Creation Table action
 - Creates WIP file from template
 - Triggers cross-table highlighting
+
+#### Mockup Selection Interface
+Template thumbnails are clickable with instant CSS tooltips:
+- **Thumbnail click**: Opens modal dialog showing available blueprint mockups
+- **Modal features**: Draggable, resizable with state persistence using SiP.Core.modal
+- **Scene-based selection**: 
+  - Mockups grouped by scene (Front, Back, Left, Right, etc.)
+  - Scene-level checkboxes select/deselect all color variants for that scene
+  - Default scene radio button for primary image selection
+  - Color swatches below default scene for primary color selection
+- **Instant tooltips**: CSS-based tooltips appear immediately on hover
+- **Data persistence**: Selected mockups saved in Printify's native format with variant_ids populated
+- **PhotoSwipe integration**: Click thumbnails in modal to view full-size images
+
+**Implementation:**
+- Module: `template-actions.js` - handles UI and AJAX calls
+- Table column: Third column with 80px width, icon-only buttons
+- Button classes: `.sip-pm-mockup-icon-button` with `.has-selection` modifier
+- Modal Dialog: Uses `SiP.Core.modal.create()` with draggable/resizable features
+- Backend: `sip_get_template_mockup_data()` - retrieves mockup data and `sip_save_template_mockup_selection()` - saves to template JSON
+- CSS: Modal base styles from SiP Core, mockup grid styles and color swatches in plugin's `modals.css`
+- Thumbnails: Mockups display at 80px height in compact grid layout
+- Scene grouping: `groupMockupsByScene()` organizes mockups by camera label
+- Color extraction: `extractColorOptions()` gets unique colors from mockups
+- Extension sync: Uses scene names via URL parameters for mockup updates (see [Scene-Based Selection Implementation](./sip-printify-manager-extension-widget-v3.md#78-scene-based-selection-implementation-details))
 
 #### Dynamic Row Highlighting
 When a template is loaded:
@@ -125,6 +285,392 @@ When a template is loaded:
 - Main file: `template-actions.js`
 - Highlighting function: `updateTemplateTableHighlights()`
 - Action handler: `handleTemplateActionFormSubmit()`
+- Mockup selection: `handleMockupSelectionAction()`
+
+## Product Publishing System
+
+### Overview
+The product publishing system allows users to publish unpublished products to their Printify shop. Since the Printify Public API doesn't support publishing, this functionality uses the browser extension to make internal API calls.
+
+### Architecture
+
+#### Publishing Workflow
+1. **User initiates publishing**: From product table or after mockup updates
+2. **Progress dialog appears**: Shows batch publishing interface
+3. **Extension communication**: WordPress sends publish requests to extension
+4. **Internal API calls**: Extension makes Printify internal API calls
+5. **Status updates**: Real-time progress reported back to WordPress
+6. **Database updates**: Product status changed to `published` after success
+
+#### Why This Architecture
+- **API limitation**: Printify Public API has no publish endpoint
+- **Browser access required**: Internal API requires authenticated browser session
+- **Batch efficiency**: Publishing multiple products in single operation
+- **Progress visibility**: Users see real-time status during long operations
+
+### Implementation Components
+
+#### Frontend
+- **Module**: `product-actions.js` - adds publish actions to product table
+- **Progress Dialog**: Uses `SiP.Core.progressDialog` for batch operations
+- **Status Management**: Updates product status to `publish_in_progress` then `published`
+
+#### Backend
+- **AJAX Handler**: `sip_handle_product_publish()` in `product-functions.php`
+- **Status Updates**: Uses `SiP_Product_Status` class constants
+- **Extension Message**: Sends `SIP_PUBLISH_PRODUCTS` command
+
+#### Extension
+- **Handler**: `publish-products-handler.js` - navigates to Printify and makes API calls
+- **API Endpoint**: Uses internal `/api/v1/shops/{shopId}/products/{productId}/publish.json`
+- **Error Handling**: Reports failures back to WordPress for retry options
+
+### User Interface
+
+#### Product Table Integration
+- Unpublished products show "Publish" action button
+- Bulk selection allows publishing multiple products
+- Visual status updates during publishing process
+
+#### Progress Dialog Features
+- Shows count of products being published
+- Real-time progress updates per product
+- Error reporting with retry options
+- Summary report after completion
+- Log export for troubleshooting
+
+## Mockup Update Process
+
+### Overview
+When users configure mockup selections for templates, these selections must be applied to all unpublished child products before publishing. This two-step process ensures products display only the selected mockups.
+
+### Architecture
+
+#### Update Workflow
+1. **Template mockup selection saved**: User configures mockups for template
+2. **Update products dialog**: Progress dialog for applying changes
+3. **Extension loads product pages**: Opens each product's mockup configuration
+4. **Internal API calls**: Removes unwanted mockups, keeps selected ones
+5. **Confirmation**: Reports success/failure for each product
+
+#### Why This Architecture
+- **No direct API**: Printify doesn't expose mockup management in public API
+- **Product-level changes**: Each product must be updated individually
+- **Visual feedback**: Complex operation needs progress tracking
+- **Error recovery**: Failed updates can be retried
+
+### Implementation Components
+
+#### Frontend
+- **Triggers**: 
+  - Automatically after saving template mockup selection (for unpublished/published products)
+  - Automatically after successful WIP product uploads (if template has mockup selections)
+- **Dialog**: `showMockupUpdateProgress()` in `template-actions.js`
+- **Batch Processing**: Uses `SiP.Core.progressDialog.processBatch()`
+- **Data Source**: Uses existing `child_products` from template data (no extra AJAX needed)
+
+#### Backend
+- **Template Data**: Mockup selection saved to template JSON via `sip_save_template_mockup_selection()`
+- **Product List**: Filters `child_products` for status `wip` or `unpublished`
+- **No batch AJAX handler needed**: Frontend uses existing template data
+
+#### Extension Integration
+- **Message Type**: `SIP_UPDATE_PRODUCT_MOCKUPS`
+- **Navigation**: Loads product mockup page in Printify
+- **API Calls**: Makes internal API calls to update mockup configuration
+- **Tab Reuse**: Efficient tab management for multiple products
+
+### Progress Dialog Structure
+
+```javascript
+SiP.Core.progressDialog.processBatch({
+    items: childProducts,
+    batchSize: 1,
+    dialogOptions: {
+        title: 'Update Product Mockups',
+        item: 'product',
+        initialMessage: `Updating mockups for ${childProducts.length} unpublished {item}s...`,
+        progressMessage: 'Processing {stepCount} of {count} {item}s',
+        secondaryProgressMessage: 'Updating mockups for "{name}"...',
+        completionMessage: '{successCount} {item}s updated successfully!',
+        secondaryCompletionMessage: 'Click "Publish Products" below to publish the updated products',
+        waitForUserOnStart: false,
+        waitForUserOnComplete: true,
+        completionButtons: [{
+            text: 'Publish Products',
+            class: 'ui-button-primary',
+            handler: function(dialog) {
+                dialog.close();
+                publishUpdatedProducts(childProducts);
+            }
+        }]
+    },
+    steps: {
+        weights: {
+            navigate: 20,    // Navigate to product mockup page
+            update: 60,      // Update mockups via internal API
+            verify: 20       // Verify changes were applied
+        },
+        batchCount: childProducts.length
+    },
+    processItemFn: function(product, dialog) {
+        return updateProductMockupsViaExtension(product, selectedMockups, blueprintId, dialog);
+    }
+});
+```
+
+### Upload Integration
+
+When uploading WIP products that have mockup selections in their template:
+
+1. **Upload Completion Detection**: The `onAllComplete` callback in `creation-table-actions.js` checks for:
+   - Successfully uploaded products (`uploadedProductIds` array)
+   - Template has mockup selections (`templateData.images` array)
+   - Products now have `unpublished` status
+
+2. **Automatic Trigger**: After a 1-second delay (to let upload dialog close), the system:
+   - Filters child products to find those just uploaded
+   - Triggers `showMockupUpdateProgress()` with the filtered list
+   - Shows progress dialog for mockup updates
+
+3. **Why This Architecture**:
+   - **User convenience**: No manual step needed after uploads
+   - **Efficient workflow**: Mockups applied immediately when products are ready
+   - **Clear separation**: Upload completes fully before mockup updates begin
+   - **Visual continuity**: Brief delay prevents dialog overlap
+
+### Comprehensive Mockup Update Dialog
+
+When template mockup selections are saved, a comprehensive dialog presents a summary before processing:
+
+#### Dialog Features
+1. **Product Status Summary**: Shows counts of products by status (WIP, unpublished, published)
+2. **Upload Option**: Checkbox to upload WIP products before updating mockups (checked by default)
+3. **Processing Sequence**:
+   - Upload WIP products to Printify (if selected)
+   - Clean up local mockup data for published products
+   - Update mockups for all products via browser extension
+4. **Completion Summary**: Shows results with "Download Updated Mockups" button
+
+#### Implementation Details
+- **Function**: `showComprehensiveMockupUpdateDialog()` in `template-actions.js`
+- **WIP Upload**: Reuses `upload_child_product_to_printify` AJAX endpoint
+- **Cleanup**: Uses `cleanup_published_product_mockups` for local file removal
+- **Sequential Processing**: Tasks processed one at a time for clear progress tracking
+
+#### Why This Architecture
+- **User Control**: Shows what will happen before starting
+- **Efficiency**: Combines multiple operations in one workflow
+- **Flexibility**: Optional WIP upload based on user needs
+- **Clear Feedback**: Detailed progress and completion summary
+
+### Error Handling
+- Individual product failures don't stop batch
+- Failed products listed in summary
+- Retry option for failed updates
+- Detailed logs for debugging
+
+## Browser Extension Mockup Update System
+
+### Overview
+The browser extension enables mockup management capabilities that aren't available through Printify's public API. This system allows automated updating of product mockups based on template selections.
+
+### Architecture
+
+#### Why This Architecture
+- **API Limitation**: Printify's public API has no endpoints for mockup management
+- **Browser Access**: Only the browser with an authenticated session can access internal Printify APIs
+- **Automation**: Manual mockup updates for hundreds of products would be impractical
+- **Consistency**: Ensures all products from a template have identical mockup selections
+
+#### Communication Flow
+1. **WordPress initiates**: Sends `SIP_UPDATE_PRODUCT_MOCKUPS` message with selected scenes and primary image settings
+   - Includes unique `requestId` generated via `SiP.Core.utilities.generateRequestId()` for response correlation
+2. **Extension navigates**: Opens product's mockup library page in Printify with scene parameters in URL
+3. **Scene-based selection**: Content script reads URL parameters and:
+   - Navigates carousel to ALL available scenes
+   - Selects mockups for scenes in the selection list
+   - Deselects mockups for scenes NOT in the selection list
+   - Ensures exact synchronization with WordPress selection
+4. **Internal API calls**: Uses Printify's internal endpoints to save changes
+5. **Status reporting**: Reports success/failure back to WordPress with preserved `requestId`
+
+### Implementation Components
+
+#### WordPress Side
+- **Trigger Function**: `showMockupUpdateProgress()` in `template-actions.js`
+- **Mockup Selection UI**: `showMockupSelectionModal()` presents scene-based selection
+- **Message Format** (standardized as of v1.4.0):
+  ```javascript
+  {
+      context: 'wordpress',
+      action: 'SIP_UPDATE_PRODUCT_MOCKUPS',
+      source: 'sip-printify-manager',
+      requestId: 'update_mockups_123_1737547890123_x7k9m2p',  // Generated via SiP.Core.utilities.generateRequestId()
+      data: {
+          productId: '68534afa6ad639c0cd011c55',
+          shopId: '17823150',
+          blueprintId: '6',
+          selectedScenes: ['Front', 'Back', 'Left'],  // Scenes to select
+          primaryScene: 'Front',                       // Default image scene
+          primaryColor: '#FF0000',                     // Default image color
+          productInfo: {
+              productName: 'Product Name',
+              productId: '68534afa6ad639c0cd011c55'
+          }
+      }
+  }
+  ```
+
+#### Extension Handler
+- **Location**: `handler-scripts/mockup-update-handler.js`
+- **Responsibilities**:
+  - Receive scene-based selection data from WordPress
+  - Construct URL with parameters:
+    - `sip-action=update`
+    - `scenes=Front,Back,Left` (selected scenes)
+    - `primary-scene=Front` (default image scene)
+    - `primary-color=%23FF0000` (URL-encoded color)
+  - Navigate to mockup library URL with parameters
+  - Monitor operation completion
+  - Report detailed progress to WordPress
+  - Handle errors with specific messaging
+
+#### Content Script
+- **Location**: `action-scripts/mockup-library-actions.js`
+- **Responsibilities**:
+  - Detect URL parameters (`sip-action=update&scenes=...`)
+  - Extract all available scenes from carousel: `extractAvailableScenes()`
+  - Execute scene synchronization: `synchronizeMockupsByScenes()`
+    - Navigate to EVERY scene using carousel buttons
+    - Select all mockups if scene is in selection list
+    - Deselect all mockups if scene is NOT in selection list
+  - Click save button after all scenes processed
+  - Use action logger for operation tracking
+  - Note: chrome.runtime is blocked on Printify, uses URL parameters instead
+
+#### Mockup Library Page Structure
+- **URL Pattern**: `https://printify.com/app/mockup-library/shops/{shopId}/products/{productId}`
+- **Data Available**:
+  - `groups`: Color variants with their mockup options
+  - `selected_mockups`: Currently selected mockups
+- **Update Mechanism**:
+  - Toggle mockup checkboxes via click events
+  - Designate default mockup with radio buttons
+  - Save button click or auto-save triggers API call
+
+### Mockup Selection Data Format
+
+#### Template Storage (images array)
+```javascript
+{
+    "images": [
+        {
+            "src": "https://images.printify.com/mockup/...",
+            "variant_ids": [12100, 12101, 12102], // Size variants for one color
+            "position": "other",
+            "is_default": true,
+            "is_selected_for_publishing": true,
+            "order": null
+        }
+    ]
+}
+```
+
+#### Extension Update Format
+```javascript
+{
+    "selected_mockups": [
+        {
+            "id": "68534afa6ad639c0cd011c55_12100_102005_front-2",
+            "type": "GENERATED",
+            "group_key": "521",
+            "label": "Front, White",
+            "custom_background": true,
+            "src": "https://images.printify.com/mockup/..."
+        }
+    ]
+}
+```
+
+### Error Handling Strategy
+- **Navigation failures**: Retry with new tab
+- **Page load timeout**: Report specific timeout error
+- **Selection mismatch**: Log which mockups couldn't be found
+- **Save failures**: Capture API error response
+- **Connection loss**: Store progress for manual recovery
+
+### Development Testing Approach
+
+#### Test Mode Features
+1. **Dry run mode**: Log actions without making changes
+2. **Single product test**: Update one product before batch
+3. **Detailed logging**: Capture all API calls and responses
+4. **Visual indicators**: Highlight updated elements in DOM
+
+## Async Message Correlation System
+
+### Overview
+The SiP Printify Manager uses request IDs to correlate responses with their originating requests when communicating with the browser extension. This is critical for operations that may run concurrently or take significant time to complete.
+
+### Implementation
+
+#### Request ID Generation
+All async operations use the standardized request ID generator from SiP Core:
+
+```javascript
+// Generate unique request ID
+const requestId = SiP.Core.utilities.generateRequestId('mockup_' + blueprintId);
+// Result: 'mockup_123_1737547890123_x7k9m2p'
+```
+
+#### Message Flow with Request ID
+1. **WordPress sends request** with generated `requestId`
+2. **Extension processes** the request asynchronously
+3. **Router preserves** the `requestId` automatically in responses
+4. **WordPress matches** response to request via `requestId`
+
+#### Example: Concurrent Mockup Fetches
+```javascript
+// Fetching mockups for multiple blueprints
+blueprints.forEach(blueprint => {
+    const requestId = SiP.Core.utilities.generateRequestId('mockup_' + blueprint.id);
+    
+    // Send request
+    window.postMessage({
+        context: 'wordpress',
+        action: 'SIP_FETCH_MOCKUPS',
+        source: 'sip-printify-manager',
+        requestId: requestId,
+        data: { blueprint_id: blueprint.id }
+    }, '*');
+    
+    // Set up response listener
+    const responseHandler = (event) => {
+        if (event.data && 
+            event.data.action === 'SIP_MOCKUP_DATA' &&
+            event.data.requestId === requestId) {
+            // This response matches our request
+            processMockupData(event.data);
+            window.removeEventListener('message', responseHandler);
+        }
+    };
+    window.addEventListener('message', responseHandler);
+});
+```
+
+### Why This Architecture
+- **Concurrent Operations**: Multiple mockup fetches can run simultaneously without response confusion
+- **Timeout Handling**: Each request can have its own timeout without affecting others
+- **Debugging**: Request IDs in logs make it easy to trace request/response pairs
+- **Reliability**: Prevents processing stale responses from previous operations
+
+#### Debug Information to Capture
+- Current mockup selections before update
+- Mapping of variant IDs to mockup IDs
+- API request/response payloads
+- DOM state changes
+- Timing information for optimization
 
 ## Image Table
 
@@ -528,6 +1074,95 @@ wp_localize_script('sip-main', 'sipPrintifyManagerData', array(
 - **Availability**: Data ready immediately on page load
 - **Consistency**: Single source of truth for configuration
 - **Security**: Server-side filtering of sensitive data before exposure
+
+### Template Data Refresh Pattern
+
+#### Purpose
+Prevent stale product IDs and template data when operations modify the underlying data but don't trigger a page reload.
+
+#### Problem Addressed
+Two related issues can cause stale product IDs:
+
+1. **Client-side staleness**: When users save WIP data back to main templates, the `window.masterTemplateData` object becomes stale
+2. **Server-side data loss**: When saving WIP to main, updated product IDs from uploads could be overwritten with old IDs from the WIP file
+
+#### Implementation
+The system uses two complementary approaches:
+
+##### 1. Client-side Refresh
+The template system implements a refresh mechanism via `refreshTemplateDataFromServer()`:
+
+```javascript
+function refreshTemplateDataFromServer() {
+    const formData = SiP.Core.utilities.createFormData('sip-printify-manager', 'template_action', 'load_templates');
+    
+    return SiP.Core.ajax.handleAjaxAction('sip-printify-manager', 'template_action', formData)
+        .then(function(response) {
+            if (response.success && response.data) {
+                // Update global data
+                window.masterTemplateData = { templates: response.data.templates || [] };
+                
+                // Reload template table
+                reloadTemplateTable(response.data);
+                
+                return response.data;
+            }
+        });
+}
+```
+
+##### 2. Server-side Product ID Preservation
+The `sip_save_wip_to_main_template_file()` function merges updated product IDs before saving:
+
+```php
+// Before saving WIP to main, preserve any updated product IDs
+if (file_exists($permanent_path)) {
+    $existing_main_data = json_decode(file_get_contents($permanent_path), true);
+    
+    // Create map of updated product IDs
+    $existing_product_map = [];
+    foreach ($existing_main_data['child_products'] as $child) {
+        if (!empty($child['printify_product_id'])) {
+            $existing_product_map[$child['child_product_id']] = $child['printify_product_id'];
+        }
+    }
+    
+    // Merge updated IDs into WIP data before saving
+    foreach ($wip_data['child_products'] as &$wip_child) {
+        if (isset($existing_product_map[$wip_child['child_product_id']]) && 
+            $wip_child['status'] !== 'wip') {
+            $wip_child['printify_product_id'] = $existing_product_map[$wip_child['child_product_id']];
+        }
+    }
+}
+```
+
+#### Refresh Triggers
+Data refresh is triggered after operations that modify template data:
+- **Save WIP to Main**: After `creation-table-actions.js` saves work in progress
+- **Template Deletion**: After removing a template
+- **Bulk Operations**: After batch updates that modify multiple templates
+
+#### Usage Example
+```javascript
+// In creation-table-actions.js after saving WIP to main
+handleSuccessResponse: function(response) {
+    if (response.action === 'save_wip_to_main') {
+        // Refresh template data to get updated product IDs
+        if (SiP.PrintifyManager.templateActions && 
+            typeof SiP.PrintifyManager.templateActions.refreshTemplateDataFromServer === 'function') {
+            SiP.PrintifyManager.templateActions.refreshTemplateDataFromServer();
+        }
+    }
+}
+```
+
+#### Why This Architecture
+- **Data Integrity**: Two-layer protection ensures product IDs are never lost
+- **No Page Reload**: Updates data seamlessly without disrupting user workflow  
+- **Selective Updates**: Only refreshes when data changes, not on every operation
+- **Product ID Preservation**: Server-side merge prevents data loss during WIP saves
+- **Non-destructive**: Only updates non-WIP products, preserving work in progress
 
 ## Cross-Table Systems
 
@@ -1048,7 +1683,7 @@ The mockup system uses jQuery events for loose coupling between modules:
 
 ```javascript
 // Extension ready event
-$(document).on('extensionReady', function(e, data) {
+$(document).on('extensionDetected', function(e, data) {
     // Re-check for mockup availability
 });
 
@@ -1094,7 +1729,7 @@ When blueprints without mockups are detected on page load:
 
 ### Event-Driven Communication
 The mockup system uses jQuery events for inter-module communication:
-- **`extensionReady`**: Triggered by browser-extension-manager when extension announces readiness
+- **`extensionDetected`**: Triggered by browser-extension-manager when extension announces readiness
 - **`extensionInstalled`**: Triggered when extension is first installed
 - **`blueprintRowsCreated`**: Triggered when product table creates blueprint rows
 
@@ -1201,6 +1836,28 @@ Through extensive testing, we've confirmed:
 3. **Mockup Control**: Not possible via creation API - requires post-creation management
 4. **Printify Express**: Must be explicitly disabled with both flags set to `false`
 
+## Data Structures
+
+### Child Product Object Structure
+
+Child products from templates use this structure:
+
+```javascript
+{
+    child_product_id: '12345',           // Local WordPress post ID
+    child_product_title: 'FSGP Abstract 01 Tee - Red/M',
+    printify_product_id: '68534afa6ad639c0cd011c55',  // Printify's ID (only present after upload)
+    status: 'wip' | 'unpublished' | 'published',
+    blueprint_id: '6',
+    // ... other fields
+}
+```
+
+**Key Fields**:
+- `child_product_id`: Local identifier for WordPress
+- `printify_product_id`: Printify's identifier (required for Printify operations)
+- Products without `printify_product_id` are WIP and cannot be updated on Printify
+
 ## Performance Considerations
 
 1. **Highlighting Functions**
@@ -1222,3 +1879,70 @@ Through extensive testing, we've confirmed:
    - Images are downloaded once and cached locally
    - Thumbnails could be generated for faster loading (future enhancement)
    - Batch fetching reduces API calls and user wait time
+
+## Dashboard UI Features
+
+### Dynamic Table Header Counts
+
+Each main table header displays a dynamic count that updates in real-time as tables are filtered:
+
+#### Display Format
+- **Products Table**: Shows parent product count only (excludes child variants)
+- **Images Table**: Shows total count of all images (local + Printify)
+- **Templates Table**: Shows count of template files
+
+#### Implementation Details
+
+**HTML Structure:**
+Each table header uses a flexbox layout with three parts:
+```html
+<h2>
+    <span class="table-count" id="products-count">42</span>
+    <div class="table-title-container">
+        Products
+        <!-- Search field appends here -->
+    </div>
+    <span class="table-count-spacer"></span>
+</h2>
+```
+
+**CSS Layout:**
+```css
+.products-section-header h2,
+.template-section-header h2,
+.image-section-header h2 {
+    display: flex;
+    justify-content: space-between;
+}
+
+.table-count {
+    min-width: 60px;
+    text-align: left;
+    flex-shrink: 0;
+}
+
+.table-title-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-grow: 1;
+    gap: 10px;
+}
+```
+
+**Dynamic Updates:**
+Count updates are integrated with DataTables events:
+- Products: `updateProductCount()` in `product-actions.js`
+- Templates: `updateTemplateCount()` in `template-actions.js`
+- Images: `updateImageCount()` in `image-actions.js`
+
+The counts update automatically when:
+- Tables are filtered via search
+- Column filters are applied
+- Data is reloaded via AJAX
+
+**Key Architecture Decisions:**
+1. **Single Source of Truth**: Counts come directly from DataTables API
+2. **No Defensive Coding**: Direct DOM updates without null checks
+3. **Flexbox Layout**: Ensures proper alignment and centering
+4. **Search Field Integration**: Search fields append to `.table-title-container` to maintain center alignment

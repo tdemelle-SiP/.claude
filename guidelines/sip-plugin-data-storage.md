@@ -190,10 +190,10 @@ Used for persistent UI state across browser sessions. All data stored under `sip
 
 ### Core State Management System
 
-SiP Core provides a centralized state management system in `/assets/js/core/state.js`:
+SiP Core provides a centralized state management system in `/assets/js/core/state.js` that includes both state management and storage APIs:
 
 ```javascript
-// Register a plugin's state
+// State Management API - For plugin UI state
 SiP.Core.state.registerPlugin('sip-printify-manager', {
     'images-table': {},
     'products-table': {},
@@ -210,6 +210,25 @@ SiP.Core.state.setState('sip-printify-manager', 'images-table', {
 // Get state for a feature
 const tableState = SiP.Core.state.getState('sip-printify-manager', 'images-table');
 ```
+
+### Simple Storage API
+
+The same `state.js` file also provides a simpler storage API for direct session and local storage access:
+
+```javascript
+// Session Storage API - Data persists until browser tab is closed
+SiP.Core.storage.session.set('installationsTablesData', data);
+const data = SiP.Core.storage.session.get('installationsTablesData');
+SiP.Core.storage.session.remove('installationsTablesData');
+
+// Local Storage API - Data persists across browser sessions
+// Note: For plugin state management, prefer SiP.Core.state instead
+SiP.Core.storage.local.set('userPreferences', preferences);
+const prefs = SiP.Core.storage.local.get('userPreferences');
+SiP.Core.storage.local.remove('userPreferences');
+```
+
+**Why two APIs in one file?** The state management system (`SiP.Core.state`) handles complex plugin UI state with features like registration, partial updates, and UI synchronization. The storage API (`SiP.Core.storage`) provides simple get/set operations for data that doesn't need the full state management features. Both are consolidated in `state.js` to maintain a single source of truth for client-side storage.
 
 ### Structure
 ```javascript
@@ -230,12 +249,38 @@ const tableState = SiP.Core.state.getState('sip-printify-manager', 'images-table
         "lastUpdate": "2024-01-01T00:00:00Z",
         "pollingInterval": 5000
       }
+    },
+    "sip-modal-states": {
+      "mockup-selection-modal": {
+        "position": { "top": 100, "left": 200 },
+        "size": { "width": 800, "height": 600 },
+        "timestamp": 1234567890
+      }
     }
   }
 }
 ```
 
 ### Implementation Examples
+
+#### Modal State Management (SiP Core v2.0+)
+```javascript
+// The SiP Core modal utility automatically handles state persistence
+const modal = SiP.Core.modal.create({
+    id: 'feature-modal',
+    saveState: true,              // Enable state persistence
+    stateKey: 'my-modal-state'    // Custom key for storage
+});
+
+// State is automatically saved under sip-modal-states namespace
+// Manual access (if needed):
+const state = JSON.parse(localStorage.getItem('sip-core')) || {};
+const modalStates = state['sip-modal-states'] || {};
+const myModalState = modalStates['my-modal-state'];
+
+// Clear all modal states
+SiP.Core.modal.clearAllStates();
+```
 
 #### Table State Management
 ```javascript
@@ -344,22 +389,137 @@ When implementing features that require dual storage:
 
 For more details on implementing debug functionality, see the [Testing, Debugging & Logging Guide](./sip-development-testing-debug.md).
 
+# Debug State Storage Architecture
+
+```mermaid
+graph TD
+    subgraph "WordPress SiP Plugin Pages"
+        subgraph "User Events"
+            Toggle[User changes Debug Dropdown<br/>-#sip-debug-level-select-]
+            PageLoad[User loads page]
+        end
+        
+        subgraph "SiP Plugin Code Flow"
+            InitDropdown[JS initializes dropdown<br/>-init-]
+            JSHandler[JS handles click<br/>-handleLevelChange-]
+            PHPSave[PHP saves to DB<br/>-sip_core_set_debug_level-]
+            PHPReturn[PHP returns response<br/>-success/error-]
+            JSReceive[JS receives response<br/>-then callback-]
+            JSUpdate[JS updates window<br/>-sipCoreSettings.debugLevel-]
+            JSNotify[JS fires event<br/>-debugEvents.notify-]
+            DropdownUpdate[JS updates dropdown<br/>-onStateChange callback-]
+            PHPRead[PHP reads from DB<br/>-get_option-]
+            DebugModule[JS reads debug level<br/>-getLevel-]
+            PostMsg[JS sends messages<br/>-sendMessageToExtension-]
+        end
+        
+        subgraph "Storage"
+            DB[(SQL Database<br/>-WordPress Options-)]
+            Window[Javascript Variable<br/>-js window object-]
+        end
+    end
+    
+    subgraph "SiP Chrome Extension"
+        subgraph "User Events"
+            ExtReload[User reloads extension]
+        end
+        
+        subgraph "Code Flow"
+            ExtInit[Extension initializes<br/>-loadDebugState-]
+            ExtScript[Extension receives message<br/>-handleWordPressMessage-]
+        end
+        
+        subgraph "Storage"
+            ChromeDB[(Chrome Storage<br/>-sip_printify_debug_level-)]
+        end
+    end
+    
+    %% Page Load Flow
+    PageLoad -->|triggers| PHPRead
+    DB -->|get_option| PHPRead
+    PHPRead -->|wp_localize_script| Window
+    Window -->|reads initial value| InitDropdown
+    InitDropdown -->|sets value| Toggle
+    InitDropdown -->|subscribes to events| JSNotify
+    
+    %% User Changes Debug Level
+    Toggle -->|onChange event| JSHandler
+    JSHandler -->|jQuery AJAX| PHPSave
+    PHPSave -->|update_option| DB
+    DB -->|success| PHPReturn
+    PHPReturn -->|AJAX response| JSReceive
+    JSReceive -->|updates| JSUpdate
+    JSUpdate -->|modifies| Window
+    JSUpdate -->|triggers| JSNotify
+    JSNotify -->|notifies| DropdownUpdate
+    DropdownUpdate -->|updates display| Toggle
+    
+    %% Extension Communication
+    Window -->|reads sipCoreSettings| DebugModule
+    DebugModule -->|called by| PostMsg
+    PostMsg -->|window.postMessage| ExtScript
+    ExtScript -.->|chrome.storage.local| ChromeDB
+    
+    %% Extension Initialization
+    ExtReload -->|triggers| ExtInit
+    ChromeDB -->|chrome.storage.get| ExtInit
+```
+
+## Simple Explanation
+
+### WordPress Side:
+- Debug toggle in header updates SQL database (WordPress Options)
+- PHP writes to Javascript Variables (js window object) on page load
+- NO localStorage usage
+
+### Extension Side:
+- Chrome Storage is the single source for extension
+- Extension maintains its own debug state
+
+### Communication:
+- WordPress sends debug level in messages to extension
+- Extension temporarily uses WordPress level when on WordPress pages
+- NO storage synchronization between systems
+
+
+
 ## 2. Session Storage (Client-Side)
 
-Used for temporary data that expires when the browser tab closes.
+Used for temporary data that expires when the browser tab closes. Available through the storage API in `/assets/js/core/state.js`:
 
-### Progress Dialog State
+### Using the Storage API
 ```javascript
-// Store progress dialog state
-sessionStorage.setItem('sip-progress-dialog-state', JSON.stringify({
+// Store data using SiP.Core.storage.session
+SiP.Core.storage.session.set('progressState', {
     currentStep: 'uploading',
     progress: 45,
     startTime: Date.now()
-}));
+});
 
-// Retrieve progress state
-const progressState = JSON.parse(sessionStorage.getItem('sip-progress-dialog-state') || '{}');
+// Retrieve data
+const progressState = SiP.Core.storage.session.get('progressState') || {};
+
+// Remove data
+SiP.Core.storage.session.remove('progressState');
 ```
+
+### Common Use Cases
+```javascript
+// Temporary form data
+SiP.Core.storage.session.set('formDraft', {
+    title: $('#title').val(),
+    content: $('#content').val()
+});
+
+// Progress state for batch operations
+SiP.Core.storage.session.set('batchProgress', {
+    total: 100,
+    processed: 45,
+    errors: []
+});
+```
+
+**Note**: Dashboard installer data now uses module-level variables for simplicity. See [SiP Plugins Core Dashboard](./sip-core-dashboard.md) for details.
 
 ## Centralized Storage Management
 
@@ -520,6 +680,23 @@ $recent_events = $wpdb->get_results($wpdb->prepare(
 ## 4. Window Object (Client-Side)
 
 Used for global state that needs to be accessible across modules. For consistent namespace structure, see the [Plugin Creation Guidelines](./sip-plugin-creation.md#standard-module-structure).
+
+### Module-Level Variables
+
+In addition to the global window namespace, modules can use module-level variables for runtime data that doesn't need global access:
+
+```javascript
+// Module-level variable (single source of truth for runtime data)
+let installationsTablesData = null;  // Unified data structure from server
+let activePlugins = [];              // Runtime state
+
+// This is appropriate for data that:
+// - Only needs to exist during the current page session
+// - Doesn't need to be accessed by other modules
+// - Should be rebuilt fresh on page load
+```
+
+Module-level variables are simpler than using session storage when you don't need persistence across page navigation. They're ideal for runtime state management within a single module.
 
 ### Global Namespace Structure
 ```javascript
@@ -707,9 +884,26 @@ $mockups_dir = $storage->get_folder_path('sip-printify-manager', 'mockups');
 $blueprint_dir = $mockups_dir . '/' . $blueprint_id . '/';
 
 // Files in each blueprint folder:
-// - metadata.json: Mockup metadata and URLs
+// - metadata.json: Mockup metadata including blueprint_name (as of v1.3.0)
 // - *.jpg: Downloaded mockup images
 // - generated-mockup-maps.json: Raw API response (optional)
+```
+
+**Metadata Structure (v1.3.0+):**
+```json
+{
+    "blueprint_id": "6",
+    "blueprint_name": "Unisex Staple T-Shirt | Bella + Canvas 3001",
+    "product_id": "677c8b9f3dd59f053400c2a5",
+    "generated_at": "2025-01-21T12:00:00Z",
+    "mockups": {
+        "front": {
+            "id": "front",
+            "label": "Front",
+            "src": "https://..."
+        }
+    }
+}
 ```
 
 **Detection Logic:**
@@ -1103,6 +1297,40 @@ function export_products_csv() {
 ## 7. WordPress Options API (Server-Side)
 
 For plugin settings and configuration.
+
+### Request-Level Caching Pattern
+
+For frequently accessed options data, implement request-level caching to avoid repeated database queries:
+
+```php
+/**
+ * Get cached blueprint data for the current request
+ * Following SiP data storage pattern
+ */
+function sip_get_cached_blueprints() {
+    static $blueprints = null;
+    
+    if ($blueprints === null) {
+        $blueprints_raw = get_option('sip_printify_blueprints', array());
+        // Ensure we have an array
+        $blueprints = is_array($blueprints_raw) ? $blueprints_raw : maybe_unserialize($blueprints_raw);
+    }
+    
+    return $blueprints;
+}
+```
+
+**Usage:**
+```php
+// Instead of multiple calls to get_option():
+$blueprints = sip_get_cached_blueprints();
+$blueprint_name = isset($blueprints[$blueprint_id]['title']) ? $blueprints[$blueprint_id]['title'] : 'Blueprint #' . $blueprint_id;
+```
+
+**Benefits:**
+- Single database query per request
+- Consistent data throughout request lifecycle
+- Simple implementation with static variables
 
 ### Basic Usage
 ```php
@@ -1714,5 +1942,5 @@ Keep these patterns unchanged during migration:
 Only migrate paths that point to the WordPress uploads directory structure.
 
 ## Related Guides
-- For handling batch operations with progress feedback, see the [Progress Dialog Guide](./sip-feature-progress-dialog.md)
+- For handling batch operations with progress feedback, see the [Progress Dialog Guide](./sip-core-feature-progress-dialog.md)
 - For creating new plugins with storage support, see the [Plugin Creation Guide](./sip-plugin-creation.md)
