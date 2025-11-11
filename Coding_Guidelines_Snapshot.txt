@@ -74,15 +74,16 @@ When analyzing code:
     - Understand entire contextual framework before details
 
 ## PLAN II - IMPLEMENTATION PLAN
-    1. Complete working-task-planning-template.md at:
-    /mnt/c/Users/tdeme/Local Sites/faux-stained-glass-panes/app/public/wp-content/plugins/.claude/working-task-planning-template.md
-    2. Post plan in chat for user collaboration
-    3. Make zero assumptions - list all uncertainties in Questions section
-    4. Wait for explicit instruction to begin coding
-        □ Completed working-task-planning-template.md
+    1. Summarize understanding of task in chat conversationally
+    2. Propose implementation approach briefly
+    3. List any uncertainties or questions
+    4. Collaborate with user to refine approach
+    5. Wait for explicit instruction to begin coding
+        □ Summarized task understanding clearly
         □ Identified architectural WHY
-        □ Made zero assumptions
+        □ Made zero assumptions - listed all uncertainties
         □ All proposed changes follow documented patterns OR have explicit justification
+        □ Received explicit approval to proceed
 
 ═══════════════════════════════════════════════════════════════════════════════
                                  WORK STAGE
@@ -121,10 +122,11 @@ When user identifies issues:
 2. Keep answers brief and practical for rapid communication
 3. Stay within WORK DETAILS constraints
 
-### PLAN IV - ITERATION PLAN SUMMARY  
-1. Complete iteration planning template
-2. Collaborate with user to refine plan
-3. Wait for explicit instruction before coding
+### PLAN IV - ITERATION PLAN SUMMARY
+1. Summarize iteration approach conversationally in chat
+2. List specific changes needed to address issues
+3. Collaborate with user to refine plan
+4. Wait for explicit instruction before coding
 
 ### WORK II - ITERATE
 1. Implement iteration plan according to WORK principles
@@ -167,6 +169,7 @@ The documentation serves as a critical bridge between human and AI collaborators
 3. Update to reflect current functionality (not past/future)
 4. Document architectural WHY (not history)
 5. Ensure single source of truth (each fact appears exactly once)
+6. Update index.md when adding/removing/renaming guideline files to maintain map accuracy
 
 ### When to Update Documentation
 - Architectural changes that alter existing docs
@@ -255,6 +258,8 @@ to extension. Remove race conditions in initialization.
 7. **CODE MUST BE SIMPLE** enough for senior review
 8. **NEVER USE Write** for existing files
 9. **NO BACKWARD COMPATIBILITY** - let errors guide updates
+10. **NO LEGACY ARTIFACTS** - Delete deprecated code/docs immediately
+11. **FIT THE FRAMEWORK** - Every component follows documented patterns or gets explicit approval
 
 When in doubt, STOP and ASK rather than assume.
 

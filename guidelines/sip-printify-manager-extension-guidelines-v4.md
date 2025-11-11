@@ -1,4 +1,4 @@
-# SiP Printify Manager Extension – Refactored Documentation (v1.2) {#top}
+# SiP Printify Manager Extension – Documentation {#top}
 
 ---
 
@@ -18,7 +18,7 @@
 
 ### I. WHAT
 
-The SiP Printify Manager Extension (v1.2 Refactored) links three contexts to automate Printify product management:
+The SiP Printify Manager Extension links three contexts to automate Printify product management:
 
 1. **Browser Extension Context (Service Worker)** – MessageBus, Handlers, DataStore
 2. **WordPress Admin Page Context** – WordPress DOM, Unified Widget, MessageRelay
@@ -35,7 +35,7 @@ The refactored architecture consolidates ~30 components into ~15, implementing:
 
 ### III. WHY
 
-The refactored architecture addresses critical issues in the original implementation: race conditions from distributed state, duplicate READY messages from multiple emitters, and complex defensive code patterns. By consolidating message routing into MessageBus and state into DataStore, the system achieves deterministic behavior through structural design rather than runtime guards. The simplified component count reduces maintenance burden while preserving all essential functionality for WordPress-Printify integration.
+Consolidating message routing into MessageBus and state into DataStore achieves deterministic behavior through structural design rather than runtime guards. This prevents race conditions from distributed state, eliminates duplicate READY messages from multiple emitters, and removes the need for complex defensive code patterns. The architecture enables reliable WordPress-Printify integration while minimizing maintenance burden.
 
 **Dynamic Script Re-injection:** The service worker automatically re-injects content scripts on EVERY startup, including after `chrome.runtime.reload()`. This enables one-click extension reloading during development - no manual page refresh required. The widget checks for existing instances via DOM ID to prevent duplicates. This solution eliminates the "orphaned content script" problem that plagues Manifest V3 extensions.
 
@@ -49,7 +49,7 @@ This block documents the extension's refactored three-context architecture and c
 
 ### I. WHAT
 
-**Diagram 2: Main Architecture (Refactored v1.2)**
+**Diagram 2: Main Architecture**
 
 ```mermaid
 graph TD
@@ -158,36 +158,8 @@ graph TD
 > 5. Route to handler via MessageDispatch
 > 6. Return response with preserved requestId
 >
-> **Display Action Forwarding (v4 Unified):**
-> MessageBus forwards display-specific actions without transformation:
-> ```javascript
-> // Forward display actions as-is
-> if (this.isDisplayAction(message)) {
->     await this.broadcastToTerminals(message, sender);
->     return;
-> }
-> 
-> // Convert operational messages to display format
-> const displayMessage = this.convertToDisplayMessage(message, sender);
-> if (displayMessage) {
->     await this.broadcastToTerminals(displayMessage, sender);
-> }
-> ```
->
-> **Message Conversion Map:**
-> <details>
-> <summary>Operational to Display Message Conversion</summary>
->
-> | Operational Action | Display Action | Display Data |
-> |-------------------|----------------|---------------|
-> | `SIP_FETCH_MOCKUPS` | `SIP_OPERATION_PROGRESS` | operationId, progress: 0, message |
-> | `SIP_UPDATE_PRODUCT_MOCKUPS` | `SIP_OPERATION_PROGRESS` | operationId, progress: 0, message |
-> | `SIP_TEST_CONNECTION` | `SIP_STATUS_MESSAGE` | message, level: 'info' |
-> | `SIP_UPDATE_CONFIG` | `SIP_STATUS_MESSAGE` | message, level: 'info' |
-> | `SIP_MOCKUP_DATA` | `SIP_STATUS_MESSAGE` | message, level: 'success' |
-> | Any with `error` | `SIP_STATUS_MESSAGE` | message, level: 'error' |
->
-> </details>
+> **Display Action Forwarding:**
+> MessageBus forwards display-specific actions to terminals (see [HOW 2C](#2c-logger--unified-message-logging) for display action types). Operational messages are converted to display format before forwarding.
 >
 > **Critical Configuration:**
 > The MessageBus listener MUST return `true` for async operations:
@@ -301,16 +273,11 @@ DataStore centralizes all state management to prevent synchronization bugs commo
 >
 > **Unified v4 Format:** Logger stores actual messages sent/received, not transformed data. This provides complete traceability and debugging capability.
 >
-> **Log Entry Format (v4 Unified):**
+> **Log Entry Format:**
 > ```javascript
 > {
 >     timestamp: Date.now(),
->     message: {  // Complete v4 message
->         context: 'wordpress' | 'printify' | 'extension',
->         action: 'SIP_*',
->         source: 'sip-printify-manager-extension',
->         data: { ... }
->     },
+>     message: { ... },  // Complete v4 message (see HOW 2A for format)
 >     sender: {  // Optional sender metadata
 >         tabId: number,
 >         url: string,
@@ -717,7 +684,7 @@ graph LR
 
 ### III. WHY
 
-The unified content script bundles eliminate code duplication while maintaining context-specific behavior through runtime detection. The bidirectional MessageRelay architecture, inherited from the proven wordpress-relay.js design, ensures reliable WordPress plugin communication. Loading scripts via manifest with `run_at: "document_idle"` provides structural single-injection guarantee without defensive checks. This approach reduces maintenance burden while preserving all necessary functionality.
+The unified content script bundles eliminate code duplication while maintaining context-specific behavior through runtime detection. The bidirectional MessageRelay architecture ensures reliable WordPress plugin communication through request-response pairs and unsolicited updates. Loading scripts via manifest with `run_at: "document_idle"` provides structural single-injection guarantee without defensive checks.
 
 **SiP Platform Integration:** The MessageRelay must handle messages from the WordPress plugin's browser-extension-actions.js module (see [SiP Core Platform Guide](../sip-core-platform.md)). The `source: 'sip-printify-manager'` identifier indicates messages from the WordPress plugin, while `source: 'sip-printify-manager-extension'` identifies extension responses. This source field pattern is required by the plugin's message filtering logic to prevent loops and enable proper jQuery event triggering.
 
@@ -845,19 +812,11 @@ graph TD
 > - `SIP_UPDATE_CONFIG` - Update configuration
 > - `SIP_GET_CONFIG` - Retrieve current configuration
 > - `SIP_CLEAR_CONFIG` - Clear stored configuration
-> - `SIP_AUTO_CONFIGURE` - Auto-configure from WordPress
->
-> **Auto-Configuration Sources:**
-> 1. `window.sipPrintifyManager.apiKey` - WordPress plugin global
-> 2. `<meta name="sip-extension-config">` - Meta tag fallback
->
-> **Configuration Check:**
-> - Only applies if not already configured for the specific site
-> - UnifiedWidget triggers check on WordPress pages
+> - `SIP_AUTO_CONFIGURE` - Auto-configure from WordPress (see [HOW 5A](#5a-unifiedwidget) for configuration sources)
 
 ### III. WHY
 
-The handler architecture uses class-based organization for better encapsulation than the original function-based approach, while maintaining the familiar compound-key routing pattern. Handlers receive dependency injection of MessageBus components, enabling clean testing and separation of concerns. The async/await pattern with MessageQueue eliminates callback hell while preserving the "all messages through MessageBus" principle. This design makes handlers easier to test, debug, and extend.
+The handler architecture uses class-based organization for encapsulation and maintainability, with compound-key routing for efficient message dispatch. Handlers receive dependency injection of MessageBus components, enabling clean testing and separation of concerns. The async/await pattern with MessageQueue provides clean async handling while preserving the "all messages through MessageBus" principle.
 
 **Auto-Configuration Dual Sources:** The extension checks two configuration sources to maximize compatibility. The `window.sipPrintifyManager` object is preferred as it's directly set by the WordPress plugin's JavaScript. The meta tag serves as fallback for cases where the global object isn't available due to script loading order or conflicts. This redundancy ensures reliable auto-configuration across different WordPress setups.
 
@@ -914,49 +873,13 @@ graph LR
 
 #### 5A Unified Message Format
 
-> All logging uses standard v4 message format for consistency.
+> All logging uses standard v4 message format (see [HOW 2A](#2a-messagebus) for complete message specification).
 >
-> **Storage Format:**
-> ```javascript
-> {
->     timestamp: number,
->     message: {  // Complete v4 message
->         context: 'wordpress' | 'printify' | 'extension',
->         action: 'SIP_*',
->         source: 'sip-printify-manager-extension',
->         data: { ... }
->     },
->     sender: {  // Optional metadata
->         tabId: number,
->         url: string,
->         frameId: number
->     }
-> }
-> ```
+> Logger wraps messages in log entries with timestamp and sender metadata (see [HOW 2C](#2c-logger--unified-message-logging)).
 
 #### 5B Display Action Types
 
-> Three specialized actions for terminal/modal display.
->
-> <details>
-> <summary>Display Action Specifications</summary>
->
-> **SIP_OPERATION_PROGRESS**
-> - Purpose: Track long-running operations
-> - Data: `{ operationId, operation, progress, message, complete }`
-> - Display: Progress bar with percentage
->
-> **SIP_STATUS_MESSAGE**
-> - Purpose: One-off status notifications
-> - Data: `{ message, level, details? }`
-> - Display: Colored text by level
->
-> **SIP_DISPLAY_UPDATE**
-> - Purpose: Backward compatibility
-> - Data: Flexible format
-> - Display: Auto-detected based on fields
->
-> </details>
+> Three specialized actions for terminal/modal display (see [HOW 2C](#2c-logger--unified-message-logging) for complete specifications).
 
 #### 5C Message Flow Sequence
 
@@ -1216,22 +1139,6 @@ The UnifiedWidget eliminates code duplication between WordPress and Printify con
 - [x] WHY layers explain rationale without repeating HOW
 - [x] WHW blocks linked through node references
 - [x] Links, file paths, and diagram references verified
-- [ ] Edge cases tested:
-  - [ ] Multiple WordPress tabs open simultaneously
-  - [ ] Multiple Printify tabs open simultaneously
-  - [ ] Extension reload during async operation
-  - [ ] Tab closed during async operation (queue timeout handling)
-  - [ ] Network failure during WordPress API call
-- [ ] Missing features from v3 identified for future implementation:
-  - [ ] Discovery Tool (passive data collection)
-  - [ ] Modal System (VanillaModal)
-  - [ ] Drag functionality for widget
-  - [x] Auto-configuration from WordPress - **IMPLEMENTED**
-  - [ ] Mockup library automation scripts
-  - [ ] Product details extraction scripts
-  - [ ] Widget visibility controls
-  - [x] Development reload button - **IMPLEMENTED**
-  - [ ] Log viewer modal
-  - [ ] Note: Toast notifications removed - terminal display handles all messaging
+
 
 [Back to Top](#top)

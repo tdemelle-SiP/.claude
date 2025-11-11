@@ -211,15 +211,13 @@ Each guide presents standards and conventions in the context where they're used.
 | UI System | [sip-core-feature-ui-components.md](./guidelines/sip-core-feature-ui-components.md) | UI hierarchy, modals, toast notifications, spinners, form elements, checkbox patterns, responsive tables, localStorage for UI state |
 | Progress Dialog | [sip-core-feature-progress-dialog.md](./guidelines/sip-core-feature-progress-dialog.md) | Batch operation UI with progress tracking and cancellation |
 | **💻 Development Standards** | | |
+| Code Guidelines | [sip-development-code-guidelines.md](./guidelines/sip-development-code-guidelines.md) | 7 foundational principles for code and documentation quality |
 | CSS Architecture | [sip-development-css.md](./guidelines/sip-development-css.md) | CSS architecture, BEM methodology, organization patterns |
 | Testing & Debug | [sip-development-testing-debug.md](./guidelines/sip-development-testing-debug.md) | Testing strategies, debugging workflows, three-level debug logging system |
-| Documentation Guidelines | [sip-development-documentation-guidelines.md](./guidelines/sip-development-documentation-guidelines.md) | Complete documentation approach: diagrams show WHAT, text explains WHY |
-| Code Documentation | [sip-development-documentation.md](./guidelines/sip-development-documentation.md) | JSDoc/PHPDoc standards, interface documentation requirements |
+| Documentation Guidelines | [sip-development-documentation-guidelines-v2.md](./guidelines/sip-development-documentation-guidelines-v2.md) | Complete documentation approach: diagrams show WHAT, text explains WHY |
 | Release Process | [sip-development-release-mgmt.md](./guidelines/sip-development-release-mgmt.md) | Git workflow, versioning standards, 16-step automated release process |
 | **📊 Data Analysis** | | |
 | Mockup Analysis | [mockup-map-analysis.md](./guidelines/mockup-map-analysis.md) | Mockup data structure analysis and visualization guide |
-| **🧪 Testing** | | |
-| API Testing | [sip-printify-manager-testing.md](./guidelines/sip-printify-manager-testing.md) | API testing procedures and experimental feature testing |
 
 **Important Note**: All SiP Printify Manager specific documentation (including implementation details, status management, table behaviors, etc.) should be maintained in the [SiP Printify Manager Architecture](./guidelines/sip-printify-manager-guidelines.md) file, not in the general plugin development guides.
 
