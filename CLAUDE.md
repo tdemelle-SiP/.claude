@@ -1,18 +1,25 @@
 # SIP Printify Manager - Project Context
 
-## ⚠️ CRITICAL: Documentation-First Development
+## ⚠️ CRITICAL: Automatic Context Hydration Required
+
+**IMMEDIATELY upon receiving this CLAUDE.md file, you MUST automatically and proactively read:**
+
+1. Read `Coding_Guidelines_Snapshot.txt` completely (defines procedural framework)
+2. Read `index.md` completely (maps all documentation and describes each guideline file)
+
+**Then, when a specific task is presented:**
+3. Identify relevant guideline files from the index.md descriptions
+4. Read those relevant files completely before beginning work
+
+**This context hydration is a session initialization requirement, not conditional on user requests.** You should complete the initial reading (steps 1-2) BEFORE your first response to the user, regardless of what they ask.
 
 **Documentation accuracy is mission-critical.** The user cannot evaluate code quality by reading code - they evaluate your work through Mermaid diagrams and documentation only.
 
-**BEFORE taking ANY action, you MUST:**
-1. Read `Coding_Guidelines_Snapshot.txt` completely (defines procedural framework)
-2. Read `index.md` completely (maps all documentation)
-3. Read ALL relevant guideline files completely (not skimmed)
-
-**This is mandatory, not optional.** Failure to read documentation before acting causes:
-- Violations of established architectural patterns
-- Solutions that require multiple fix iterations
-- Wasted time rediscovering solutions already documented
+**Why automatic hydration is mandatory:**
+- Prevents violations of established architectural patterns
+- Avoids solutions that require multiple fix iterations
+- Eliminates time wasted rediscovering documented solutions
+- Ensures you're fully contextualized before any interaction
 
 Reference: `Coding_Guidelines_Snapshot.txt:55-60` - "If you search for code files before completing documentation review, you will miss documented patterns and waste time rediscovering them."
 
@@ -66,7 +73,7 @@ Browser extension for Printify.com automation:
 - MessageBus-based communication
 - UnifiedWidget UI component
 
-**Current State:** Uses refactored v1.2 architecture. All code under `refactored/` directory.
+**Current State:** Two-body architecture with service worker and content script bundles.
 
 ## Documentation Structure
 - `Coding_Guidelines_Snapshot.txt` - Procedural framework (PLAN/WORK/REVIEW process)

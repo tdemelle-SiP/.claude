@@ -596,7 +596,7 @@ graph LR
   Chrome((Chrome<br/>Extension System))
   
   subgraph "Service Worker"
-    Background[background.js] --> MessageBus((MessageBus))
+    Background[extension-main.js] --> MessageBus((MessageBus))
     Background --> Handlers[Handler Scripts]
     Storage[(chrome.storage)]
   end
