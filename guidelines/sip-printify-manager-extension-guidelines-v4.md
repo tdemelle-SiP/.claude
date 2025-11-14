@@ -26,8 +26,8 @@ The SiP Printify Manager Extension links three contexts to automate Printify pro
 
 ### II. HOW
 
-The refactored architecture consolidates ~30 components into ~15, implementing:
-- **Unified MessageBus** owning MessageDispatch and MessageQueue as internal submodules
+The architecture consolidates ~30 components into ~15, implementing:
+- **MessageBus system** with separate MessageDispatch and MessageQueue components for modularity
 - **Single DataStore** as the sole source of truth for all state
 - **Structural design patterns** preventing issues without defensive code
 - **Bidirectional MessageRelay** enabling full WordPress integration
@@ -45,7 +45,7 @@ Consolidating message routing into MessageBus and state into DataStore achieves 
 
 ## 2. MAIN ARCHITECTURE - The Three Contexts {#architecture}
 
-This block documents the extension's refactored three-context architecture and component relationships.
+This block documents the extension's three-context architecture and component relationships.
 
 ### I. WHAT
 
@@ -54,20 +54,22 @@ This block documents the extension's refactored three-context architecture and c
 ```mermaid
 graph TD
   Chrome((Chrome<br/>Extension System))
-  
-  subgraph "Browser Extension Context (Service Worker)"
-    subgraph MessageBus[MessageBus<br/>see HOW 2A]
-      MessageDispatch((MessageDispatch<br/>internal))
-      MessageQueue((MessageQueue<br/>internal))
-    end
-    DataStore[(DataStore<br/>see HOW 2B)]
-    Logger[(Logger<br/>see HOW 2C)]
-    ExternalComms((ExternalComms))
-    TabPairManager((TabPairManager<br/>see 2E))
-    Handlers[Message Handlers<br/>see Section 4]
-    
+
+  subgraph "Service Worker Body 🧠"
+    MessageBus[MessageBus 🌐<br/>Spinal Cord<br/>see HOW 2A]
+    MessageDispatch((MessageDispatch 🛤️<br/>Nerve Branches<br/>see HOW 2A))
+    MessageQueue((MessageQueue ⏱️<br/>Synaptic Memory<br/>see HOW 2A))
+    DataStore[(DataStore 💾<br/>Long-term Memory<br/>see HOW 2B)]
+    Logger[(Logger 💭<br/>Consciousness<br/>see HOW 2C)]
+    ExternalComms((ExternalComms 🗣️<br/>Speech Center))
+    TabPairManager((TabPairManager 🔗<br/>Surgical Coordinator<br/>see 2E))
+    ScriptInjector((ScriptInjector 💉<br/>Transplant Surgeon<br/>see HOW 2H))
+    Handlers[Message Handlers 🧠<br/>Brain Functions<br/>see Section 4]
+
+    MessageBus --> MessageDispatch
+    MessageBus --> MessageQueue
     MessageDispatch --> Handlers
-    MessageQueue --> Handlers
+    MessageQueue -.->|waits for| Handlers
     MessageBus <--> DataStore
     MessageBus --> Logger
     MessageBus --> TabPairManager
@@ -75,40 +77,39 @@ graph TD
     Handlers --> ExternalComms
     Handlers --> TabPairManager
     TabPairManager --> DataStore
+    TabPairManager --> ScriptInjector
   end
 
-  subgraph "WordPress Tab Context"
+  subgraph "WordPress Context - Transplanted Organ 🫀"
     WPPage[/WordPress Admin Page/]
-    WPRelay[MessageRelay<br/>see HOW 2D]
-    WPWidget[UnifiedWidget<br/>see Section 5]
+    WPRelay[MessageRelay 🔌<br/>Organ's Nerves<br/>see HOW 2D]
+    WPWidget[UnifiedWidget 💪<br/>Organ Structure<br/>see Section 5]
     WPRelay <-->|postMessage| WPPage
     WPPage <-->|postMessage| WPRelay
     WPRelay <-->|chrome.runtime| MessageBus
     WPWidget -->|postMessage| WPRelay
   end
 
-  subgraph "Printify Tab Context"
+  subgraph "Printify Context - Transplanted Organ 🫀"
     PrintifyPage[/Printify.com Page/]
-    PFRelay[MessageRelay<br/>see HOW 2D]
-    PFWidget[UnifiedWidget<br/>see Section 5]
-    ScriptInjector[ScriptInjector<br/>see HOW 2H]
+    PFRelay[MessageRelay 🔌<br/>Organ's Nerves<br/>see HOW 2D]
+    PFWidget[UnifiedWidget 💪<br/>Organ Structure<br/>see Section 5]
     PrintifyPage <-->|postMessage| PFRelay
     PFRelay <-->|chrome.runtime| MessageBus
     PFWidget -->|postMessage| PFRelay
-    TabPairManager -->|inject scripts| ScriptInjector
-    ScriptInjector -->|two-world| PrintifyPage
+    ScriptInjector -->|injects into| PrintifyPage
   end
-  
+
   Chrome -.->|injects| WPRelay
   Chrome -.->|injects| PFRelay
   Chrome -.->|injects| WPWidget
   Chrome -.->|injects| PFWidget
-  
-  %% Chrome.action sends toggle message directly
-  Chrome -->|action.onClicked → tabs.sendMessage| WPWidget
-  Chrome -->|action.onClicked → tabs.sendMessage| PFWidget
-  
-  %% MessageBus forwards display updates to terminals
+
+  %% Chrome.action sends toggle message
+  Chrome -->|action.onClicked<br/>SIP_TOGGLE_WIDGET| WPWidget
+  Chrome -->|action.onClicked<br/>SIP_TOGGLE_WIDGET| PFWidget
+
+  %% MessageBus forwards display updates via TabPairManager
   TabPairManager -->|SIP_DISPLAY_UPDATE| WPWidget
   TabPairManager -->|SIP_DISPLAY_UPDATE| PFWidget
   
@@ -139,7 +140,7 @@ graph TD
 
 #### 2A MessageBus
 
-> The MessageBus (`MessageBus.js`) is the refactored extension's central message system, consolidating the original router, queue, and dispatch into a single component.
+> The MessageBus (`MessageBus.js`) is the extension's central message system, coordinating with MessageDispatch for routing and MessageQueue for async operations.
 >
 > **Core Responsibilities:**
 > - **Validates** all messages for required `context`, `action`, and `source` fields
@@ -189,6 +190,24 @@ graph TD
 > ```
 > **NORMATIVE**: Responses MUST contain either `data` OR `error`, never both. Handlers MUST normalize all responses to this schema.
 > **PLATFORM REQUIREMENT**: The `SIP_` prefix and source field values are mandated by the SiP Plugins Platform for proper WordPress plugin integration (see [SiP Core Platform Guide](../sip-core-platform.md)).
+
+#### 2A-1 MessageDispatch
+
+> Routes messages to registered handlers based on context:action patterns.
+>
+> **Responsibilities:**
+> - Maintains Map of `context:action` → handler function
+> - Routes messages to matching handlers
+> - Returns handler results or errors
+
+#### 2A-2 MessageQueue
+
+> Manages async message correlation for operations that span multiple messages.
+>
+> **Responsibilities:**
+> - Tracks pending async operations with timeouts
+> - Matches incoming messages to waiting promises
+> - Auto-cleanup of expired operations
 
 #### 2B DataStore
 
@@ -386,7 +405,7 @@ DataStore centralizes all state management to prevent synchronization bugs commo
 > ```javascript
 > chrome.runtime.onMessage.addListener((message) => {
 >     if (message?.source === 'sip-printify-manager-extension') {
->         window.postMessage(message, this.allowedOrigin);  // Not '*'
+>         window.postMessage(message, '*');  // Allow same-origin subframes
 >     }
 > });
 > ```
@@ -575,7 +594,57 @@ The TabPairManager consolidates all tab logic into a single orchestrator rather 
 
 ### III. WHY
 
-The refactored architecture achieves correctness through structure rather than defensive programming. The MessageBus consolidation eliminates race conditions inherent in distributed message handling. DataStore as single source of truth removes state synchronization issues. The bidirectional MessageRelay ensures WordPress plugin integration works correctly with both request-response pairs and unsolicited updates. This structural approach makes the system's behavior deterministic and easier to reason about, reducing bugs and maintenance burden.
+The architecture follows a **two-body anatomy metaphor**: a permanent Service Worker Body (brain and central nervous system) and transplantable Content Script Organs injected into web pages. This biological model makes the critical architectural principle visceral - content scripts must be injected as complete bundles (organs), not individual files. Just as you cannot transplant half a heart, you cannot inject partial content script bundles. The MessageRelay is the organ's internal nervous system (not central messaging), widget-init is its pacemaker (not general initialization).
+
+<details>
+<summary><b>Complete Anatomical File Mapping</b></summary>
+
+**🧠 SERVICE WORKER BODY** (The Central Organism)
+```
+extension-main.js         🧠 Brain Stem - Boots all systems
+├── Central Nervous System (Message Routing)
+│   ├── MessageBus.js        🌐 Spinal Cord - Central message highway
+│   ├── MessageDispatch.js   🛤️ Nerve Branches - Routes to handlers
+│   └── MessageQueue.js      ⏱️ Synaptic Memory - Async correlation
+│
+├── Brain Functions (Business Logic)
+│   ├── ConnectHandler.js    🤝 Proprioception - Tab awareness
+│   ├── LogHandler.js        🚨 Pain Center - Error processing
+│   ├── MockupHandler.js     🎨 Visual Cortex - Image processing
+│   ├── ReloadHandler.js     ⚡ Reflexes - Automatic responses
+│   └── UpdateHandler.js     🔄 Growth Center - Evolution/updates
+│
+├── Memory & Services
+│   ├── DataStore.js         💾 Long-term Memory - Persistent state
+│   ├── ExternalComms.js     🗣️ Speech Center - WordPress API
+│   └── Logger.js            💭 Consciousness - Self-awareness
+│
+└── Surgical Tools
+    ├── TabPairManager.js    🔗 Surgical Coordinator - Tab relationships
+    └── ScriptInjector.js    💉 Transplant Surgeon - Script injection
+```
+
+**🫀 CONTENT SCRIPT ORGAN** (Transplantable Bundle)
+```
+manifest.json defines the complete organ for injection:
+├── widget-init.js           💓 Pacemaker - Starts the organ beating
+├── MessageRelay.js          🔌 Internal Nerves - Organ's own nervous system
+├── UnifiedWidget.js         💪 Organ Muscle - Main structure
+├── TerminalDisplay.js       👁️ Sensory System - Visual feedback
+├── NavigationControls.js   🤚 Motor System - User interaction
+├── VanillaModal.js         📢 Voice Box - Modal dialogs
+└── widget-styles.css       🎨 Appearance - Visual presentation
+```
+
+**Key Architectural Insights:**
+- **Bundle Integrity**: All content script files must be injected together (complete organ transplant)
+- **Two Nervous Systems**: MessageBus (central) vs MessageRelay (organ's internal)
+- **Initialization Order**: widget-init (pacemaker) starts the organ, not the body
+- **Communication Bridge**: chrome.runtime connects the organ's nerves to the spinal cord
+
+</details>
+
+The architecture achieves correctness through structure rather than defensive programming. The MessageBus consolidation eliminates race conditions inherent in distributed message handling. DataStore as single source of truth removes state synchronization issues. The bidirectional MessageRelay ensures WordPress plugin integration works correctly with both request-response pairs and unsolicited updates. This structural approach makes the system's behavior deterministic and easier to reason about, reducing bugs and maintenance burden.
 
 **Dual-Purpose Message Flow:** The MessageBus implements the v3 pattern of both logging AND displaying events, but with clean separation of concerns. Every message flows through MessageBus where it's logged for historical record (via Logger) and simultaneously forwarded for real-time display (via TabPairManager). This dual flow ensures complete observability: terminals show operations as they happen for immediate feedback, while logs preserve the full history for debugging. The separation means UI updates never interfere with logging and vice versa.
 
@@ -601,24 +670,24 @@ graph LR
     Storage[(chrome.storage)]
   end
   
-  subgraph "WordPress Bundle"
-    WPBundle[WordPress Bundle<br/>manifest.json]
-    WPBundle --> MessageRelay1[MessageRelay.js<br/>see HOW 3A]
-    WPBundle --> UnifiedWidget1[UnifiedWidget.js<br/>see Section 5]
-    WPBundle --> TerminalDisplay1[TerminalDisplay.js]
-    WPBundle --> NavigationControls1[NavigationControls.js]
-    WPBundle --> WidgetInit1[widget-init.js<br/>see HOW 3B]
-    WPBundle --> WidgetStyles1[widget-styles.css]
+  subgraph "WordPress Organ Bundle 🫀"
+    WPBundle[Organ Definition<br/>manifest.json]
+    WPBundle --> WidgetInit1[widget-init.js 💓<br/>Pacemaker<br/>see HOW 3B]
+    WPBundle --> MessageRelay1[MessageRelay.js 🔌<br/>Internal Nerves<br/>see HOW 3A]
+    WPBundle --> UnifiedWidget1[UnifiedWidget.js 💪<br/>Organ Muscle<br/>see Section 5]
+    WPBundle --> TerminalDisplay1[TerminalDisplay.js 👁️<br/>Sensory System]
+    WPBundle --> NavigationControls1[NavigationControls.js 🤚<br/>Motor System]
+    WPBundle --> WidgetStyles1[widget-styles.css 🎨<br/>Appearance]
   end
-  
-  subgraph "Printify Bundle"
-    PFBundle[Printify Bundle<br/>manifest.json]
-    PFBundle --> MessageRelay2[MessageRelay.js<br/>see HOW 3A]
-    PFBundle --> UnifiedWidget2[UnifiedWidget.js<br/>see Section 5]
-    PFBundle --> TerminalDisplay2[TerminalDisplay.js]
-    PFBundle --> NavigationControls2[NavigationControls.js]
-    PFBundle --> WidgetInit2[widget-init.js<br/>see HOW 3B]
-    PFBundle --> WidgetStyles2[widget-styles.css]
+
+  subgraph "Printify Organ Bundle 🫀"
+    PFBundle[Organ Definition<br/>manifest.json]
+    PFBundle --> WidgetInit2[widget-init.js 💓<br/>Pacemaker<br/>see HOW 3B]
+    PFBundle --> MessageRelay2[MessageRelay.js 🔌<br/>Internal Nerves<br/>see HOW 3A]
+    PFBundle --> UnifiedWidget2[UnifiedWidget.js 💪<br/>Organ Muscle<br/>see Section 5]
+    PFBundle --> TerminalDisplay2[TerminalDisplay.js 👁️<br/>Sensory System]
+    PFBundle --> NavigationControls2[NavigationControls.js 🤚<br/>Motor System]
+    PFBundle --> WidgetStyles2[widget-styles.css 🎨<br/>Appearance]
   end
   
   WPPage[/WordPress Pages/]
@@ -702,29 +771,34 @@ Message handlers process messages routed by MessageBus based on context and acti
 graph TD
   subgraph "Service Worker"
     MessageBus((MessageBus))
-    
-    subgraph "MessageDispatch"
-      Dispatch[MessageDispatch<br/>see HOW 4A]
-    end
-    
+    MessageDispatch[MessageDispatch<br/>see HOW 4A]
+
     subgraph "Handler Classes"
       MockupHandler[MockupHandler<br/>see HOW 4B]
       UpdateHandler[UpdateHandler<br/>see HOW 4C]
       ConnectHandler[ConnectHandler<br/>see HOW 4D]
       ReloadHandler[ReloadHandler<br/>see HOW 4E]
+      LogHandler[LogHandler]
     end
-    
-    MessageBus --> Dispatch
-    Dispatch -->|wordpress:SIP_FETCH_MOCKUPS| MockupHandler
-    Dispatch -->|extension:SIP_UPDATE_PRODUCT_MOCKUPS| UpdateHandler
-    Dispatch -->|extension:SIP_TEST_CONNECTION| ConnectHandler
-    Dispatch -->|wordpress:SIP_AUTO_CONFIGURE| ConnectHandler
-    Dispatch -->|extension:SIP_RELOAD_EXTENSION| ReloadHandler
+
+    MessageBus --> MessageDispatch
+    MessageDispatch -->|wordpress:SIP_FETCH_MOCKUPS| MockupHandler
+    MessageDispatch -->|printify:SIP_MOCKUP_API_RESPONSE| MockupHandler
+    MessageDispatch -->|extension:SIP_UPDATE_PRODUCT_MOCKUPS| UpdateHandler
+    MessageDispatch -->|extension:SIP_SAVE_MOCKUP_DATA| UpdateHandler
+    MessageDispatch -->|extension:SIP_TEST_CONNECTION| ConnectHandler
+    MessageDispatch -->|wordpress:SIP_AUTO_CONFIGURE| ConnectHandler
+    MessageDispatch -->|extension:SIP_UPDATE_CONFIG| ConnectHandler
+    MessageDispatch -->|extension:SIP_GET_CONFIG| ConnectHandler
+    MessageDispatch -->|extension:SIP_CLEAR_CONFIG| ConnectHandler
+    MessageDispatch -->|extension:SIP_RELOAD_EXTENSION| ReloadHandler
+    MessageDispatch -->|extension:SIP_GET_LOG| LogHandler
+    MessageDispatch -->|extension:SIP_CLEAR_LOGS| LogHandler
   end
-  
+
   WPPage[/"WordPress Page"/] --> MessageRelay[MessageRelay]
-  MessageRelay -->|{context: 'wordpress'}| MessageBus
-  
+  MessageRelay -->|chrome.runtime| MessageBus
+
   MessageBus --> DataStore[(DataStore)]
   MessageBus --> Logger[(Logger)]
   
@@ -822,7 +896,7 @@ The handler architecture uses class-based organization for encapsulation and mai
 
 **Development Reload:** The ReloadHandler enables one-click reload capability essential for development workflow. Direct `chrome.runtime.sendMessage()` bypasses MessageRelay to ensure immediate reload even if relay components are unresponsive.
 
-**WordPress Plugin Requirements:** Handlers must respond to specific actions defined in the WordPress plugin's mockup-actions.js and browser-extension-actions.js modules. The `SIP_REQUEST_EXTENSION_STATUS` action must return an object with `slug: 'sip-printify-manager-extension'` for proper detection. The `SIP_FETCH_MOCKUPS` action must preserve the `requestId` generated by `SiP.Core.utilities.generateRequestId()` (see [SiP Core Platform Guide](../sip-core-platform.md#core-utilities)) to enable the WordPress plugin to correlate async responses with their requests.
+**WordPress Plugin Requirements:** Handlers must respond to specific actions defined in the WordPress plugin's mockup-actions.js and browser-extension-actions.js modules. The `SIP_FETCH_MOCKUPS` action must preserve the `requestId` generated by `SiP.Core.utilities.generateRequestId()` (see [SiP Core Platform Guide](../sip-core-platform.md#core-utilities)) to enable the WordPress plugin to correlate async responses with their requests.
 
 ---
 
@@ -1002,7 +1076,7 @@ graph TD
 >         source: 'sip-printify-manager',
 >         data: { url: location.href, timestamp: Date.now() }
 >     };
->     window.postMessage(message, window.location.origin);  // Not '*'
+>     window.postMessage(message, '*');  // Allow subframes
 > }
 > ```
 
@@ -1132,7 +1206,7 @@ The UnifiedWidget eliminates code duplication between WordPress and Printify con
 
 ## 7. AUTHOR CHECKLIST {#author-checklist}
 
-- [x] All refactored code documented in WHW blocks
+- [x] All code documented in WHW blocks
 - [x] Intro sentence explains each block scope
 - [x] Each WHAT layer present with clear architecture diagrams
 - [x] HOW layers contain implementation detail without repetition
