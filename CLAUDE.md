@@ -1,4 +1,4 @@
-# SIP Printify Manager - Project Context
+# SIP Plugin Suite - Workspace Context
 
 ## ⚠️ CRITICAL: Automatic Context Hydration Required
 
@@ -53,27 +53,55 @@ Reference: `Coding_Guidelines_Snapshot.txt:6-28` for complete PLAN → WORK → 
 
 Never commit changes. User commits manually. You may stage changes if requested, but never execute commits.
 
-## Repository Structure
+## Workspace Structure
 
-### 1. WordPress Plugin
-**Path**: `/mnt/c/Users/tdeme/Local Sites/faux-stained-glass-panes/app/public/wp-content/plugins/sip-printify-manager`
+This is a multi-root VS Code workspace containing the complete SIP Plugin Suite. All components share common patterns documented in the guidelines.
 
-Main plugin providing Printify API integration:
+### Core Components
+
+**sip-plugins-core**
+Foundation plugin providing centralized functionality:
+- AJAX system with standardized routing
+- UI utilities (spinners, toasts, dialogs)
+- Debug logging (JavaScript and PHP)
+- Plugin registration framework
+- Third-party libraries (CodeMirror, PhotoSwipe)
+
+**sip-printify-manager**
+Printify API integration plugin (reference implementation):
 - Mockup management and image generation
 - Product synchronization with Printify
 - WordPress admin interface
-- Data storage and caching
+- Complex parent-child table relationships
 
-### 2. Chrome Extension
-**Path**: `/mnt/c/Users/tdeme/Repositories/sip-printify-manager-extension`
-
-Browser extension for Printify.com automation:
+**sip-printify-manager-extension**
+Chrome extension for Printify.com automation:
 - Service worker architecture (Manifest V3)
-- Content scripts for WordPress and Printify contexts
+- Content scripts for WordPress/Printify contexts
 - MessageBus-based communication
 - UnifiedWidget UI component
 
-**Current State:** Two-body architecture with service worker and content script bundles.
+**sip-development-tools**
+Development and deployment automation:
+- Release management (versioning, Git workflow)
+- WordPress plugin releases with dependency management
+- Chrome extension releases with Web Store publishing
+- Update server distribution
+
+**sip-woocommerce-monitor**
+WooCommerce integration plugin
+
+**sip-plugin-suite-zips**
+Distribution packages for plugin releases
+
+**public_html** (T: drive)
+Centralized update server for plugin distribution
+
+## Environment Setup
+
+For workstation configuration (new machine setup or verification), see [Environment Setup Guide](./guidelines/sip-development-environment-setup.md).
+
+Required software: Git for Windows (with GCM), Node.js LTS, Claude Code CLI, Local by Flywheel, VS Code.
 
 ## Documentation Structure
 - `Coding_Guidelines_Snapshot.txt` - Procedural framework (PLAN/WORK/REVIEW process)

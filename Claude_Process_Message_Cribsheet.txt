@@ -8,7 +8,7 @@ Standard messages for each stage of the development process:
 - REVIEW STAGE: Use after work/iteration is complete
 - RECOVERY: Use when context auto-compact occurs
 
-/mnt/c/Users/tdeme/Documents/VSCode_Images_Repo/
+C:\Users\tdeme\Documents\VSCode_Images_Repo\
 
 -------------------------------------------------------------------------
 -------------------- PLAN STAGE - Task Initiation -----------------------
@@ -16,7 +16,7 @@ Standard messages for each stage of the development process:
 
 Before you begin, Read the guidelines at 
 
-/mnt/c/Users/tdeme/Local Sites/faux-stained-glass-panes/app/public/wp-content/plugins/.claude/Coding_Guidelines_Snapshot.txt
+C:\Users\tdeme\Local Sites\faux-stained-glass-panes\app\public\wp-content\plugins\.claude/Coding_Guidelines_Snapshot.txt
 
 This document contains a process overview detailing behavioral requirements for the three stages that all tasks will follow: the Plan Stage, the Work Stage and the Review Stage.  Again, these are behavioral requirements; this is not reference material.  Read the document in its entirety before beginning any subsequent steps.   All work done must remain in accordance with these behavioral requirements.
 
@@ -94,7 +94,7 @@ When complete, provide a commit message that:
 
 You just went through a context auto-compact. This has critically compromised your context and you should proceed with extreme caution and the assumption that you are likely to make errors. Please make sure to double check existing documentation, code and confirm goals and methods before making code changes. I will attempt to help you rehydrate with the following data:
 
-An overview and index of extensive documentation can be found here: /mnt/c/Users/tdeme/Local Sites/faux-stained-glass-panes/app/public/wp-content/plugins/.claude/index.md
+An overview and index of extensive documentation can be found here: C:\Users\tdeme\Local Sites\faux-stained-glass-panes\app\public\wp-content\plugins\.claude/index.md
 
 You are expected to code based on these guidelines:
 

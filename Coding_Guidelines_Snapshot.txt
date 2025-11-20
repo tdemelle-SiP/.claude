@@ -36,7 +36,7 @@ NO CODING until this stage is complete and you receive explicit instruction.
 ## PLAN I - REQUIREMENTS ANALYSIS
 
 Ia. Read Documentation Files
-    1. Read task request and if the user has referenced any uploaded images, review them in /mnt/c/Users/tdeme/Documents/VSCode_Images_Repo/
+    1. Read task request and if the user has referenced any uploaded images, review them in C:\Users\tdeme\Documents\VSCode_Images_Repo\
     2. Read this entire Coding_Guidelines_Snapshot.txt document
     3. Read index.md for documentation structure overview
     4. Identify guideline files relevant to the task from their descriptions in the idex.md file
@@ -153,7 +153,7 @@ IF assumption_needed THEN {
 }
 ```
 
-MANDATORY: Refer to Code Rules here:  /mnt/c/Users/tdeme/Local Sites/faux-stained-glass-panes/app/public/wp-content/plugins/.claude\guidelines/sip-development-code-guidelines.md
+MANDATORY: Refer to Code Rules here:  C:\Users\tdeme\Local Sites\faux-stained-glass-panes\app\public\wp-content\plugins\.claude\guidelines/sip-development-code-guidelines.md
 
 ═══════════════════════════════════════════════════════════════════════════════
                                 REVIEW STAGE
@@ -164,7 +164,7 @@ MANDATORY: Refer to Code Rules here:  /mnt/c/Users/tdeme/Local Sites/faux-staine
 The documentation serves as a critical bridge between human and AI collaborators, preserving context that would otherwise be lost between sessions.
 
 1. Re-read index.md at:
-   /mnt/c/Users/tdeme/Local Sites/faux-stained-glass-panes/app/public/wp-content/plugins/.claude/index.md
+   C:\Users\tdeme\Local Sites\faux-stained-glass-panes\app\public\wp-content\plugins\.claude/index.md
 2. Check /guidelines/ directory for affected documentation
 3. Update to reflect current functionality (not past/future)
 4. Document architectural WHY (not history)
@@ -202,7 +202,7 @@ Do NOT update for:
 ### Documentation Compliance Checklist
 
 **PREPARATION**
-□ Re-read /mnt/c/Users/tdeme/Local Sites/faux-stained-glass-panes/app/public/wp-content/plugins/.claude/index.md
+□ Re-read C:\Users\tdeme\Local Sites\faux-stained-glass-panes\app\public\wp-content\plugins\.claude/index.md
 □ Identify which /guidelines/ files relate to your changes
 
 **ACCURACY CHECK**

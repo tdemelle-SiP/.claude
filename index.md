@@ -216,6 +216,7 @@ Each guide presents standards and conventions in the context where they're used.
 | Testing & Debug | [sip-development-testing-debug.md](./guidelines/sip-development-testing-debug.md) | Testing strategies, debugging workflows, three-level debug logging system |
 | Documentation Guidelines | [sip-development-documentation-guidelines-v2.md](./guidelines/sip-development-documentation-guidelines-v2.md) | Complete documentation approach: diagrams show WHAT, text explains WHY |
 | Release Process | [sip-development-release-mgmt.md](./guidelines/sip-development-release-mgmt.md) | Git workflow, versioning standards, 16-step automated release process |
+| Environment Setup | [sip-development-environment-setup.md](./guidelines/sip-development-environment-setup.md) | Workstation setup, required software, directory structure, Git configuration |
 | **📊 Data Analysis** | | |
 | Mockup Analysis | [mockup-map-analysis.md](./guidelines/mockup-map-analysis.md) | Mockup data structure analysis and visualization guide |
 
@@ -338,10 +339,10 @@ Here's how you might use the documentation to build a plugin that manages produc
 8. **Documentation**: All functions must have JSDoc/PHPDoc documenting interface contracts
 
 ### Development Environment
-- **Operating System**: Windows 11 with WSL2
+- **Operating System**: Windows 11
 - **Local Development**: Local by Flywheel
-- **Code Editor**: Visual Studio Code with Claude integration
-- **Plugin Path**: `/mnt/c/Users/tdeme/Local Sites/faux-stained-glass-panes/app/public/wp-content/plugins/`
+- **Code Editor**: Visual Studio Code with Claude Code CLI
+- **Plugin Path**: `C:\Users\tdeme\Local Sites\faux-stained-glass-panes\app\public\wp-content\plugins\`
 
 ## Documentation Maintenance
 

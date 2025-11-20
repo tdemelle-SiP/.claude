@@ -3,7 +3,8 @@
     "allow": [
       "Bash(xargs:*)",
       "Bash(grep:*)",
-      "Bash(cd:*)"
+      "Bash(cd:*)",
+      "Bash(git clone:*)"
     ],
     "deny": [],
     "ask": []
