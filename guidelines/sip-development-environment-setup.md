@@ -242,16 +242,16 @@ graph TB
 > # Plugins directory
 > cd "C:\Users\tdeme\Local Sites\faux-stained-glass-panes\app\public\wp-content\plugins"
 >
-> git clone https://github.com/tdemelle-SiP/.claude.git
-> git clone https://github.com/tdemelle-SiP/sip-plugins-core.git
+> git clone https://github.com/Stuff-is-Parts/.claude.git
+> git clone https://github.com/Stuff-is-Parts/sip-plugins-core.git
 > git clone https://github.com/Stuff-is-Parts/sip-printify-manager.git
-> git clone https://github.com/tdemelle-SiP/sip-development-tools.git
-> git clone https://github.com/tdemelle-SiP/sip-woocommerce-monitor.git
-> git clone https://github.com/tdemelle-SiP/sip-plugin-suite-zips.git
+> git clone https://github.com/Stuff-is-Parts/sip-development-tools.git
+> git clone https://github.com/Stuff-is-Parts/sip-woocommerce-monitor.git
+> git clone https://github.com/Stuff-is-Parts/sip-plugin-suite-zips.git
 >
 > # Extension (separate location)
 > cd "C:\Users\tdeme\Repositories"
-> git clone https://github.com/tdemelle-SiP/sip-printify-manager-extension.git
+> git clone https://github.com/Stuff-is-Parts/sip-printify-manager-extension.git
 > ```
 >
 > GCM will prompt for GitHub authentication on first clone of private repositories.
